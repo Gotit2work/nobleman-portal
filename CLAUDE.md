@@ -4,7 +4,7 @@ Client portal for Nobleman Productions at `portal.noblemanproductions.gotit2work
 
 ## Ownership and infrastructure
 
-- Vercel project `nobleman-portal` (`prj_3HnVWrxGKofXm6EUvEPF1Jg2xCR8`), created 2026-09-30 in team `gotit2-work`: framework Other, Node 22.x, Vercel Authentication on previews only (production is public), custom domain attached and ownership-verified. Env: `PORTAL_MODE=demo` (Production, Preview, Development). No database, `SESSION_SECRET`, or Vimeo token yet. Not yet linked to GitHub: the Vercel GitHub App was not installed on `Gotit2work`, so deploys from Git failed with `repo_not_found`. Once linked (Project → Settings → Git), deploy the fix branch or merged `main` to production.
+- Vercel project `nobleman-portal` (`prj_3HnVWrxGKofXm6EUvEPF1Jg2xCR8`), created 2026-09-30 in team `gotit2-work`: framework Other, Node 22.x, Vercel Authentication on previews only (production is public), custom domain attached and ownership-verified. Env: `PORTAL_MODE=demo` (Production, Preview, Development). No database, `SESSION_SECRET`, or Vimeo token yet. Linked to GitHub (`Gotit2work/nobleman-portal`, made public so Hobby can deploy it); pushes to `main` deploy to production. DNS: GoDaddy CNAME `portal.noblemanproductions` → `cname.vercel-dns.com`, certificate issued.
 - **Alexis owns `gotit2work.com`.** DNS is at GoDaddy (`ns17/ns18.domaincontrol.com`). The apex points at Lovable (`185.158.133.1`) and email is Microsoft 365. Touch neither; this project only needs a CNAME for `portal.noblemanproductions`.
 - Vercel: account `amangual1`, team `Gotit2Work` (slug `gotit2-work`, id `team_b7Eucmxp9X2SzzAHXZPA92Qh`). On Hobby by the owner's choice while the portal is a demo; commercial use requires Pro.
 - Database: Neon Postgres through Vercel Storage (`DATABASE_URL`; `POSTGRES_URL` also accepted). The schema is `schema.sql` and is idempotent; re-run the whole file after changes.
@@ -26,6 +26,8 @@ Client portal for Nobleman Productions at `portal.noblemanproductions.gotit2work
 - `/api/videos` must only request folders tied to the viewer: their client's projects, an admin's chosen project, or `VIMEO_DEMO_FOLDER_ID` in demo mode. Keep the Vimeo token server-side.
 - The render object in `index.html` is one big literal. A duplicated key silently wins (that is how Sign out was broken), so search for a name before adding one.
 - `support.js` is a generated runtime shared with the website; don't edit it. Never put a stylesheet link or synchronous script inside `<helmet>` (it blocks `DOMContentLoaded`, which is when the page boots).
+- The browser parses the raw template before the runtime renders it, so a bound `src="{{ x }}"` makes it request the literal `/{{ x }}` (a 404 on every load). Bind URLs as `sc-camel-src="{{ x }}"`: the runtime turns it into the React `src` prop and the browser ignores it. The same applies to `poster`, `srcset`, and iframe `src`.
+- `animation:viewIn` ends on `transform:none` and overrides an inline `transform`. Don't centre an animated element with `translateX(-50%)`; use `left:0;right:0;margin:0 auto;width:max-content` (as the toast does).
 
 ## Verifying changes
 

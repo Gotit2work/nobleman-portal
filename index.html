@@ -113,7 +113,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
         <button onClick="{{ goProjects }}" style="height:36px;padding:0 4px;border:0;background:none;color:inherit;font:inherit;font-size:14px;cursor:pointer;opacity:.7;transition:opacity 200ms" style-hover="opacity:1">All productions →</button>
       </div>
       <button onClick="{{ goProjectMeridian }}" style="position:relative;display:block;width:100%;border:0;padding:0;background:#031e25;color:#f4f4f2;text-align:left;cursor:pointer;aspect-ratio:{{ heroRatio }};overflow:hidden;font:inherit">
-        <img src="{{ featured.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;animation:kb 20s ease-in-out infinite alternate;opacity:.92">
+        <img sc-camel-src="{{ featured.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;animation:kb 20s ease-in-out infinite alternate;opacity:.92">
         <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(3,30,37,0.05) 30%,rgba(3,30,37,0.88) 100%)"></div>
         <div style="position:absolute;left:0;right:0;bottom:0;padding:clamp(20px,3vw,40px);display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap">
           <div style="display:flex;flex-direction:column;gap:10px"><span style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;opacity:.7">{{ featured.type }}</span><span style="font-size:clamp(32px,4.5vw,64px);font-weight:500;letter-spacing:-0.015em;line-height:1">{{ featured.title }}</span></div>
@@ -135,7 +135,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
       <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Needs your attention</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.8);display:inline-block;flex:none;animation:blink 1.2s steps(1) infinite"></span></span>
       <div style="display:grid;grid-template-columns:{{ splitCols }};gap:clamp(20px,3vw,44px);align-items:center">
         <button onClick="{{ goReview }}" aria-label="Review Campaign Film, version 3" style="position:relative;display:block;width:100%;aspect-ratio:16/9;border:0;padding:0;background:#000;color:#f4f4f2;cursor:pointer;overflow:hidden;font:inherit">
-          <img src="{{ reviewImg }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.6s cubic-bezier(.16,.84,.3,1)" style-hover="transform:scale(1.03)">
+          <img sc-camel-src="{{ reviewImg }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.6s cubic-bezier(.16,.84,.3,1)" style-hover="transform:scale(1.03)">
           <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none"><span style="width:68px;height:68px;border-radius:50%;border:1px solid rgba(244,244,242,.6);display:flex;align-items:center;justify-content:center;background:rgba(3,30,37,.35);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)"><span style="width:0;height:0;border-left:16px solid #f4f4f2;border-top:10px solid transparent;border-bottom:10px solid transparent;margin-left:5px"></span></span></div>
           <div style="position:absolute;left:0;right:0;top:0;padding:16px 18px;display:flex;justify-content:space-between;font-size:11px;letter-spacing:.14em;text-transform:uppercase;pointer-events:none;text-shadow:0 1px 8px rgba(0,0,0,.6)"><span>Version 3</span><span>Review copy</span></div>
         </button>
@@ -159,14 +159,14 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
           <p style="margin:0;font-size:15px;line-height:1.55;opacity:.75;max-width:420px;text-wrap:pretty">{{ hero.blurb }}</p>
           <div style="display:flex;gap:10px;flex-wrap:wrap"><button onClick="{{ openHero }}" style="height:48px;padding:0 26px;border-radius:32px;border:0;background:{{ btnBg }};color:{{ btnInk }};font:inherit;font-size:15px;font-weight:500;cursor:pointer;transition:opacity 200ms" style-hover="opacity:.85">Watch film</button><button onClick="{{ copyHeroLink }}" style="height:48px;padding:0 22px;border-radius:32px;border:1px solid {{ outline }};background:transparent;color:inherit;font:inherit;font-size:15px;cursor:pointer;transition:background 200ms" style-hover="background:rgba(127,127,127,0.12)">Copy private link</button></div>
         </div>
-        <button onClick="{{ openHero }}" aria-label="Watch {{ hero.title }}" style="position:relative;display:block;width:100%;aspect-ratio:16/9;border:0;padding:0;background:#000;cursor:pointer;overflow:hidden;order:{{ imgOrder }}"><img src="{{ heroImg }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.6s cubic-bezier(.16,.84,.3,1)" style-hover="transform:scale(1.03)"></button>
+        <button onClick="{{ openHero }}" aria-label="Watch {{ hero.title }}" style="position:relative;display:block;width:100%;aspect-ratio:16/9;border:0;padding:0;background:#000;cursor:pointer;overflow:hidden;order:{{ imgOrder }}"><img sc-camel-src="{{ heroImg }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.6s cubic-bezier(.16,.84,.3,1)" style-hover="transform:scale(1.03)"></button>
       </div>
     </section>
 
     <section style="display:flex;flex-direction:column;gap:20px">
       <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Also in production</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
       <button onClick="{{ goProjectSocial }}" style="display:grid;grid-template-columns:{{ rowCols }};gap:16px 20px;align-items:center;width:100%;border:0;border-top:1px solid {{ hairline }};border-bottom:1px solid {{ hairline }};padding:20px 0;background:none;color:inherit;text-align:left;cursor:pointer;font:inherit">
-        <img src="{{ social.img }}" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover;display:block">
+        <img sc-camel-src="{{ social.img }}" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover;display:block">
         <div style="min-width:0"><div style="font-size:20px;font-weight:500;letter-spacing:-0.01em">{{ social.title }}</div><div style="font-size:14px;opacity:.6;margin-top:4px">{{ social.type }}</div></div>
         <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;grid-column:{{ stageCol }}"><span style="display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.1em;text-transform:uppercase">{{ social.stage }}<span style="width:5px;height:5px;border-radius:50%;background:#e5322d;display:inline-block"></span></span><span style="opacity:.6">{{ social.nextWhat }} · {{ social.next }}</span></div>
         <span style="opacity:.5;justify-self:end;display:{{ arrowDisp }}">→</span>
@@ -179,7 +179,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
         <div style="display:flex;gap:20px;flex-wrap:wrap">
           <sc-for list="{{ team }}" as="m" hint-placeholder-count="3">
             <div style="display:flex;flex-direction:column;gap:12px;width:128px">
-              <sc-if value="{{ m.hasImg }}" hint-placeholder-val="{{ true }}"><img src="{{ m.img }}" alt="{{ m.name }}" style="width:128px;aspect-ratio:4/5;object-fit:cover;display:block;filter:grayscale(1) contrast(1.05)"></sc-if>
+              <sc-if value="{{ m.hasImg }}" hint-placeholder-val="{{ true }}"><img sc-camel-src="{{ m.img }}" alt="{{ m.name }}" style="width:128px;aspect-ratio:4/5;object-fit:cover;display:block;filter:grayscale(1) contrast(1.05)"></sc-if>
               <sc-if value="{{ m.noImg }}" hint-placeholder-val="{{ false }}"><div style="width:128px;aspect-ratio:4/5;background:{{ card }};display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:40px;opacity:.8">{{ m.initial }}</div></sc-if>
               <div><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:.55">{{ m.role }}</div><div style="font-size:16px;font-weight:500;margin-top:4px">{{ m.name }}</div></div>
             </div>
@@ -209,7 +209,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
     <div style="display:grid;grid-template-columns:{{ splitColsEq }};gap:clamp(24px,3vw,40px)">
       <sc-for list="{{ projectTiles }}" as="p" hint-placeholder-count="2">
         <button onClick="{{ p.go }}" style="display:flex;flex-direction:column;gap:18px;border:0;padding:0;background:none;color:inherit;text-align:left;cursor:pointer;font:inherit">
-          <div style="position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;background:#031e25"><img src="{{ p.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.6s cubic-bezier(.16,.84,.3,1)" style-hover="transform:scale(1.03)"><span style="position:absolute;right:18px;top:16px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#f4f4f2;text-shadow:0 1px 8px rgba(0,0,0,.6);display:inline-flex;align-items:center;gap:8px">{{ p.stage }}<span style="width:5px;height:5px;border-radius:50%;background:#e5322d;display:inline-block"></span></span></div>
+          <div style="position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;background:#031e25"><img sc-camel-src="{{ p.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.6s cubic-bezier(.16,.84,.3,1)" style-hover="transform:scale(1.03)"><span style="position:absolute;right:18px;top:16px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#f4f4f2;text-shadow:0 1px 8px rgba(0,0,0,.6);display:inline-flex;align-items:center;gap:8px">{{ p.stage }}<span style="width:5px;height:5px;border-radius:50%;background:#e5322d;display:inline-block"></span></span></div>
           <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start">
             <div><div style="font-size:clamp(22px,2.4vw,30px);font-weight:500;letter-spacing:-0.01em;line-height:1.1">{{ p.title }}</div><div style="font-size:14px;opacity:.6;margin-top:6px">{{ p.type }}</div></div>
             <span style="font-size:28px;font-weight:300;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;line-height:1">{{ p.pct }}<span style="font-size:.5em;vertical-align:top;opacity:.7">%</span></span>
@@ -233,7 +233,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   <main data-screen-label="Portal · Project" style="max-width:1280px;margin:0 auto;padding:{{ padTop }} 24px 64px;display:flex;flex-direction:column;gap:{{ gapL }};animation:viewIn 700ms cubic-bezier(.16,.84,.3,1) both">
     <button onClick="{{ goProjects }}" style="align-self:flex-start;height:36px;padding:0 4px;border:0;background:none;color:inherit;font:inherit;font-size:14px;cursor:pointer;opacity:.7;transition:opacity 200ms" style-hover="opacity:1">← Productions</button>
     <div style="position:relative;aspect-ratio:{{ heroRatio }};overflow:hidden;background:#031e25;color:#f4f4f2">
-      <img src="{{ proj.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;animation:kb 20s ease-in-out infinite alternate;opacity:.92">
+      <img sc-camel-src="{{ proj.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;animation:kb 20s ease-in-out infinite alternate;opacity:.92">
       <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(3,30,37,0.05) 30%,rgba(3,30,37,0.88) 100%)"></div>
       <div style="position:absolute;left:0;right:0;bottom:0;padding:clamp(20px,3vw,40px);display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap">
         <div style="display:flex;flex-direction:column;gap:10px"><span style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;opacity:.7">{{ proj.type }}</span><h1 style="margin:0;font-size:clamp(32px,4.5vw,64px);font-weight:500;letter-spacing:-0.015em;line-height:1">{{ proj.title }}</h1></div>
@@ -255,7 +255,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
         <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Latest cut</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
         <sc-if value="{{ projHasCut }}" hint-placeholder-val="{{ true }}">
           <button onClick="{{ goReview }}" aria-label="Review the latest cut" style="position:relative;display:block;width:100%;aspect-ratio:16/9;border:0;padding:0;background:#000;color:#f4f4f2;cursor:pointer;overflow:hidden;font:inherit">
-            <img src="{{ reviewImg }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.6s cubic-bezier(.16,.84,.3,1)" style-hover="transform:scale(1.03)">
+            <img sc-camel-src="{{ reviewImg }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.6s cubic-bezier(.16,.84,.3,1)" style-hover="transform:scale(1.03)">
             <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none"><span style="width:60px;height:60px;border-radius:50%;border:1px solid rgba(244,244,242,.6);display:flex;align-items:center;justify-content:center;background:rgba(3,30,37,.35)"><span style="width:0;height:0;border-left:14px solid #f4f4f2;border-top:9px solid transparent;border-bottom:9px solid transparent;margin-left:4px"></span></span></div>
           </button>
           <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center"><div><div style="font-size:18px;font-weight:500">{{ reviewTitle }} · Version {{ latestCut.v }}</div><div style="font-size:14px;opacity:.6;margin-top:4px">{{ statusText }} · Uploaded {{ latestCut.date }}</div></div><button onClick="{{ goReview }}" style="height:44px;padding:0 20px;border-radius:32px;border:0;background:{{ btnBg }};color:{{ btnInk }};font:inherit;font-size:14px;font-weight:500;cursor:pointer;transition:opacity 200ms" style-hover="opacity:.85">Review film</button></div>
@@ -269,7 +269,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
         <div style="display:flex;flex-direction:column">
           <sc-for list="{{ team }}" as="m" hint-placeholder-count="3">
             <div style="display:grid;grid-template-columns:56px 1fr;gap:16px;align-items:center;padding:12px 0;border-top:1px solid {{ hairline }}">
-              <sc-if value="{{ m.hasImg }}" hint-placeholder-val="{{ true }}"><img src="{{ m.img }}" alt="" style="width:56px;aspect-ratio:4/5;object-fit:cover;display:block;filter:grayscale(1)"></sc-if>
+              <sc-if value="{{ m.hasImg }}" hint-placeholder-val="{{ true }}"><img sc-camel-src="{{ m.img }}" alt="" style="width:56px;aspect-ratio:4/5;object-fit:cover;display:block;filter:grayscale(1)"></sc-if>
               <sc-if value="{{ m.noImg }}" hint-placeholder-val="{{ false }}"><div style="width:56px;aspect-ratio:4/5;background:{{ card }};display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:24px;opacity:.8">{{ m.initial }}</div></sc-if>
               <div><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:.55">{{ m.role }}</div><div style="font-size:16px;font-weight:500;margin-top:3px">{{ m.name }}</div></div>
             </div>
@@ -285,7 +285,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
       <div style="display:flex;flex-direction:column;border-top:1px solid {{ hairline }}">
         <sc-for list="{{ projDeliverables }}" as="it" hint-placeholder-count="4">
           <button onClick="{{ it.open }}" style="display:grid;grid-template-columns:{{ delivCols }};gap:16px 20px;align-items:center;width:100%;padding:14px 0;border:0;border-bottom:1px solid {{ hairline }};background:none;color:inherit;text-align:left;cursor:pointer;font:inherit;transition:background 200ms" style-hover="background:rgba(127,127,127,0.06)">
-            <div style="aspect-ratio:16/9;overflow:hidden;background:#031e25;display:flex;justify-content:center"><img src="{{ it.img }}" alt="" style="width:{{ it.thumbW }};height:100%;object-fit:cover;display:block"></div>
+            <div style="aspect-ratio:16/9;overflow:hidden;background:#031e25;display:flex;justify-content:center"><img sc-camel-src="{{ it.img }}" alt="" style="width:{{ it.thumbW }};height:100%;object-fit:cover;display:block"></div>
             <div style="min-width:0"><div style="font-size:17px;font-weight:500">{{ it.title }}</div><div style="font-size:13px;opacity:.6;margin-top:3px">{{ it.meta }}</div></div>
             <span style="opacity:.5;justify-self:end">→</span>
           </button>
@@ -352,7 +352,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
     </div>
 
     <div style="position:relative;z-index:95;background:#000;aspect-ratio:16/9;overflow:hidden;box-shadow:0 40px 120px -40px rgba(0,0,0,.85)">
-      <iframe key="{{ reviewEmbed }}" ref="{{ videoRef }}" src="{{ reviewEmbed }}" title="{{ ver.title }}" allow="autoplay; fullscreen; picture-in-picture" style="position:absolute;inset:0;width:100%;height:100%;border:0;display:block"></iframe>
+      <iframe key="{{ reviewEmbed }}" ref="{{ videoRef }}" sc-camel-src="{{ reviewEmbed }}" title="{{ ver.title }}" allow="autoplay; fullscreen; picture-in-picture" style="position:absolute;inset:0;width:100%;height:100%;border:0;display:block"></iframe>
       <div style="position:absolute;left:0;right:0;top:0;padding:16px 20px;display:flex;justify-content:space-between;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#f4f4f2;pointer-events:none;text-shadow:0 1px 8px rgba(0,0,0,.6)"><span>{{ reviewTitle }} · V{{ ver.v }}</span><span style="display:inline-flex;align-items:center;gap:8px">Review copy<span style="width:6px;height:6px;border-radius:50%;background:#e5322d;display:inline-block;animation:blink 1.2s steps(1) infinite"></span></span></div>
       <div style="position:absolute;left:0;right:0;bottom:0;padding:24px 20px 14px;display:flex;flex-direction:column;gap:8px;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.6));color:#f4f4f2">
         <div onClick="{{ seekTo }}" role="slider" aria-label="Playhead" aria-valuenow="{{ timeSec }}" style="position:relative;height:28px;display:flex;align-items:center;cursor:pointer">
@@ -438,7 +438,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
       <p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:clamp(21px,2.2vw,27px);opacity:.72">{{ libSummary }}</p>
     </div>
     <button onClick="{{ openHero }}" style="position:relative;display:block;width:100%;border:0;padding:0;background:#031e25;color:#f4f4f2;text-align:left;cursor:pointer;aspect-ratio:{{ heroRatio }};overflow:hidden;font:inherit">
-      <img src="{{ heroImg }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.8s cubic-bezier(.16,.84,.3,1)" style-hover="transform:scale(1.03)">
+      <img sc-camel-src="{{ heroImg }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.8s cubic-bezier(.16,.84,.3,1)" style-hover="transform:scale(1.03)">
       <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(3,30,37,0) 40%,rgba(3,30,37,0.85) 100%)"></div>
       <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none"><span style="width:76px;height:76px;border-radius:50%;border:1px solid rgba(244,244,242,.6);display:flex;align-items:center;justify-content:center;background:rgba(3,30,37,.35);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)"><span style="width:0;height:0;border-left:18px solid #f4f4f2;border-top:11px solid transparent;border-bottom:11px solid transparent;margin-left:5px"></span></span></div>
       <div style="position:absolute;left:0;right:0;bottom:0;padding:clamp(20px,3vw,40px);display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
@@ -449,7 +449,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
     <div style="display:flex;flex-direction:column;border-top:1px solid {{ hairline }}">
       <sc-for list="{{ libraryRows }}" as="it" hint-placeholder-count="5">
         <button onClick="{{ it.open }}" style="display:grid;grid-template-columns:{{ libCols }};gap:clamp(16px,2.5vw,32px);align-items:center;width:100%;padding:18px 0;border:0;border-bottom:1px solid {{ hairline }};background:none;color:inherit;text-align:left;cursor:pointer;font:inherit;transition:background 200ms" style-hover="background:rgba(127,127,127,0.06)">
-          <div style="aspect-ratio:16/9;overflow:hidden;background:#031e25;display:flex;justify-content:center"><img src="{{ it.img }}" alt="" style="width:{{ it.thumbW }};height:100%;object-fit:cover;display:block;transition:transform 1.6s cubic-bezier(.16,.84,.3,1)" style-hover="transform:scale(1.04)"></div>
+          <div style="aspect-ratio:16/9;overflow:hidden;background:#031e25;display:flex;justify-content:center"><img sc-camel-src="{{ it.img }}" alt="" style="width:{{ it.thumbW }};height:100%;object-fit:cover;display:block;transition:transform 1.6s cubic-bezier(.16,.84,.3,1)" style-hover="transform:scale(1.04)"></div>
           <div style="display:flex;flex-direction:column;gap:6px;min-width:0"><span style="font-size:clamp(18px,2vw,24px);font-weight:500;letter-spacing:-0.01em;line-height:1.2">{{ it.title }}</span><span style="font-size:14px;opacity:.6">{{ it.meta }}</span></div>
           <span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:.55;display:{{ arrowDisp }}">{{ it.kindLabel }}</span>
           <span style="opacity:.5;justify-self:end;display:{{ arrowDisp }}">→</span>
@@ -476,16 +476,16 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   <main data-screen-label="Portal · Deliverable" style="max-width:1280px;margin:0 auto;padding:{{ padTop }} 24px 64px;display:flex;flex-direction:column;gap:28px;animation:viewIn 700ms cubic-bezier(.16,.84,.3,1) both">
     <button onClick="{{ goLibrary }}" style="align-self:flex-start;height:36px;padding:0 4px;border:0;background:none;color:inherit;font:inherit;font-size:14px;cursor:pointer;opacity:.7;transition:opacity 200ms" style-hover="opacity:1">← Library</button>
     <sc-if value="{{ item.isVideo }}" hint-placeholder-val="{{ true }}">
-      <div style="position:relative;z-index:95;background:#000;aspect-ratio:{{ item.playerRatio }};overflow:hidden;width:{{ item.playerW }};max-width:100%;margin:0 auto;box-shadow:0 40px 120px -40px rgba(0,0,0,.5)"><iframe key="{{ item.embed }}" ref="{{ videoRef }}" src="{{ item.embed }}" title="{{ item.title }}" allow="autoplay; fullscreen; picture-in-picture" style="position:absolute;inset:0;width:100%;height:100%;border:0;display:block"></iframe></div>
+      <div style="position:relative;z-index:95;background:#000;aspect-ratio:{{ item.playerRatio }};overflow:hidden;width:{{ item.playerW }};max-width:100%;margin:0 auto;box-shadow:0 40px 120px -40px rgba(0,0,0,.5)"><iframe key="{{ item.embed }}" ref="{{ videoRef }}" sc-camel-src="{{ item.embed }}" title="{{ item.title }}" allow="autoplay; fullscreen; picture-in-picture" style="position:absolute;inset:0;width:100%;height:100%;border:0;display:block"></iframe></div>
     </sc-if>
     <sc-if value="{{ item.isPhoto }}" hint-placeholder-val="{{ false }}">
       <div style="display:grid;grid-template-columns:{{ galleryCols }};gap:8px">
-        <sc-for list="{{ gallery }}" as="g" hint-placeholder-count="3"><div style="aspect-ratio:{{ g.ratio }};overflow:hidden;background:#031e25;grid-column:{{ g.span }}"><img src="{{ g.img }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;filter:grayscale(1) contrast(1.05)"></div></sc-for>
+        <sc-for list="{{ gallery }}" as="g" hint-placeholder-count="3"><div style="aspect-ratio:{{ g.ratio }};overflow:hidden;background:#031e25;grid-column:{{ g.span }}"><img sc-camel-src="{{ g.img }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;filter:grayscale(1) contrast(1.05)"></div></sc-for>
       </div>
       <div style="font-size:13px;opacity:.55;text-align:center">3 of 48 · Full contact sheet arrives with the download</div>
     </sc-if>
     <sc-if value="{{ item.isArchive }}" hint-placeholder-val="{{ false }}">
-      <div style="position:relative;aspect-ratio:{{ heroRatio }};overflow:hidden;background:#031e25;color:#f4f4f2"><img src="{{ item.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.7"><div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(3,30,37,0.1),rgba(3,30,37,0.9))"></div><div style="position:absolute;left:0;right:0;bottom:0;padding:clamp(20px,3vw,40px);display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap"><span style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.75">Camera originals · 3 shoot days · 2 cameras</span><span style="font-size:clamp(40px,6vw,88px);font-weight:300;letter-spacing:-0.03em;line-height:1">412<span style="font-size:.35em;vertical-align:top;opacity:.7;margin-left:6px">GB</span></span></div></div>
+      <div style="position:relative;aspect-ratio:{{ heroRatio }};overflow:hidden;background:#031e25;color:#f4f4f2"><img sc-camel-src="{{ item.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.7"><div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(3,30,37,0.1),rgba(3,30,37,0.9))"></div><div style="position:absolute;left:0;right:0;bottom:0;padding:clamp(20px,3vw,40px);display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap"><span style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.75">Camera originals · 3 shoot days · 2 cameras</span><span style="font-size:clamp(40px,6vw,88px);font-weight:300;letter-spacing:-0.03em;line-height:1">412<span style="font-size:.35em;vertical-align:top;opacity:.7;margin-left:6px">GB</span></span></div></div>
     </sc-if>
     <div style="display:grid;grid-template-columns:{{ splitColsRev }};gap:clamp(28px,4vw,64px);align-items:start">
       <div style="display:flex;flex-direction:column;gap:18px">
@@ -637,7 +637,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   </sc-if>
 
   <sc-if value="{{ toastOn }}" hint-placeholder-val="{{ false }}">
-  <div role="status" style="position:{{ fixedPos }};left:50%;bottom:{{ toastBottom }};transform:translateX(-50%);z-index:110;padding:13px 20px;border-radius:32px;background:{{ ink }};color:{{ bg }};font-size:14px;box-shadow:0 12px 40px -12px rgba(0,0,0,.5);animation:viewIn 300ms ease both;white-space:nowrap;max-width:calc(100vw - 32px);overflow:hidden;text-overflow:ellipsis">{{ toastText }}</div>
+  <div role="status" style="position:{{ fixedPos }};left:0;right:0;margin:0 auto;width:max-content;bottom:{{ toastBottom }};z-index:110;padding:13px 20px;border-radius:32px;background:{{ ink }};color:{{ bg }};font-size:14px;box-shadow:0 12px 40px -12px rgba(0,0,0,.5);animation:viewIn 300ms ease both;white-space:nowrap;max-width:calc(100vw - 32px);overflow:hidden;text-overflow:ellipsis">{{ toastText }}</div>
   </sc-if>
 </div>
 </x-dc>
