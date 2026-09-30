@@ -32,6 +32,7 @@ Client portal for Nobleman Productions at `portal.noblemanproductions.gotit2work
 ## Clarity conventions — keep these when changing the UI
 
 - Every word a client sees follows `docs/WRITING.md` (from the Murphy's Laws poster): plain words, buttons that name the action, no promise that isn't always true, no feature described that doesn't exist, confirmation before anything hard to undo.
+- The privacy notice for the portal is on the website (`noblemanproductions.gotit2work.com/privacy#portal`, linked from sign-in, Help, and Account). It lists the `np_session` cookie, the `np-review-time` and `np-portal-seen` storage keys, and every field the database keeps. Adding a cookie, storage key, third-party service, or stored field means updating the website's `privacy.html` in step.
 - Actions that would contact someone or move a file use `this.say(real, demo)`, never a bare `toast`: in demo mode (`state.preview`) it says plainly that nothing was sent ("Demo only: …").
 - Home always leads with **Your next step** (`next` in `renderVals`); keep it to one clear action.
 - Every screen has a one-line purpose sentence under its title and a way back. The **Help** panel (`helpSteps`) explains the four main screens; add a step if you add a screen.
