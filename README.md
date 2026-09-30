@@ -3,8 +3,7 @@
 Static front end plus serverless API routes, Neon Postgres for data. Vercel runs `npm install`; there is no build step.
 
 Pages
-- `/` → index.html (portal, with login gate)
-- `/mobile` → mobile.html
+- `/` → index.html (portal, with login gate). The layout is responsive; there is no separate mobile page.
 
 ## Roles
 
