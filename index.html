@@ -1,16 +1,25 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="./support.js"></script>
+<title>Client Portal | Nobleman Productions</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/icon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#031e25">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Cormorant+Garamond:ital,wght@1,400;1,500&amp;display=swap" media="print" onload="this.media='all'">
+<script src="https://player.vimeo.com/api/player.js" async></script>
+<script src="/vendor/react-18.3.1.production.min.js"></script>
+<script src="/vendor/react-dom-18.3.1.production.min.js"></script>
+<script src="/support.js"></script>
 </head>
 <body>
 <x-dc>
 <helmet>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Cormorant+Garamond:ital,wght@1,400;1,500&amp;display=swap" rel="stylesheet">
-<script src="https://player.vimeo.com/api/player.js"></script>
 <style>
 body{margin:0;background:#031e25;color:#f4f4f2;font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 a{color:inherit}a:hover{color:inherit}
@@ -94,7 +103,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   <sc-if value="{{ vHome }}" hint-placeholder-val="{{ true }}">
   <main data-screen-label="Portal · Home" style="max-width:1280px;margin:0 auto;padding:{{ padTop }} 24px 64px;display:flex;flex-direction:column;gap:{{ gapXL }};animation:viewIn 700ms cubic-bezier(.16,.84,.3,1) both">
     <div style="display:flex;flex-direction:column;gap:10px">
-      <h1 style="margin:0;font-size:clamp(32px,4vw,48px);font-weight:500;letter-spacing:-0.01em;line-height:1.1">{{ greeting }}, Jonathan.</h1>
+      <h1 style="margin:0;font-size:clamp(32px,4vw,48px);font-weight:500;letter-spacing:-0.01em;line-height:1.1">{{ greeting }}, {{ userName }}.</h1>
       <p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:clamp(21px,2.2vw,27px);opacity:.72">Here’s where your production stands.</p>
     </div>
 
@@ -587,8 +596,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   <main data-screen-label="Portal · Account" style="max-width:1280px;margin:0 auto;padding:{{ padTop }} 24px 64px;display:flex;flex-direction:column;gap:{{ gapL }};animation:viewIn 700ms cubic-bezier(.16,.84,.3,1) both">
     <div style="display:flex;flex-direction:column;gap:10px">
       <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Account</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
-      <h1 style="margin:0;font-size:clamp(32px,4vw,48px);font-weight:500;letter-spacing:-0.01em;line-height:1.1">Jonathan Reyes</h1>
-      <p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:clamp(21px,2.2vw,27px);opacity:.72">Marketing Director · Meridian Marine</p>
+      <h1 style="margin:0;font-size:clamp(32px,4vw,48px);font-weight:500;letter-spacing:-0.01em;line-height:1.1">{{ userFullName }}</h1>
+      <p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:clamp(21px,2.2vw,27px);opacity:.72">{{ userSubtitle }}</p>
     </div>
     <div style="display:grid;grid-template-columns:{{ splitColsEq }};gap:clamp(32px,4vw,64px);align-items:start">
       <section style="display:flex;flex-direction:column;gap:16px">
@@ -635,16 +644,16 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
 <script type="text/x-dc" data-dc-script data-props="{&quot;startView&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;projects&quot;,&quot;project&quot;,&quot;review&quot;,&quot;library&quot;,&quot;item&quot;,&quot;files&quot;,&quot;account&quot;],&quot;default&quot;:&quot;home&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Preview&quot;},&quot;cinematicLoad&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Motion&quot;},&quot;grain&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Motion&quot;},&quot;previewMobile&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Preview&quot;}}">
 class Component extends DCLogic {
   IMG = {
-    proj: "media/a00.png",
-    social: "media/a03.png",
-    review: "media/a01.png",
-    hero: "media/a07.png",
-    c30: "media/a08.png",
-    vertical: "media/a05.png",
-    bts: "media/a09.png",
-    photo: "media/a10.png",
-    crew: "media/a04.png",
-    p2: "media/a11.png",
+    proj: "media/a00.jpg",
+    social: "media/a03.jpg",
+    review: "media/a01.jpg",
+    hero: "media/a07.jpg",
+    c30: "media/a08.jpg",
+    vertical: "media/a05.jpg",
+    bts: "media/a09.jpg",
+    photo: "media/a10.jpg",
+    crew: "media/a04.jpg",
+    p2: "media/a11.jpg",
   };
   stageNames = ["Pre-production", "Production", "Editing", "Client review", "Finalizing", "Delivered"];
   projects = [
@@ -696,17 +705,25 @@ class Component extends DCLogic {
     prefs: { email: true, sms: false, portal: true, cuts: true, stages: true, delivery: true, msgs: true },
     toast: null,
   };
-  /** Asks the server who we are. 404 means no backend is deployed (design preview), so we
-   *  fall through to a demo identity rather than locking the design file behind a login. */
+  /** Asks the server who we are. On a local design preview with no backend (404 or no network), fall
+   *  through to a demo identity so the design still opens. Anywhere else, a missing or broken API keeps
+   *  the login gate closed — the deployed portal must never fail open into the demo. */
+  get designPreview() {
+    const h = typeof location !== "undefined" ? location.hostname : "";
+    return location.protocol === "file:" || h === "localhost" || h === "127.0.0.1" || h === "";
+  }
   checkAuth() {
+    const down = () => this.designPreview
+      ? this.setState({ auth: "in", user: this.demoUser, preview: true })
+      : this.setState({ auth: "out", authErr: "The portal is having trouble. Try again in a moment." });
     fetch("/api/me", { credentials: "same-origin" })
       .then(async (r) => {
         if (r.ok) { const d = await r.json(); this.setState({ auth: "in", user: d.user }); return; }
         if (r.status === 401) { this.setState({ auth: "out" }); return; }
-        if (r.status === 404) { this.setState({ auth: "in", user: this.demoUser, preview: true }); return; }
+        if (r.status === 404) { down(); return; }
         this.setState({ auth: "out", authErr: "The portal is having trouble. Try again in a moment." });
       })
-      .catch(() => this.setState({ auth: "in", user: this.demoUser, preview: true }));
+      .catch(down);
   }
   demoUser = { name: "Jonathan Reyes", title: "Marketing Director", role: "client", clientName: "Meridian" };
   doLogin(e) {
@@ -899,6 +916,8 @@ class Component extends DCLogic {
       accountBg: view === "account" ? pillOn : "transparent",
       authScreen: false, authChecking: false, signedOut: false,
       userName: (me.name || "").split(" ")[0] || "Account", userInitials: this.initials(me.name),
+      userFullName: me.name || "Your account",
+      userSubtitle: [me.title, me.role === "admin" ? "Nobleman Productions" : me.clientName].filter(Boolean).join(" · "),
       isAdmin: me.role === "admin", isClientUser: me.role !== "admin",
       signOut: () => this.signOut(),
       goHome: () => this.go("home"), goProjects: () => this.go("projects"), goReview: () => this.go("review"), goLibrary: () => this.go("library"), goFiles: () => this.go("files"), goAccount: () => this.go("account"),

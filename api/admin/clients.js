@@ -1,5 +1,5 @@
 import { sql } from "../_db.js";
-import { requireAdmin } from "../_auth.js";
+import { requireAdmin, readBody } from "../_auth.js";
 
 export default async function handler(req, res) {
   const admin = await requireAdmin(req, res);
@@ -19,9 +19,11 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "POST") {
-    const b = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
+    const b = readBody(req, res);
+    if (!b) return;
     const name = String(b.name || "").trim();
     if (!name) return res.status(400).json({ error: "A client name is required." });
+    if (name.length > 200) return res.status(400).json({ error: "That name is too long." });
     try {
       const rows = await sql`insert into clients (name) values (${name}) returning id, name`;
       return res.status(201).json({ client: rows[0] });

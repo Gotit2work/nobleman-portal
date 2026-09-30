@@ -1,9 +1,9 @@
 import { sql } from "./_db.js";
-import { session } from "./_auth.js";
+import { session, clearSessionCookie, isUuid } from "./_auth.js";
 
 export default async function handler(req, res) {
   const s = await session(req);
-  if (!s) return res.status(401).json({ error: "Not signed in" });
+  if (!s || !isUuid(s.sub)) return res.status(401).json({ error: "Not signed in" });
 
   try {
     const rows = await sql`
@@ -12,7 +12,10 @@ export default async function handler(req, res) {
       where u.id = ${s.sub} limit 1`;
 
     const u = rows[0];
-    if (!u) return res.status(401).json({ error: "Not signed in" });
+    if (!u) {
+      clearSessionCookie(res);
+      return res.status(401).json({ error: "Not signed in" });
+    }
 
     return res.status(200).json({
       user: {

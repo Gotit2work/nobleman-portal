@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { sql } from "../_db.js";
-import { requireAdmin } from "../_auth.js";
+import { requireAdmin, readBody, isUuid } from "../_auth.js";
 
 export default async function handler(req, res) {
   const admin = await requireAdmin(req, res);
@@ -20,51 +20,57 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "POST") {
-    const b = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
+    const b = readBody(req, res);
+    if (!b) return;
     const name = String(b.name || "").trim();
     const email = String(b.email || "").trim().toLowerCase();
     const title = String(b.title || "").trim() || null;
     const role = b.role === "admin" ? "admin" : "client";
     const password = String(b.password || "");
-    let clientId = b.clientId || null;
+    const clientId = role === "client" && b.clientId ? String(b.clientId) : null;
     const clientName = String(b.clientName || "").trim();
 
     if (!name || !email) return res.status(400).json({ error: "Name and email are required." });
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: "That email address looks wrong." });
     if (password.length < 10) return res.status(400).json({ error: "Password must be at least 10 characters." });
+    if (clientId && !isUuid(clientId)) return res.status(400).json({ error: "That client id is not valid." });
     if (role === "client" && !clientId && !clientName) {
       return res.status(400).json({ error: "Pick an existing client or give a new client name." });
     }
 
     try {
-      if (role === "client" && !clientId) {
-        const c = await sql`insert into clients (name) values (${clientName}) returning id`;
-        clientId = c[0].id;
-      }
-      if (role === "admin") clientId = null;
-
       const hash = await bcrypt.hash(password, 10);
+      const makeClient = role === "client" && !clientId;
+      // One statement, so a failure (duplicate email, bad client) leaves no orphaned client row behind.
       const rows = await sql`
+        with new_client as (
+          insert into clients (name) select ${clientName} where ${makeClient}::boolean
+          returning id
+        )
         insert into users (email, name, title, role, client_id, password_hash)
-        values (${email}, ${name}, ${title}, ${role}, ${clientId}, ${hash})
+        values (${email}, ${name}, ${title}, ${role}, coalesce(${clientId}::uuid, (select id from new_client)), ${hash})
         returning id, email, name, title, role, client_id`;
 
       return res.status(201).json({ user: rows[0] });
     } catch (err) {
-      if (String(err.message || "").includes("users_email_key")) {
-        return res.status(409).json({ error: "That email already has an account." });
-      }
+      const msg = String(err.message || "");
+      if (msg.includes("users_email_key")) return res.status(409).json({ error: "That email already has an account." });
+      if (msg.includes("users_client_id_fkey")) return res.status(400).json({ error: "That client does not exist." });
       console.error("create user failed", err);
       return res.status(500).json({ error: "Could not create that account." });
     }
   }
 
   if (req.method === "DELETE") {
-    const b = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
+    const b = readBody(req, res);
+    if (!b) return;
     const id = String(b.id || "");
     if (!id) return res.status(400).json({ error: "Which user?" });
+    if (!isUuid(id)) return res.status(400).json({ error: "That user id is not valid." });
     if (id === admin.sub) return res.status(400).json({ error: "You cannot remove your own account." });
     try {
-      await sql`delete from users where id = ${id}`;
+      const gone = await sql`delete from users where id = ${id} returning id`;
+      if (!gone.length) return res.status(404).json({ error: "No such user." });
       return res.status(200).json({ ok: true });
     } catch (err) {
       console.error("delete user failed", err);
