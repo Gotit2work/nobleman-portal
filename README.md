@@ -140,3 +140,7 @@ Login, roles, and account management are real and backed by the database. The gr
 **Everything else the portal displays is still hardcoded**: projects, stages, review comments, approvals, messages, files, documents (all the sample "Meridian" campaign). It looks live and it is not: nothing saves, uploads go nowhere, and a refresh resets it. Treat the portal as a real login in front of a prototype until increments 2 and 3 land, and **don't give clients logins before then**, because every client would see the same sample project.
 
 On `localhost` or a `file://` preview with no backend, the page falls back to a demo identity so the design still opens. On any other host, the demo only appears when the server says so (`PORTAL_MODE=demo`); a missing or failing API keeps the sign-in screen up with an error rather than failing open.
+
+## Writing
+
+All client-facing copy follows [docs/WRITING.md](docs/WRITING.md): plain words, honest promises, and a demo that says it's a demo. Check new copy against its checklist before shipping.

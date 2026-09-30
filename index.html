@@ -11,7 +11,9 @@
 <meta name="theme-color" content="#031e25">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Cormorant+Garamond:ital,wght@1,400;1,500&amp;display=swap" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&amp;display=swap" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="/assets/np.css?v=1">
+<script src="/assets/np.js?v=1" defer></script>
 <script src="https://player.vimeo.com/api/player.js" async></script>
 <script src="/vendor/react-18.3.1.production.min.js"></script>
 <script src="/vendor/react-dom-18.3.1.production.min.js"></script>
@@ -77,12 +79,13 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   <header style="position:{{ fixedPos }};top:14px;left:16px;right:16px;z-index:50;display:flex;justify-content:center;pointer-events:none">
     <div style="pointer-events:auto;width:100%;max-width:1280px;height:56px;padding:0 8px 0 22px;border-radius:40px;display:flex;align-items:center;gap:8px;background:{{ navBg }};backdrop-filter:blur(20px) saturate(1.2);-webkit-backdrop-filter:blur(20px) saturate(1.2);border:1px solid {{ hairline }};box-shadow:inset 0 1px 0 rgba(255,255,255,0.14), 0 12px 40px -22px rgba(3,30,37,0.6);transition:background-color 700ms, border-color 700ms;color:{{ ink }}">
       <button onClick="{{ goHome }}" aria-label="Portal home" style="border:0;background:none;padding:0;cursor:pointer;display:flex;align-items:center;margin-right:14px"><img src="assets/Nobleman_Logo_White.png" alt="Nobleman" style="height:24px;width:auto;display:{{ showWhite }}"><img src="assets/Nobleman_Logo_Black.png" alt="Nobleman" style="height:24px;width:auto;display:{{ showBlack }}"></button>
-      <span style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.5;padding-right:16px;border-right:1px solid {{ hairline }};margin-right:8px;white-space:nowrap">Client portal</span>
+      <span style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.5;white-space:nowrap">Client portal</span><sc-if value="{{ isDemo }}" hint-placeholder-val="{{ false }}"><button onClick="{{ openHelp }}" title="This is a demo. Click for what that means." style="margin-left:10px;height:24px;padding:0 10px;border-radius:32px;border:1px solid #e5322d;background:rgba(229,50,45,.12);color:inherit;font:inherit;font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;white-space:nowrap">Demo</button></sc-if><span aria-hidden="true" style="width:1px;height:22px;background:{{ hairline }};margin:0 8px 0 16px;flex:none"></span>
       <nav style="display:flex;align-items:center;gap:2px;flex:1">
         <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="5">
-          <button onClick="{{ n.go }}" style="height:36px;padding:0 14px;border:0;border-radius:32px;background:{{ n.bg }};color:inherit;font:inherit;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;opacity:{{ n.op }};transition:background 200ms, opacity 200ms" style-hover="opacity:1;background:rgba(127,127,127,0.12)">{{ n.label }}<sc-if value="{{ n.badge }}" hint-placeholder-val="{{ false }}"><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.8);display:inline-block;animation:blink 1.2s steps(1) infinite"></span></sc-if></button>
+          <button onClick="{{ n.go }}" aria-current="{{ n.current }}" style="height:36px;padding:0 14px;border:0;border-radius:32px;background:{{ n.bg }};color:inherit;font:inherit;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;opacity:{{ n.op }};transition:background 200ms, opacity 200ms" style-hover="opacity:1;background:rgba(127,127,127,0.12)">{{ n.label }}<sc-if value="{{ n.badge }}" hint-placeholder-val="{{ false }}"><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.8);display:inline-block;animation:blink 1.2s steps(1) infinite"></span></sc-if></button>
         </sc-for>
       </nav>
+      <button onClick="{{ openHelp }}" style="height:40px;padding:0 16px;border:1px solid {{ hairline }};border-radius:32px;background:transparent;color:inherit;font:inherit;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;margin-right:6px;transition:background 200ms" style-hover="background:rgba(127,127,127,0.12)"><span aria-hidden="true" style="width:18px;height:18px;border-radius:50%;border:1.5px solid currentColor;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">?</span>Help</button>
       <button onClick="{{ goAccount }}" style="height:40px;padding:0 6px 0 14px;border:0;border-radius:32px;background:{{ accountBg }};color:inherit;font:inherit;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:10px;transition:background 200ms" style-hover="background:rgba(127,127,127,0.12)">{{ userName }}<span style="width:28px;height:28px;border-radius:50%;background:{{ ink }};color:{{ bg }};display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;letter-spacing:.04em;transition:background-color 700ms,color 700ms">{{ userInitials }}</span></button>
     </div>
   </header>
@@ -91,10 +94,12 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}">
   <header style="position:{{ fixedPos }};top:12px;left:0;right:0;z-index:50;display:flex;justify-content:center;pointer-events:none">
     <button onClick="{{ goHome }}" style="pointer-events:auto;height:44px;padding:0 18px;border-radius:40px;display:flex;align-items:center;gap:12px;background:{{ navBg }};backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid {{ hairline }};color:{{ ink }};font:inherit;cursor:pointer;transition:background-color 700ms"><img src="assets/Nobleman_Logo_White.png" alt="Nobleman" style="height:22px;width:auto;display:{{ showWhite }}"><img src="assets/Nobleman_Logo_Black.png" alt="Nobleman" style="height:22px;width:auto;display:{{ showBlack }}"><span style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;opacity:.5;padding-left:12px;border-left:1px solid {{ hairline }}">Portal</span></button>
+    <button onClick="{{ openHelp }}" aria-label="Help: how this portal works" style="pointer-events:auto;position:absolute;right:14px;top:0;width:44px;height:44px;border-radius:50%;border:1px solid {{ hairline }};background:{{ navBg }};backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);color:{{ ink }};font:inherit;font-size:17px;font-weight:700;cursor:pointer">?</button>
+    <sc-if value="{{ isDemo }}" hint-placeholder-val="{{ false }}"><button onClick="{{ openHelp }}" style="pointer-events:auto;position:absolute;left:14px;top:9px;height:26px;padding:0 10px;border-radius:32px;border:1px solid #e5322d;background:rgba(229,50,45,.14);color:{{ ink }};font:inherit;font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;cursor:pointer">Demo</button></sc-if>
   </header>
-  <nav style="position:{{ fixedPos }};left:12px;right:12px;bottom:12px;z-index:50;height:64px;padding:0 6px;border-radius:40px;display:flex;align-items:center;justify-content:space-between;gap:2px;background:{{ navBg }};backdrop-filter:blur(20px) saturate(1.2);-webkit-backdrop-filter:blur(20px) saturate(1.2);border:1px solid {{ hairline }};box-shadow:inset 0 1px 0 rgba(255,255,255,0.16), 0 16px 40px -18px rgba(3,30,37,0.7);color:{{ ink }};transition:background-color 700ms, border-color 700ms">
+  <nav aria-label="Main" style="position:{{ fixedPos }};left:10px;right:10px;bottom:10px;z-index:50;height:72px;padding:0 6px;border-radius:40px;display:flex;align-items:center;justify-content:space-between;gap:2px;background:{{ navBg }};backdrop-filter:blur(20px) saturate(1.2);-webkit-backdrop-filter:blur(20px) saturate(1.2);border:1px solid {{ hairline }};box-shadow:inset 0 1px 0 rgba(255,255,255,0.16), 0 16px 40px -18px rgba(3,30,37,0.7);color:{{ ink }};transition:background-color 700ms, border-color 700ms">
     <sc-for list="{{ mobileNav }}" as="n" hint-placeholder-count="5">
-      <button onClick="{{ n.go }}" style="flex:1;height:52px;border:0;border-radius:32px;background:{{ n.bg }};color:inherit;font:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;cursor:pointer;min-width:0;opacity:{{ n.op }}"><span style="width:5px;height:5px;border-radius:50%;background:{{ n.dot }};transition:background 200ms"></span><span style="font-size:11px;letter-spacing:.04em">{{ n.label }}</span></button>
+      <button onClick="{{ n.go }}" aria-current="{{ n.current }}" style="position:relative;flex:1;height:60px;border:0;border-radius:32px;background:{{ n.bg }};color:inherit;font:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer;min-width:0;opacity:{{ n.op }};transition:background-color 200ms, opacity 200ms"><span aria-hidden="true" style="display:{{ n.iconDisp }};flex:none;width:26px;height:26px;background-color:currentColor;-webkit-mask-image:url('{{ n.icon }}');mask-image:url('{{ n.icon }}');-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center"></span><span aria-hidden="true" style="display:{{ n.avatarDisp }};flex:none;width:26px;height:26px;border-radius:50%;background:currentColor;align-items:center;justify-content:center"><span style="color:{{ bg }};font-size:10px;font-weight:700;letter-spacing:.02em">{{ userInitials }}</span></span><span style="font-size:12px;font-weight:500;line-height:1;white-space:nowrap">{{ n.label }}</span><span aria-hidden="true" style="display:{{ n.badgeDisp }};position:absolute;top:8px;right:calc(50% - 20px);width:8px;height:8px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.8)"></span></button>
     </sc-for>
   </nav>
   </sc-if>
@@ -103,20 +108,29 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   <sc-if value="{{ vHome }}" hint-placeholder-val="{{ true }}">
   <main data-screen-label="Portal · Home" style="max-width:1280px;margin:0 auto;padding:{{ padTop }} 24px 64px;display:flex;flex-direction:column;gap:{{ gapXL }};animation:viewIn 700ms cubic-bezier(.16,.84,.3,1) both">
     <div style="display:flex;flex-direction:column;gap:10px">
-      <h1 style="margin:0;font-size:clamp(32px,4vw,48px);font-weight:500;letter-spacing:-0.01em;line-height:1.1">{{ greeting }}, {{ userName }}.</h1>
+      <h1 style="margin:0;font-size:clamp(40px,5.2vw,66px);font-weight:500;line-height:1.02">{{ greeting }}, {{ userName }}.</h1>
       <p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:clamp(21px,2.2vw,27px);opacity:.72">Here’s where your production stands.</p>
     </div>
+
+    <section data-reveal="" aria-label="Your next step" style="display:grid;grid-template-columns:{{ nextCols }};gap:18px 28px;align-items:center;padding:clamp(22px,3vw,32px);border:1px solid {{ hairline }};border-radius:22px;background:{{ card }}">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.6">Your next step</span><span style="width:7px;height:7px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.8);display:inline-block;flex:none;animation:blink 1.2s steps(1) infinite"></span></span>
+        <span class="np-display" style="font-size:clamp(28px,3.2vw,40px);line-height:1.05">{{ next.title }}</span>
+        <span style="font-size:15px;line-height:1.55;opacity:.78;max-width:620px;text-wrap:pretty">{{ next.text }}</span>
+      </div>
+      <button onClick="{{ next.go }}" style="justify-self:start;height:52px;padding:0 28px;border-radius:32px;border:0;background:{{ btnBg }};color:{{ btnInk }};font:inherit;font-size:16px;font-weight:600;cursor:pointer;white-space:nowrap;transition:opacity 200ms" style-hover="opacity:.85">{{ next.btn }} →</button>
+    </section>
 
     <section style="display:flex;flex-direction:column;gap:24px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap">
         <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Your project</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
-        <button onClick="{{ goProjects }}" style="height:36px;padding:0 4px;border:0;background:none;color:inherit;font:inherit;font-size:14px;cursor:pointer;opacity:.7;transition:opacity 200ms" style-hover="opacity:1">All productions →</button>
+        <button onClick="{{ goProjects }}" style="height:36px;padding:0 4px;border:0;background:none;color:inherit;font:inherit;font-size:14px;cursor:pointer;opacity:.7;transition:opacity 200ms" style-hover="opacity:1">All projects →</button>
       </div>
       <button onClick="{{ goProjectMeridian }}" style="position:relative;display:block;width:100%;border:0;padding:0;background:#031e25;color:#f4f4f2;text-align:left;cursor:pointer;aspect-ratio:{{ heroRatio }};overflow:hidden;font:inherit">
         <img sc-camel-src="{{ featured.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;animation:kb 20s ease-in-out infinite alternate;opacity:.92">
         <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(3,30,37,0.05) 30%,rgba(3,30,37,0.88) 100%)"></div>
         <div style="position:absolute;left:0;right:0;bottom:0;padding:clamp(20px,3vw,40px);display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap">
-          <div style="display:flex;flex-direction:column;gap:10px"><span style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;opacity:.7">{{ featured.type }}</span><span style="font-size:clamp(32px,4.5vw,64px);font-weight:500;letter-spacing:-0.015em;line-height:1">{{ featured.title }}</span></div>
+          <div style="display:flex;flex-direction:column;gap:10px"><span style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;opacity:.7">{{ featured.type }}</span><span class="np-display" style="font-size:clamp(40px,5.8vw,84px);line-height:.98">{{ featured.title }}</span></div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px"><span style="font-size:clamp(40px,5vw,72px);font-weight:300;letter-spacing:-0.03em;line-height:1;font-variant-numeric:tabular-nums">{{ featured.pct }}<span style="font-size:.4em;vertical-align:top;opacity:.7">%</span></span><span style="display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase">{{ featured.stage }}<span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.8);display:inline-block;animation:blink 1.2s steps(1) infinite"></span></span></div>
         </div>
       </button>
@@ -137,13 +151,13 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
         <button onClick="{{ goReview }}" aria-label="Review Campaign Film, version 3" style="position:relative;display:block;width:100%;aspect-ratio:16/9;border:0;padding:0;background:#000;color:#f4f4f2;cursor:pointer;overflow:hidden;font:inherit">
           <img sc-camel-src="{{ reviewImg }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.6s cubic-bezier(.16,.84,.3,1)" style-hover="transform:scale(1.03)">
           <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none"><span style="width:68px;height:68px;border-radius:50%;border:1px solid rgba(244,244,242,.6);display:flex;align-items:center;justify-content:center;background:rgba(3,30,37,.35);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)"><span style="width:0;height:0;border-left:16px solid #f4f4f2;border-top:10px solid transparent;border-bottom:10px solid transparent;margin-left:5px"></span></span></div>
-          <div style="position:absolute;left:0;right:0;top:0;padding:16px 18px;display:flex;justify-content:space-between;font-size:11px;letter-spacing:.14em;text-transform:uppercase;pointer-events:none;text-shadow:0 1px 8px rgba(0,0,0,.6)"><span>Version 3</span><span>Review copy</span></div>
+          <div style="position:absolute;left:0;right:0;top:0;padding:16px 18px;display:flex;justify-content:space-between;font-size:11px;letter-spacing:.14em;text-transform:uppercase;pointer-events:none;text-shadow:0 1px 8px rgba(0,0,0,.6)"><span>Version {{ latestCut.v }}</span><span>Preview</span></div>
         </button>
         <div style="display:flex;flex-direction:column;gap:18px;align-items:flex-start">
-          <div><div style="font-size:clamp(28px,3vw,40px);font-weight:500;letter-spacing:-0.01em;line-height:1.1">{{ reviewTitle }}</div><div style="margin-top:8px;font-size:15px;opacity:.7">Meridian Campaign · Version {{ latestCut.v }} · Uploaded {{ latestCut.date }}</div></div>
+          <div><div class="np-display" style="font-size:clamp(34px,3.9vw,52px);line-height:1.02">{{ reviewTitle }}</div><div style="margin-top:8px;font-size:15px;opacity:.7">Meridian Campaign · Version {{ latestCut.v }} · Added {{ latestCut.date }}</div></div>
           <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;padding:8px 14px;border:1px solid {{ hairline }};border-radius:32px">{{ statusText }}</span>
-          <p style="margin:0;font-size:15px;line-height:1.55;opacity:.75;max-width:440px;text-wrap:pretty">Justin reworked the opening around your note on the wide shot. Watch it through once, then approve or request changes.</p>
-          <button onClick="{{ goReview }}" style="height:48px;padding:0 26px;border-radius:32px;border:0;background:{{ btnBg }};color:{{ btnInk }};font:inherit;font-size:15px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:10px;transition:opacity 200ms" style-hover="opacity:.85">Review film</button>
+          <p style="margin:0;font-size:15px;line-height:1.55;opacity:.75;max-width:440px;text-wrap:pretty">Justin reworked the opening around your note on the wide shot. Watch it, then approve it or ask for changes.</p>
+          <button onClick="{{ goReview }}" style="height:48px;padding:0 26px;border-radius:32px;border:0;background:{{ btnBg }};color:{{ btnInk }};font:inherit;font-size:15px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:10px;transition:opacity 200ms" style-hover="opacity:.85">{{ watchLatest }}</button>
         </div>
       </div>
     </section>
@@ -155,7 +169,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
       </div>
       <div style="display:grid;grid-template-columns:{{ splitColsR }};gap:clamp(20px,3vw,44px);align-items:center">
         <div style="display:flex;flex-direction:column;gap:18px;align-items:flex-start;order:{{ textOrder }}">
-          <div><div style="font-size:clamp(28px,3vw,40px);font-weight:500;letter-spacing:-0.01em;line-height:1.1">{{ hero.title }}</div><div style="margin-top:8px;font-size:15px;opacity:.7">{{ hero.meta }}</div></div>
+          <div><div class="np-display" style="font-size:clamp(34px,3.9vw,52px);line-height:1.02">{{ hero.title }}</div><div style="margin-top:8px;font-size:15px;opacity:.7">{{ hero.meta }}</div></div>
           <p style="margin:0;font-size:15px;line-height:1.55;opacity:.75;max-width:420px;text-wrap:pretty">{{ hero.blurb }}</p>
           <div style="display:flex;gap:10px;flex-wrap:wrap"><button onClick="{{ openHero }}" style="height:48px;padding:0 26px;border-radius:32px;border:0;background:{{ btnBg }};color:{{ btnInk }};font:inherit;font-size:15px;font-weight:500;cursor:pointer;transition:opacity 200ms" style-hover="opacity:.85">Watch film</button><button onClick="{{ copyHeroLink }}" style="height:48px;padding:0 22px;border-radius:32px;border:1px solid {{ outline }};background:transparent;color:inherit;font:inherit;font-size:15px;cursor:pointer;transition:background 200ms" style-hover="background:rgba(127,127,127,0.12)">Copy private link</button></div>
         </div>
@@ -164,10 +178,10 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
     </section>
 
     <section style="display:flex;flex-direction:column;gap:20px">
-      <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Also in production</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+      <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Also in progress</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
       <button onClick="{{ goProjectSocial }}" style="display:grid;grid-template-columns:{{ rowCols }};gap:16px 20px;align-items:center;width:100%;border:0;border-top:1px solid {{ hairline }};border-bottom:1px solid {{ hairline }};padding:20px 0;background:none;color:inherit;text-align:left;cursor:pointer;font:inherit">
         <img sc-camel-src="{{ social.img }}" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover;display:block">
-        <div style="min-width:0"><div style="font-size:20px;font-weight:500;letter-spacing:-0.01em">{{ social.title }}</div><div style="font-size:14px;opacity:.6;margin-top:4px">{{ social.type }}</div></div>
+        <div style="min-width:0"><div class="np-display" style="font-size:28px;line-height:1.05">{{ social.title }}</div><div style="font-size:14px;opacity:.6;margin-top:4px">{{ social.type }}</div></div>
         <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;grid-column:{{ stageCol }}"><span style="display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.1em;text-transform:uppercase">{{ social.stage }}<span style="width:5px;height:5px;border-radius:50%;background:#e5322d;display:inline-block"></span></span><span style="opacity:.6">{{ social.nextWhat }} · {{ social.next }}</span></div>
         <span style="opacity:.5;justify-self:end;display:{{ arrowDisp }}">→</span>
       </button>
@@ -203,15 +217,15 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   <sc-if value="{{ vProjects }}" hint-placeholder-val="{{ false }}">
   <main data-screen-label="Portal · Productions" style="max-width:1280px;margin:0 auto;padding:{{ padTop }} 24px 64px;display:flex;flex-direction:column;gap:{{ gapXL }};animation:viewIn 700ms cubic-bezier(.16,.84,.3,1) both">
     <div style="display:flex;flex-direction:column;gap:10px">
-      <h1 style="margin:0;font-size:clamp(32px,4vw,48px);font-weight:500;letter-spacing:-0.01em;line-height:1.1">Productions</h1>
-      <p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:clamp(21px,2.2vw,27px);opacity:.72">Two productions in progress with Nobleman.</p>
+      <h1 style="margin:0;font-size:clamp(40px,5.2vw,66px);font-weight:500;line-height:1.02">Your projects</h1>
+      <p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:clamp(21px,2.2vw,27px);opacity:.72">Everything we’re making for you, and where each one stands.</p>
     </div>
     <div style="display:grid;grid-template-columns:{{ splitColsEq }};gap:clamp(24px,3vw,40px)">
       <sc-for list="{{ projectTiles }}" as="p" hint-placeholder-count="2">
-        <button onClick="{{ p.go }}" style="display:flex;flex-direction:column;gap:18px;border:0;padding:0;background:none;color:inherit;text-align:left;cursor:pointer;font:inherit">
+        <button data-reveal="card" onClick="{{ p.go }}" style="display:flex;flex-direction:column;gap:18px;border:0;padding:0;background:none;color:inherit;text-align:left;cursor:pointer;font:inherit">
           <div style="position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;background:#031e25"><img sc-camel-src="{{ p.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.6s cubic-bezier(.16,.84,.3,1)" style-hover="transform:scale(1.03)"><span style="position:absolute;right:18px;top:16px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#f4f4f2;text-shadow:0 1px 8px rgba(0,0,0,.6);display:inline-flex;align-items:center;gap:8px">{{ p.stage }}<span style="width:5px;height:5px;border-radius:50%;background:#e5322d;display:inline-block"></span></span></div>
           <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start">
-            <div><div style="font-size:clamp(22px,2.4vw,30px);font-weight:500;letter-spacing:-0.01em;line-height:1.1">{{ p.title }}</div><div style="font-size:14px;opacity:.6;margin-top:6px">{{ p.type }}</div></div>
+            <div><div class="np-display" style="font-size:clamp(28px,3vw,40px);line-height:1.05">{{ p.title }}</div><div style="font-size:14px;opacity:.6;margin-top:6px">{{ p.type }}</div></div>
             <span style="font-size:28px;font-weight:300;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;line-height:1">{{ p.pct }}<span style="font-size:.5em;vertical-align:top;opacity:.7">%</span></span>
           </div>
           <div style="font-size:14px;border-top:1px solid {{ hairline }};padding-top:12px"><span style="opacity:.6">{{ p.nextLabel }} · </span><span style="font-weight:500">{{ p.next }}</span></div>
@@ -219,9 +233,9 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
       </sc-for>
     </div>
     <section style="display:flex;flex-direction:column;gap:16px">
-      <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Completed</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+      <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Finished</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;border-top:1px solid {{ hairline }};border-bottom:1px solid {{ hairline }};padding:22px 0">
-        <div><div style="font-size:18px;font-weight:500">Finished work lives in your library.</div><div style="font-size:14px;opacity:.6;margin-top:4px">Five deliverables so far from the Meridian Campaign.</div></div>
+        <div><div style="font-size:18px;font-weight:500">Your finished films are in your library.</div><div style="font-size:14px;opacity:.6;margin-top:4px">Five finished pieces so far from the Meridian Campaign.</div></div>
         <button onClick="{{ goLibrary }}" style="height:44px;padding:0 20px;border-radius:32px;border:1px solid {{ outline }};background:transparent;color:inherit;font:inherit;font-size:14px;cursor:pointer;transition:background 200ms" style-hover="background:rgba(127,127,127,0.12)">Open library</button>
       </div>
     </section>
@@ -231,7 +245,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   <!-- PROJECT -->
   <sc-if value="{{ vProject }}" hint-placeholder-val="{{ false }}">
   <main data-screen-label="Portal · Project" style="max-width:1280px;margin:0 auto;padding:{{ padTop }} 24px 64px;display:flex;flex-direction:column;gap:{{ gapL }};animation:viewIn 700ms cubic-bezier(.16,.84,.3,1) both">
-    <button onClick="{{ goProjects }}" style="align-self:flex-start;height:36px;padding:0 4px;border:0;background:none;color:inherit;font:inherit;font-size:14px;cursor:pointer;opacity:.7;transition:opacity 200ms" style-hover="opacity:1">← Productions</button>
+    <button onClick="{{ goProjects }}" style="align-self:flex-start;height:36px;padding:0 4px;border:0;background:none;color:inherit;font:inherit;font-size:14px;cursor:pointer;opacity:.7;transition:opacity 200ms" style-hover="opacity:1">← All projects</button>
     <div style="position:relative;aspect-ratio:{{ heroRatio }};overflow:hidden;background:#031e25;color:#f4f4f2">
       <img sc-camel-src="{{ proj.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;animation:kb 20s ease-in-out infinite alternate;opacity:.92">
       <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(3,30,37,0.05) 30%,rgba(3,30,37,0.88) 100%)"></div>
@@ -252,16 +266,16 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
 
     <div style="display:grid;grid-template-columns:{{ splitCols }};gap:clamp(32px,4vw,64px);align-items:start">
       <section style="display:flex;flex-direction:column;gap:20px">
-        <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Latest cut</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+        <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Newest version</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
         <sc-if value="{{ projHasCut }}" hint-placeholder-val="{{ true }}">
           <button onClick="{{ goReview }}" aria-label="Review the latest cut" style="position:relative;display:block;width:100%;aspect-ratio:16/9;border:0;padding:0;background:#000;color:#f4f4f2;cursor:pointer;overflow:hidden;font:inherit">
             <img sc-camel-src="{{ reviewImg }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.6s cubic-bezier(.16,.84,.3,1)" style-hover="transform:scale(1.03)">
             <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none"><span style="width:60px;height:60px;border-radius:50%;border:1px solid rgba(244,244,242,.6);display:flex;align-items:center;justify-content:center;background:rgba(3,30,37,.35)"><span style="width:0;height:0;border-left:14px solid #f4f4f2;border-top:9px solid transparent;border-bottom:9px solid transparent;margin-left:4px"></span></span></div>
           </button>
-          <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center"><div><div style="font-size:18px;font-weight:500">{{ reviewTitle }} · Version {{ latestCut.v }}</div><div style="font-size:14px;opacity:.6;margin-top:4px">{{ statusText }} · Uploaded {{ latestCut.date }}</div></div><button onClick="{{ goReview }}" style="height:44px;padding:0 20px;border-radius:32px;border:0;background:{{ btnBg }};color:{{ btnInk }};font:inherit;font-size:14px;font-weight:500;cursor:pointer;transition:opacity 200ms" style-hover="opacity:.85">Review film</button></div>
+          <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center"><div><div style="font-size:18px;font-weight:500">{{ reviewTitle }} · Version {{ latestCut.v }}</div><div style="font-size:14px;opacity:.6;margin-top:4px">{{ statusText }} · Added {{ latestCut.date }}</div></div><button onClick="{{ goReview }}" style="height:44px;padding:0 20px;border-radius:32px;border:0;background:{{ btnBg }};color:{{ btnInk }};font:inherit;font-size:14px;font-weight:500;cursor:pointer;transition:opacity 200ms" style-hover="opacity:.85">{{ watchLatest }}</button></div>
         </sc-if>
         <sc-if value="{{ projNoCut }}" hint-placeholder-val="{{ false }}">
-          <div style="border:1px solid {{ hairline }};padding:clamp(24px,3vw,40px);display:flex;flex-direction:column;gap:10px"><div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.6">Your first cut is in production</div><div style="font-size:20px;font-weight:500;line-height:1.3;text-wrap:balance">Two shoot days remain. We’ll let you know the moment the first cut is ready to watch.</div></div>
+          <div style="border:1px solid {{ hairline }};padding:clamp(24px,3vw,40px);display:flex;flex-direction:column;gap:10px"><div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.6">Your first version is being made</div><div style="font-size:20px;font-weight:500;line-height:1.3;text-wrap:balance">Two filming days to go. We’ll let you know when the first version is ready to watch.</div></div>
         </sc-if>
       </section>
       <section style="display:flex;flex-direction:column;gap:20px">
@@ -281,7 +295,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
 
     <sc-if value="{{ projHasCut }}" hint-placeholder-val="{{ true }}">
     <section style="display:flex;flex-direction:column;gap:16px">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap"><span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Deliverables</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span><button onClick="{{ goLibrary }}" style="height:36px;padding:0 4px;border:0;background:none;color:inherit;font:inherit;font-size:14px;cursor:pointer;opacity:.7" style-hover="opacity:1">Open library →</button></div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap"><span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Finished films</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span><button onClick="{{ goLibrary }}" style="height:36px;padding:0 4px;border:0;background:none;color:inherit;font:inherit;font-size:14px;cursor:pointer;opacity:.7" style-hover="opacity:1">Open library →</button></div>
       <div style="display:flex;flex-direction:column;border-top:1px solid {{ hairline }}">
         <sc-for list="{{ projDeliverables }}" as="it" hint-placeholder-count="4">
           <button onClick="{{ it.open }}" style="display:grid;grid-template-columns:{{ delivCols }};gap:16px 20px;align-items:center;width:100%;padding:14px 0;border:0;border-bottom:1px solid {{ hairline }};background:none;color:inherit;text-align:left;cursor:pointer;font:inherit;transition:background 200ms" style-hover="background:rgba(127,127,127,0.06)">
@@ -296,7 +310,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
 
     <div style="display:grid;grid-template-columns:{{ splitColsEq }};gap:clamp(32px,4vw,64px);align-items:start">
       <section style="display:flex;flex-direction:column;gap:16px">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap"><span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Project materials</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span><button onClick="{{ goFiles }}" style="height:36px;padding:0 4px;border:0;background:none;color:inherit;font:inherit;font-size:14px;cursor:pointer;opacity:.7" style-hover="opacity:1">Manage files →</button></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap"><span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Your files</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span><button onClick="{{ goFiles }}" style="height:36px;padding:0 4px;border:0;background:none;color:inherit;font:inherit;font-size:14px;cursor:pointer;opacity:.7" style-hover="opacity:1">Manage files →</button></div>
         <div style="display:flex;flex-direction:column;border-top:1px solid {{ hairline }}">
           <sc-for list="{{ recentFiles }}" as="f" hint-placeholder-count="3">
             <div style="display:grid;grid-template-columns:40px 1fr auto;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid {{ hairline }}"><span style="width:40px;height:40px;border:1px solid {{ hairline }};display:flex;align-items:center;justify-content:center;font-size:9px;letter-spacing:.1em;font-weight:600">{{ f.type }}</span><div style="min-width:0"><div style="font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ f.name }}</div><div style="font-size:12px;opacity:.6;margin-top:2px">{{ f.cat }} · {{ f.size }}</div></div><span style="font-size:12px;opacity:.55">{{ f.when }}</span></div>
@@ -316,7 +330,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
 
     <div style="display:grid;grid-template-columns:{{ splitColsEq }};gap:clamp(32px,4vw,64px);align-items:start">
       <section ref="{{ messagesRef }}" style="display:flex;flex-direction:column;gap:16px">
-        <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Project messages</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+        <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Messages</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
         <div style="display:flex;flex-direction:column">
           <sc-for list="{{ messages }}" as="m" hint-placeholder-count="3">
             <div style="display:flex;flex-direction:column;gap:6px;padding:16px 0;border-top:1px solid {{ hairline }}"><div style="font-size:12px;opacity:.55">{{ m.who }} · {{ m.when }}</div><div style="font-size:15px;line-height:1.55">{{ m.text }}</div></div>
@@ -345,15 +359,16 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
     <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
       <div style="display:flex;flex-direction:column;gap:10px">
         <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Review · Meridian Campaign</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.8);display:inline-block;flex:none;animation:blink 1.2s steps(1) infinite"></span></span>
-        <h1 style="margin:0;font-size:clamp(30px,3.6vw,46px);font-weight:500;letter-spacing:-0.01em;line-height:1.05">{{ reviewTitle }}</h1>
-        <div style="font-size:14px;opacity:.65">Version {{ ver.v }} · Uploaded {{ ver.date }}</div>
+        <h1 style="margin:0;font-size:clamp(38px,4.7vw,62px);font-weight:500;line-height:1.02">{{ reviewTitle }}</h1>
+        <div style="font-size:14px;opacity:.65">Version {{ ver.v }} · Added {{ ver.date }}</div>
+        <p style="margin:0;font-size:15px;line-height:1.55;opacity:.8;max-width:600px;text-wrap:pretty">Watch it, leave a comment on any moment, then approve it or ask for changes.</p>
       </div>
       <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;padding:10px 16px;border:1px solid {{ hairline }};border-radius:32px">{{ statusText }}</span>
     </div>
 
     <div style="position:relative;z-index:95;background:#000;aspect-ratio:16/9;overflow:hidden;box-shadow:0 40px 120px -40px rgba(0,0,0,.85)">
       <iframe key="{{ reviewEmbed }}" ref="{{ videoRef }}" sc-camel-src="{{ reviewEmbed }}" title="{{ ver.title }}" allow="autoplay; fullscreen; picture-in-picture" style="position:absolute;inset:0;width:100%;height:100%;border:0;display:block"></iframe>
-      <div style="position:absolute;left:0;right:0;top:0;padding:16px 20px;display:flex;justify-content:space-between;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#f4f4f2;pointer-events:none;text-shadow:0 1px 8px rgba(0,0,0,.6)"><span>{{ reviewTitle }} · V{{ ver.v }}</span><span style="display:inline-flex;align-items:center;gap:8px">Review copy<span style="width:6px;height:6px;border-radius:50%;background:#e5322d;display:inline-block;animation:blink 1.2s steps(1) infinite"></span></span></div>
+      <div style="position:absolute;left:0;right:0;top:0;padding:16px 20px;display:flex;justify-content:space-between;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#f4f4f2;pointer-events:none;text-shadow:0 1px 8px rgba(0,0,0,.6)"><span>{{ reviewTitle }} · Version {{ ver.v }}</span><span style="display:inline-flex;align-items:center;gap:8px">Preview<span style="width:6px;height:6px;border-radius:50%;background:#e5322d;display:inline-block;animation:blink 1.2s steps(1) infinite"></span></span></div>
       <div style="position:absolute;left:0;right:0;bottom:0;padding:24px 20px 14px;display:flex;flex-direction:column;gap:8px;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.6));color:#f4f4f2">
         <div onClick="{{ seekTo }}" role="slider" aria-label="Playhead" aria-valuenow="{{ timeSec }}" style="position:relative;height:28px;display:flex;align-items:center;cursor:pointer">
           <div style="position:absolute;left:0;right:0;height:2px;background:rgba(244,244,242,.25)"></div>
@@ -368,7 +383,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
             <button onClick="{{ togglePlay }}" aria-label="Play or pause" style="width:44px;height:44px;border-radius:50%;border:1px solid rgba(244,244,242,.5);background:rgba(3,30,37,.45);color:#f4f4f2;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0"><sc-if value="{{ paused }}" hint-placeholder-val="{{ true }}"><span style="width:0;height:0;border-left:12px solid #f4f4f2;border-top:7px solid transparent;border-bottom:7px solid transparent;margin-left:3px"></span></sc-if><sc-if value="{{ playing }}" hint-placeholder-val="{{ false }}"><span style="display:flex;gap:4px"><span style="width:3px;height:14px;background:#f4f4f2"></span><span style="width:3px;height:14px;background:#f4f4f2"></span></span></sc-if></button>
             <span style="font-variant-numeric:tabular-nums;font-size:13px;letter-spacing:.06em">{{ tcCur }} <span style="opacity:.5">/ {{ tcDur }}</span></span>
           </div>
-          <button onClick="{{ addAtCurrent }}" style="height:36px;padding:0 14px;border-radius:32px;border:1px solid rgba(244,244,242,.4);background:rgba(3,30,37,.3);color:#f4f4f2;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap">Note at {{ tcCur }}</button>
+          <button onClick="{{ addAtCurrent }}" style="height:36px;padding:0 14px;border-radius:32px;border:1px solid rgba(244,244,242,.4);background:rgba(3,30,37,.3);color:#f4f4f2;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap">Comment at {{ tcCur }}</button>
         </div>
       </div>
     </div>
@@ -376,10 +391,10 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
     <div style="display:grid;grid-template-columns:{{ splitColsRev }};gap:clamp(28px,4vw,64px);align-items:start">
       <div style="display:flex;flex-direction:column;gap:32px">
         <section style="display:flex;flex-direction:column;gap:14px">
-          <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Version history</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+          <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">All versions</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <sc-for list="{{ versions }}" as="x" hint-placeholder-count="3">
-              <button onClick="{{ x.pick }}" style="height:40px;padding:0 16px;border-radius:32px;border:1px solid {{ x.border }};background:{{ x.bg }};color:{{ x.color }};font:inherit;font-size:13px;cursor:pointer;display:inline-flex;gap:8px;align-items:center;transition:background 200ms">V{{ x.v }}<sc-if value="{{ x.current }}" hint-placeholder-val="{{ false }}"><span style="font-size:10px;letter-spacing:.12em;opacity:.75">CURRENT</span></sc-if></button>
+              <button onClick="{{ x.pick }}" style="height:40px;padding:0 16px;border-radius:32px;border:1px solid {{ x.border }};background:{{ x.bg }};color:{{ x.color }};font:inherit;font-size:13px;cursor:pointer;display:inline-flex;gap:8px;align-items:center;transition:background 200ms">Version {{ x.v }}<sc-if value="{{ x.current }}" hint-placeholder-val="{{ false }}"><span style="font-size:10px;letter-spacing:.12em;opacity:.75">Newest</span></sc-if></button>
             </sc-for>
           </div>
           <div style="font-size:14px;line-height:1.5;opacity:.7">{{ ver.note }}</div>
@@ -393,10 +408,17 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
               </sc-for>
             </div>
           </sc-if>
+          <sc-if value="{{ confirming }}" hint-placeholder-val="{{ false }}">
+            <div role="alertdialog" aria-label="Confirm approval" style="display:flex;flex-direction:column;gap:14px;padding:20px;border:1px solid {{ ink }};border-radius:18px;background:{{ card }}">
+              <div class="np-display" style="font-size:28px;line-height:1.1">Approve Version {{ ver.v }}?</div>
+              <div style="font-size:15px;line-height:1.55;opacity:.8;text-wrap:pretty">This tells the team this is the one. They’ll do the final polish (color and sound) and deliver it. You can still ask for changes later.</div>
+              <div style="display:flex;gap:10px;flex-wrap:wrap"><button onClick="{{ confirmApprove }}" style="height:48px;padding:0 24px;border-radius:32px;border:0;background:{{ btnBg }};color:{{ btnInk }};font:inherit;font-size:15px;font-weight:600;cursor:pointer">Yes, approve Version {{ ver.v }}</button><button onClick="{{ cancelApprove }}" style="height:48px;padding:0 18px;border-radius:32px;border:1px solid {{ outline }};background:none;color:inherit;font:inherit;font-size:15px;cursor:pointer">Not yet</button></div>
+            </div>
+          </sc-if>
           <sc-if value="{{ requesting }}" hint-placeholder-val="{{ false }}">
             <div style="display:flex;flex-direction:column;gap:12px">
-              <textarea ref="{{ requestRef }}" rows="4" placeholder="What should change? Reference timecodes where you can." aria-label="Requested changes" style="width:100%;padding:14px 16px;border:1px solid {{ hairline }};border-radius:14px;background:{{ card }};color:inherit;font:inherit;font-size:15px;line-height:1.5;resize:vertical"></textarea>
-              <div style="display:flex;gap:10px;flex-wrap:wrap"><button onClick="{{ submitRequest }}" style="height:48px;padding:0 24px;border-radius:32px;border:0;background:{{ btnBg }};color:{{ btnInk }};font:inherit;font-size:15px;font-weight:500;cursor:pointer">Send request</button><button onClick="{{ cancelRequest }}" style="height:48px;padding:0 12px;border:0;background:none;color:inherit;font:inherit;font-size:14px;cursor:pointer;opacity:.7">Cancel</button></div>
+              <textarea ref="{{ requestRef }}" rows="4" placeholder="What should change? Mention the time (like 0:42) so we can find the moment." aria-label="Requested changes" style="width:100%;padding:14px 16px;border:1px solid {{ hairline }};border-radius:14px;background:{{ card }};color:inherit;font:inherit;font-size:15px;line-height:1.5;resize:vertical"></textarea>
+              <div style="display:flex;gap:10px;flex-wrap:wrap"><button onClick="{{ submitRequest }}" style="height:48px;padding:0 24px;border-radius:32px;border:0;background:{{ btnBg }};color:{{ btnInk }};font:inherit;font-size:15px;font-weight:500;cursor:pointer">Send my changes</button><button onClick="{{ cancelRequest }}" style="height:48px;padding:0 12px;border:0;background:none;color:inherit;font:inherit;font-size:14px;cursor:pointer;opacity:.7">Cancel</button></div>
             </div>
           </sc-if>
           <sc-if value="{{ hasDecisions }}" hint-placeholder-val="{{ false }}">
@@ -406,7 +428,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
               </sc-for>
             </div>
           </sc-if>
-          <p style="margin:0;font-size:13px;line-height:1.5;opacity:.55;max-width:420px;text-wrap:pretty">Approving locks this version for finishing. You can still request changes afterwards; they become a new revision request.</p>
+          <p style="margin:0;font-size:13px;line-height:1.5;opacity:.55;max-width:420px;text-wrap:pretty">Approving tells the team this is the one: they’ll do the final polish (color and sound) and deliver it. Change your mind later? You can still ask for changes.</p>
         </section>
       </div>
       <section style="display:flex;flex-direction:column;gap:14px">
@@ -421,8 +443,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
         </div>
         <div style="display:flex;gap:10px;border-top:1px solid {{ hairline }};padding-top:16px">
           <span style="height:46px;display:inline-flex;align-items:center;padding:0 12px;border:1px solid {{ hairline }};border-radius:32px;font-size:12px;font-variant-numeric:tabular-nums;flex:none">{{ tcCur }}</span>
-          <input ref="{{ commentRef }}" onKeyDown="{{ commentKey }}" placeholder="Add a note at this timecode" aria-label="New comment" style="flex:1;height:46px;padding:0 16px;border:1px solid {{ hairline }};border-radius:32px;background:{{ card }};color:inherit;font:inherit;font-size:14px;min-width:0">
-          <button onClick="{{ addComment }}" style="height:46px;padding:0 20px;border-radius:32px;border:0;background:{{ btnBg }};color:{{ btnInk }};font:inherit;font-size:14px;font-weight:500;cursor:pointer">Add</button>
+          <input ref="{{ commentRef }}" onKeyDown="{{ commentKey }}" placeholder="Write a comment about this moment" aria-label="New comment" style="flex:1;height:46px;padding:0 16px;border:1px solid {{ hairline }};border-radius:32px;background:{{ card }};color:inherit;font:inherit;font-size:14px;min-width:0">
+          <button onClick="{{ addComment }}" style="height:46px;padding:0 20px;border-radius:32px;border:0;background:{{ btnBg }};color:{{ btnInk }};font:inherit;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap">Add comment</button>
         </div>
       </section>
     </div>
@@ -434,7 +456,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   <main data-screen-label="Portal · Library" style="max-width:1280px;margin:0 auto;padding:{{ padTop }} 24px 64px;display:flex;flex-direction:column;gap:{{ gapL }};animation:viewIn 700ms cubic-bezier(.16,.84,.3,1) both">
     <div style="display:flex;flex-direction:column;gap:10px">
       <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Library</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
-      <h1 style="margin:0;font-size:clamp(32px,4vw,48px);font-weight:500;letter-spacing:-0.01em;line-height:1.1">Your Nobleman Library</h1>
+      <h1 style="margin:0;font-size:clamp(40px,5.2vw,66px);font-weight:500;line-height:1.02">Your library</h1>
       <p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:clamp(21px,2.2vw,27px);opacity:.72">{{ libSummary }}</p>
     </div>
     <button onClick="{{ openHero }}" style="position:relative;display:block;width:100%;border:0;padding:0;background:#031e25;color:#f4f4f2;text-align:left;cursor:pointer;aspect-ratio:{{ heroRatio }};overflow:hidden;font:inherit">
@@ -442,7 +464,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
       <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(3,30,37,0) 40%,rgba(3,30,37,0.85) 100%)"></div>
       <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none"><span style="width:76px;height:76px;border-radius:50%;border:1px solid rgba(244,244,242,.6);display:flex;align-items:center;justify-content:center;background:rgba(3,30,37,.35);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)"><span style="width:0;height:0;border-left:18px solid #f4f4f2;border-top:11px solid transparent;border-bottom:11px solid transparent;margin-left:5px"></span></span></div>
       <div style="position:absolute;left:0;right:0;bottom:0;padding:clamp(20px,3vw,40px);display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
-        <div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;opacity:.7">Latest delivery · {{ hero.kindLabel }}</span><span style="font-size:clamp(28px,4vw,56px);font-weight:500;letter-spacing:-0.015em;line-height:1">{{ hero.title }}</span></div>
+        <div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;opacity:.7">Latest delivery · {{ hero.kindLabel }}</span><span class="np-display" style="font-size:clamp(38px,5.2vw,76px);line-height:.98">{{ hero.title }}</span></div>
         <span style="font-size:14px;opacity:.85">{{ hero.meta }}</span>
       </div>
     </button>
@@ -450,7 +472,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
       <sc-for list="{{ libraryRows }}" as="it" hint-placeholder-count="5">
         <button onClick="{{ it.open }}" style="display:grid;grid-template-columns:{{ libCols }};gap:clamp(16px,2.5vw,32px);align-items:center;width:100%;padding:18px 0;border:0;border-bottom:1px solid {{ hairline }};background:none;color:inherit;text-align:left;cursor:pointer;font:inherit;transition:background 200ms" style-hover="background:rgba(127,127,127,0.06)">
           <div style="aspect-ratio:16/9;overflow:hidden;background:#031e25;display:flex;justify-content:center"><img sc-camel-src="{{ it.img }}" alt="" style="width:{{ it.thumbW }};height:100%;object-fit:cover;display:block;transition:transform 1.6s cubic-bezier(.16,.84,.3,1)" style-hover="transform:scale(1.04)"></div>
-          <div style="display:flex;flex-direction:column;gap:6px;min-width:0"><span style="font-size:clamp(18px,2vw,24px);font-weight:500;letter-spacing:-0.01em;line-height:1.2">{{ it.title }}</span><span style="font-size:14px;opacity:.6">{{ it.meta }}</span></div>
+          <div style="display:flex;flex-direction:column;gap:6px;min-width:0"><span class="np-display" style="font-size:clamp(24px,2.6vw,32px);line-height:1.08">{{ it.title }}</span><span style="font-size:14px;opacity:.6">{{ it.meta }}</span></div>
           <span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:.55;display:{{ arrowDisp }}">{{ it.kindLabel }}</span>
           <span style="opacity:.5;justify-self:end;display:{{ arrowDisp }}">→</span>
         </button>
@@ -458,13 +480,13 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
     </div>
     <section style="display:grid;grid-template-columns:{{ splitColsEq }};gap:clamp(24px,4vw,64px);padding-top:8px;align-items:start">
       <div style="display:flex;flex-direction:column;gap:14px">
-        <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Extend your campaign</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
-        <h2 style="margin:0;font-size:clamp(24px,2.6vw,34px);font-weight:500;letter-spacing:-0.01em;line-height:1.15;text-wrap:balance">Get more from this production.</h2>
-        <p style="margin:0;font-size:15px;line-height:1.55;opacity:.7;max-width:420px;text-wrap:pretty">Everything below cuts from footage we already have. No new shoot day, and Jean will quote it before anything starts.</p>
+        <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Want more?</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+        <h2 style="margin:0;font-size:clamp(30px,3.4vw,44px);font-weight:500;line-height:1.08;text-wrap:balance">Get more from this production.</h2>
+        <p style="margin:0;font-size:15px;line-height:1.55;opacity:.7;max-width:420px;text-wrap:pretty">All of these are made from footage we already filmed, so there’s no new filming day. Jean sends you a price before anything starts.</p>
       </div>
       <div style="display:flex;flex-direction:column;border-top:1px solid {{ hairline }}">
         <sc-for list="{{ extend }}" as="e" hint-placeholder-count="3">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 0;border-bottom:1px solid {{ hairline }}"><div style="min-width:0"><div style="font-size:16px;font-weight:500">{{ e.title }}</div><div style="font-size:13px;opacity:.6;margin-top:3px;line-height:1.4">{{ e.desc }}</div></div><button onClick="{{ e.ask }}" style="height:40px;padding:0 16px;border-radius:32px;border:1px solid {{ outline }};background:transparent;color:inherit;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap;transition:background 200ms" style-hover="background:rgba(127,127,127,0.12)">Ask Nobleman</button></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 0;border-bottom:1px solid {{ hairline }}"><div style="min-width:0"><div style="font-size:16px;font-weight:500">{{ e.title }}</div><div style="font-size:13px;opacity:.6;margin-top:3px;line-height:1.4">{{ e.desc }}</div></div><button onClick="{{ e.ask }}" style="height:40px;padding:0 16px;border-radius:32px;border:1px solid {{ outline }};background:transparent;color:inherit;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap;transition:background 200ms" style-hover="background:rgba(127,127,127,0.12)">Ask for a price</button></div>
         </sc-for>
       </div>
     </section>
@@ -482,15 +504,15 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
       <div style="display:grid;grid-template-columns:{{ galleryCols }};gap:8px">
         <sc-for list="{{ gallery }}" as="g" hint-placeholder-count="3"><div style="aspect-ratio:{{ g.ratio }};overflow:hidden;background:#031e25;grid-column:{{ g.span }}"><img sc-camel-src="{{ g.img }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;filter:grayscale(1) contrast(1.05)"></div></sc-for>
       </div>
-      <div style="font-size:13px;opacity:.55;text-align:center">3 of 48 · Full contact sheet arrives with the download</div>
+      <div style="font-size:13px;opacity:.55;text-align:center">Showing 3 of 48 photos. You get all of them in the download.</div>
     </sc-if>
     <sc-if value="{{ item.isArchive }}" hint-placeholder-val="{{ false }}">
-      <div style="position:relative;aspect-ratio:{{ heroRatio }};overflow:hidden;background:#031e25;color:#f4f4f2"><img sc-camel-src="{{ item.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.7"><div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(3,30,37,0.1),rgba(3,30,37,0.9))"></div><div style="position:absolute;left:0;right:0;bottom:0;padding:clamp(20px,3vw,40px);display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap"><span style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.75">Camera originals · 3 shoot days · 2 cameras</span><span style="font-size:clamp(40px,6vw,88px);font-weight:300;letter-spacing:-0.03em;line-height:1">412<span style="font-size:.35em;vertical-align:top;opacity:.7;margin-left:6px">GB</span></span></div></div>
+      <div style="position:relative;aspect-ratio:{{ heroRatio }};overflow:hidden;background:#031e25;color:#f4f4f2"><img sc-camel-src="{{ item.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.7"><div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(3,30,37,0.1),rgba(3,30,37,0.9))"></div><div style="position:absolute;left:0;right:0;bottom:0;padding:clamp(20px,3vw,40px);display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap"><span style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.75">Everything we filmed · 3 filming days · 2 cameras</span><span style="font-size:clamp(40px,6vw,88px);font-weight:300;letter-spacing:-0.03em;line-height:1">412<span style="font-size:.35em;vertical-align:top;opacity:.7;margin-left:6px">GB</span></span></div></div>
     </sc-if>
     <div style="display:grid;grid-template-columns:{{ splitColsRev }};gap:clamp(28px,4vw,64px);align-items:start">
       <div style="display:flex;flex-direction:column;gap:18px">
         <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">{{ item.kindLabel }} · Meridian Campaign</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
-        <h1 style="margin:0;font-size:clamp(30px,3.6vw,46px);font-weight:500;letter-spacing:-0.01em;line-height:1.05">{{ item.title }}</h1>
+        <h1 style="margin:0;font-size:clamp(38px,4.7vw,62px);font-weight:500;line-height:1.02">{{ item.title }}</h1>
         <p style="margin:0;font-size:16px;line-height:1.55;opacity:.75;max-width:520px;text-wrap:pretty">{{ item.desc }}</p>
         <div style="display:flex;flex-direction:column;border-top:1px solid {{ hairline }};max-width:520px">
           <sc-for list="{{ itemMeta }}" as="r" hint-placeholder-count="4"><div style="display:grid;grid-template-columns:140px 1fr;gap:16px;padding:12px 0;border-bottom:1px solid {{ hairline }};font-size:14px"><span style="opacity:.55">{{ r.k }}</span><span>{{ r.v }}</span></div></sc-for>
@@ -508,7 +530,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
               <sc-for list="{{ itemDownloads }}" as="d" hint-placeholder-count="3">
                 <button onClick="{{ d.get }}" style="display:flex;justify-content:space-between;align-items:center;gap:16px;width:100%;padding:14px 0;border:0;border-bottom:1px solid {{ hairline }};background:none;color:inherit;text-align:left;cursor:pointer;font:inherit;transition:background 200ms" style-hover="background:rgba(127,127,127,0.06)"><span style="font-size:15px;font-weight:500">{{ d.name }}</span><span style="display:inline-flex;align-items:center;gap:14px;font-size:13px;opacity:.65;white-space:nowrap">{{ d.size }}<span style="font-size:16px">↓</span></span></button>
               </sc-for>
-              <p style="margin:12px 0 0;font-size:13px;line-height:1.5;opacity:.55">Files over 10 GB are prepared first; we email you a resumable link within a few minutes.</p>
+              <p style="margin:12px 0 0;font-size:13px;line-height:1.5;opacity:.55">Big files (over 10 GB) take a few minutes to prepare. We email you a download link, usually within a few minutes.</p>
             </div>
           </sc-if>
           <sc-if value="{{ shareOpen }}" hint-placeholder-val="{{ false }}">
@@ -522,18 +544,18 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
         <sc-if value="{{ item.isArchive }}" hint-placeholder-val="{{ false }}">
           <div style="border:1px solid {{ hairline }};padding:clamp(20px,3vw,28px);display:flex;flex-direction:column;gap:16px">
             <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.55">Delivery options</div>
-            <p style="margin:0;font-size:15px;line-height:1.55;opacity:.8;text-wrap:pretty">A file this size doesn’t belong in a browser download. Choose how you’d like it.</p>
+            <p style="margin:0;font-size:15px;line-height:1.55;opacity:.8;text-wrap:pretty">This file is too big for a normal download. Choose how you’d like to get it.</p>
             <sc-if value="{{ transferNone }}" hint-placeholder-val="{{ true }}">
               <div style="display:flex;flex-direction:column;border-top:1px solid {{ hairline }}">
-                <button onClick="{{ requestLink }}" style="display:flex;justify-content:space-between;align-items:center;gap:16px;width:100%;padding:16px 0;border:0;border-bottom:1px solid {{ hairline }};background:none;color:inherit;text-align:left;cursor:pointer;font:inherit;transition:background 200ms" style-hover="background:rgba(127,127,127,0.06)"><div><div style="font-size:16px;font-weight:500">Resumable transfer link</div><div style="font-size:13px;opacity:.6;margin-top:3px">Encrypted. Resumes if your connection drops. Valid 7 days.</div></div><span style="opacity:.5">→</span></button>
-                <button onClick="{{ requestDrive }}" style="display:flex;justify-content:space-between;align-items:center;gap:16px;width:100%;padding:16px 0;border:0;border-bottom:1px solid {{ hairline }};background:none;color:inherit;text-align:left;cursor:pointer;font:inherit;transition:background 200ms" style-hover="background:rgba(127,127,127,0.06)"><div><div style="font-size:16px;font-weight:500">Ship a drive</div><div style="font-size:13px;opacity:.6;margin-top:3px">2 TB SSD, insured, 2–3 business days to your office.</div></div><span style="opacity:.5">→</span></button>
+                <button onClick="{{ requestLink }}" style="display:flex;justify-content:space-between;align-items:center;gap:16px;width:100%;padding:16px 0;border:0;border-bottom:1px solid {{ hairline }};background:none;color:inherit;text-align:left;cursor:pointer;font:inherit;transition:background 200ms" style-hover="background:rgba(127,127,127,0.06)"><div><div style="font-size:16px;font-weight:500">Download link by email</div><div style="font-size:13px;opacity:.6;margin-top:3px">Secure, and picks up where it left off if your connection drops. Works for 7 days.</div></div><span style="opacity:.5">→</span></button>
+                <button onClick="{{ requestDrive }}" style="display:flex;justify-content:space-between;align-items:center;gap:16px;width:100%;padding:16px 0;border:0;border-bottom:1px solid {{ hairline }};background:none;color:inherit;text-align:left;cursor:pointer;font:inherit;transition:background 200ms" style-hover="background:rgba(127,127,127,0.06)"><div><div style="font-size:16px;font-weight:500">Mail me a drive</div><div style="font-size:13px;opacity:.6;margin-top:3px">2 TB, insured, usually 2–3 business days to your office.</div></div><span style="opacity:.5">→</span></button>
               </div>
             </sc-if>
             <sc-if value="{{ transferLink }}" hint-placeholder-val="{{ false }}">
-              <div style="border-top:1px solid {{ hairline }};padding-top:16px;display:flex;flex-direction:column;gap:6px;animation:viewIn 400ms ease both"><div style="font-size:16px;font-weight:500">Transfer link sent to jonathan@meridianmarine.com</div><div style="font-size:14px;opacity:.65;line-height:1.5">Valid until {{ linkUntil }}. It resumes automatically if the connection drops, and Nobleman is notified when the transfer completes.</div></div>
+              <div style="border-top:1px solid {{ hairline }};padding-top:16px;display:flex;flex-direction:column;gap:6px;animation:viewIn 400ms ease both"><div style="font-size:16px;font-weight:500">Transfer link sent to jonathan@meridianmarine.com</div><div style="font-size:14px;opacity:.65;line-height:1.5">Valid until {{ linkUntil }}. If your connection drops, it picks up where it left off.</div></div>
             </sc-if>
             <sc-if value="{{ transferDrive }}" hint-placeholder-val="{{ false }}">
-              <div style="border-top:1px solid {{ hairline }};padding-top:16px;display:flex;flex-direction:column;gap:6px;animation:viewIn 400ms ease both"><div style="font-size:16px;font-weight:500">Drive request received</div><div style="font-size:14px;opacity:.65;line-height:1.5">Jean will confirm the shipping address and tracking within one business day.</div></div>
+              <div style="border-top:1px solid {{ hairline }};padding-top:16px;display:flex;flex-direction:column;gap:6px;animation:viewIn 400ms ease both"><div style="font-size:16px;font-weight:500">Drive request received</div><div style="font-size:14px;opacity:.65;line-height:1.5">Jean will confirm your address and send tracking, usually within one business day.</div></div>
             </sc-if>
           </div>
         </sc-if>
@@ -546,25 +568,26 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   <sc-if value="{{ vFiles }}" hint-placeholder-val="{{ false }}">
   <main data-screen-label="Portal · Files" style="max-width:1280px;margin:0 auto;padding:{{ padTop }} 24px 64px;display:flex;flex-direction:column;gap:{{ gapL }};animation:viewIn 700ms cubic-bezier(.16,.84,.3,1) both">
     <div style="display:flex;flex-direction:column;gap:10px">
-      <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Project materials · Meridian Campaign</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
-      <h1 style="margin:0;font-size:clamp(32px,4vw,48px);font-weight:500;letter-spacing:-0.01em;line-height:1.1">Project materials</h1>
-      <p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:clamp(21px,2.2vw,27px);opacity:.72">Upload anything Nobleman needs for production.</p>
+      <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Your files · Meridian Campaign</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+      <h1 style="margin:0;font-size:clamp(40px,5.2vw,66px);font-weight:500;line-height:1.02">Your files</h1>
+      <p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:clamp(21px,2.2vw,27px);opacity:.72">Send us logos, music, and anything else we need to make your film.</p>
     </div>
     <div style="display:grid;grid-template-columns:{{ splitCols }};gap:clamp(24px,4vw,56px);align-items:stretch">
       <div onDragOver="{{ dragOver }}" onDragEnter="{{ dragOver }}" onDragLeave="{{ dragLeave }}" onDrop="{{ drop }}" style="border:1px dashed {{ dropBorder }};background:{{ dropBg }};padding:clamp(32px,5vw,64px) 24px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;min-height:280px;transition:background 200ms,border-color 200ms">
-        <div style="font-size:clamp(22px,2.4vw,30px);font-weight:500;letter-spacing:-0.01em">Drop files here</div>
-        <div style="font-size:14px;opacity:.6;max-width:380px;line-height:1.5;text-wrap:pretty">Logos, brand guides, references, music, photos or documents. Large files are fine; uploads resume if interrupted.</div>
-        <button onClick="{{ browse }}" style="margin-top:6px;height:48px;padding:0 26px;border-radius:32px;border:0;background:{{ btnBg }};color:{{ btnInk }};font:inherit;font-size:15px;font-weight:500;cursor:pointer;transition:opacity 200ms" style-hover="opacity:.85">Browse files</button>
+        <div class="np-display" style="font-size:clamp(30px,3.2vw,42px);line-height:1.05">Drag files here</div>
+        <div style="font-size:14px;opacity:.6;max-width:380px;line-height:1.5;text-wrap:pretty">Logos, brand guides, example videos, music, photos or documents.</div>
+        <button onClick="{{ browse }}" style="margin-top:6px;height:48px;padding:0 26px;border-radius:32px;border:0;background:{{ btnBg }};color:{{ btnInk }};font:inherit;font-size:15px;font-weight:500;cursor:pointer;transition:opacity 200ms" style-hover="opacity:.85">Choose files</button>
+        <sc-if value="{{ isDemo }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;line-height:1.5;padding:8px 14px;border-radius:12px;background:rgba(229,50,45,.1);border:1px solid rgba(229,50,45,.35)">Demo only: files you add here stay on your computer.</div></sc-if>
         <input ref="{{ fileRef }}" type="file" multiple onChange="{{ filesPicked }}" aria-label="Choose files" style="display:none">
       </div>
       <div style="display:flex;flex-direction:column;gap:16px">
-        <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Still needed</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.8);display:inline-block;flex:none;animation:blink 1.2s steps(1) infinite"></span></span>
+        <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">We still need</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.8);display:inline-block;flex:none;animation:blink 1.2s steps(1) infinite"></span></span>
         <div style="display:flex;flex-direction:column;border-top:1px solid {{ hairline }}">
           <sc-for list="{{ requested }}" as="r" hint-placeholder-count="2">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 0;border-bottom:1px solid {{ hairline }}"><span style="font-size:15px;font-weight:500">{{ r.text }}</span><button onClick="{{ browse }}" style="height:38px;padding:0 16px;border-radius:32px;border:1px solid {{ outline }};background:transparent;color:inherit;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap;transition:background 200ms" style-hover="background:rgba(127,127,127,0.12)">Upload</button></div>
           </sc-for>
         </div>
-        <p style="margin:0;font-size:13px;line-height:1.5;opacity:.55">Requested by Jean on September 24. Needed before the finishing pass in October.</p>
+        <p style="margin:0;font-size:13px;line-height:1.5;opacity:.55">Jean asked for these on September 24. We need them before the final polish in October.</p>
       </div>
     </div>
     <div style="display:flex;flex-direction:column;gap:16px">
@@ -585,7 +608,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
         </sc-for>
       </div>
       <sc-if value="{{ noFilesShown }}" hint-placeholder-val="{{ false }}">
-        <div style="padding:32px 0;font-size:15px;opacity:.6">Nothing in this category yet. Drop a file above and it lands here.</div>
+        <div style="padding:32px 0;font-size:15px;opacity:.6">Nothing here yet. Add a file above and it shows up in this list.</div>
       </sc-if>
     </div>
   </main>
@@ -596,8 +619,9 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   <main data-screen-label="Portal · Account" style="max-width:1280px;margin:0 auto;padding:{{ padTop }} 24px 64px;display:flex;flex-direction:column;gap:{{ gapL }};animation:viewIn 700ms cubic-bezier(.16,.84,.3,1) both">
     <div style="display:flex;flex-direction:column;gap:10px">
       <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Account</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
-      <h1 style="margin:0;font-size:clamp(32px,4vw,48px);font-weight:500;letter-spacing:-0.01em;line-height:1.1">{{ userFullName }}</h1>
+      <h1 style="margin:0;font-size:clamp(40px,5.2vw,66px);font-weight:500;line-height:1.02">{{ userFullName }}</h1>
       <p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:clamp(21px,2.2vw,27px);opacity:.72">{{ userSubtitle }}</p>
+      <p style="margin:0;font-size:15px;line-height:1.55;opacity:.75">Who can see this portal, and how we let you know about updates.</p>
     </div>
     <div style="display:grid;grid-template-columns:{{ splitColsEq }};gap:clamp(32px,4vw,64px);align-items:start">
       <section style="display:flex;flex-direction:column;gap:16px">
@@ -607,11 +631,11 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
             <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid {{ hairline }}"><div><div style="font-size:15px;font-weight:500">{{ u.name }}</div><div style="font-size:13px;opacity:.6;margin-top:2px">{{ u.role }}</div></div><span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:.55">{{ u.tag }}</span></div>
           </sc-for>
         </div>
-        <p style="margin:0;font-size:13px;line-height:1.5;opacity:.55;max-width:420px">Everyone here sees the same projects and can approve cuts. Ask Nobleman to add or remove people.</p>
+        <p style="margin:0;font-size:13px;line-height:1.5;opacity:.55;max-width:420px">Everyone here sees the same projects and can approve versions. To add or remove someone, message the team.</p>
       </section>
       <section style="display:flex;flex-direction:column;gap:24px">
         <div style="display:flex;flex-direction:column;gap:16px">
-          <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Notify me by</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+          <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Tell me by</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
           <div style="display:flex;flex-direction:column;border-top:1px solid {{ hairline }}">
             <sc-for list="{{ channelPrefs }}" as="t" hint-placeholder-count="3">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid {{ hairline }}"><div><div style="font-size:15px;font-weight:500">{{ t.label }}</div><div style="font-size:13px;opacity:.6;margin-top:2px">{{ t.sub }}</div></div><button onClick="{{ t.flip }}" role="switch" aria-checked="{{ t.on }}" aria-label="{{ t.label }}" style="width:44px;height:24px;border-radius:32px;border:1px solid {{ hairline }};background:{{ t.bg }};position:relative;cursor:pointer;padding:0;flex:none;transition:background 200ms"><span style="position:absolute;top:3px;left:{{ t.knob }};width:16px;height:16px;border-radius:50%;background:{{ t.knobBg }};transition:left 200ms"></span></button></div>
@@ -625,7 +649,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
               <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid {{ hairline }}"><div style="font-size:15px">{{ t.label }}</div><button onClick="{{ t.flip }}" role="switch" aria-checked="{{ t.on }}" aria-label="{{ t.label }}" style="width:44px;height:24px;border-radius:32px;border:1px solid {{ hairline }};background:{{ t.bg }};position:relative;cursor:pointer;padding:0;flex:none;transition:background 200ms"><span style="position:absolute;top:3px;left:{{ t.knob }};width:16px;height:16px;border-radius:50%;background:{{ t.knobBg }};transition:left 200ms"></span></button></div>
             </sc-for>
           </div>
-          <p style="margin:0;font-size:13px;line-height:1.5;opacity:.55">Only when something meaningful changes. Never marketing.</p>
+          <p style="margin:0;font-size:13px;line-height:1.5;opacity:.55">Only when something important changes. Never marketing emails.</p>
         </div>
       </section>
     </div>
@@ -634,6 +658,30 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
       <span style="font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:18px;opacity:.6">portal.noblemanproductions.gotit2work.com · private</span>
     </div>
   </main>
+  </sc-if>
+
+  <sc-if value="{{ helpOpen }}" hint-placeholder-val="{{ false }}">
+  <div role="dialog" aria-modal="true" aria-label="How your portal works" style="position:{{ fixedPos }};inset:0;z-index:120;background:rgba(1,10,13,.72);display:flex;align-items:center;justify-content:center;padding:16px;animation:viewIn 280ms ease both">
+    <button onClick="{{ closeHelp }}" aria-label="Close help" style="position:absolute;inset:0;width:100%;height:100%;background:transparent;border:0;cursor:default"></button>
+    <div style="position:relative;width:100%;max-width:580px;max-height:calc(100vh - 32px);overflow:auto;background:#031e25;color:#f4f4f2;border:1px solid rgba(244,244,242,.18);border-radius:26px;padding:clamp(24px,4vw,40px);display:flex;flex-direction:column;gap:22px;box-shadow:0 40px 120px -30px rgba(0,0,0,.8)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px">
+        <div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;opacity:.6">Help</span><h2 style="margin:0;font-size:clamp(32px,4vw,44px);font-weight:500;line-height:1.02">How your portal works</h2></div>
+        <button onClick="{{ closeHelp }}" aria-label="Close" style="flex:none;width:44px;height:44px;border-radius:50%;border:1px solid rgba(244,244,242,.3);background:none;color:inherit;font:inherit;font-size:22px;cursor:pointer">×</button>
+      </div>
+      <sc-if value="{{ isDemo }}" hint-placeholder-val="{{ false }}"><div style="font-size:14px;line-height:1.55;padding:12px 16px;border-radius:14px;background:rgba(229,50,45,.12);border:1px solid rgba(229,50,45,.4)"><strong style="font-weight:600">This is a demo.</strong> The client, projects and files are made up. Click anything you like: nothing here is saved or sent.</div></sc-if>
+      <div style="display:flex;flex-direction:column">
+        <sc-for list="{{ helpSteps }}" as="h" hint-placeholder-count="4">
+          <button onClick="{{ h.go }}" style="display:grid;grid-template-columns:40px 1fr auto;gap:16px;align-items:center;padding:16px 4px;border:0;border-top:1px solid rgba(244,244,242,.14);background:none;color:inherit;font:inherit;text-align:left;cursor:pointer">
+            <span aria-hidden="true" style="width:32px;height:32px;background-color:currentColor;-webkit-mask-image:url('{{ h.icon }}');mask-image:url('{{ h.icon }}');-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center"></span>
+            <span style="display:flex;flex-direction:column;gap:4px"><span style="font-size:17px;font-weight:600">{{ h.title }}</span><span style="font-size:14px;line-height:1.5;opacity:.75">{{ h.text }}</span></span>
+            <span aria-hidden="true" style="opacity:.6">→</span>
+          </button>
+        </sc-for>
+      </div>
+      <div style="font-size:14px;line-height:1.55;opacity:.75;border-top:1px solid rgba(244,244,242,.14);padding-top:16px">Stuck? Use “Message the team” on your project page, or email <a href="mailto:alexis@gotit2work.com" style="color:inherit">alexis@gotit2work.com</a>.</div>
+      <button onClick="{{ closeHelp }}" style="align-self:flex-start;height:48px;padding:0 26px;border-radius:32px;border:0;background:#f4f4f2;color:#031e25;font:inherit;font-size:15px;font-weight:600;cursor:pointer">Got it</button>
+    </div>
+  </div>
   </sc-if>
 
   <sc-if value="{{ toastOn }}" hint-placeholder-val="{{ false }}">
@@ -657,30 +705,30 @@ class Component extends DCLogic {
   };
   /** The sample films all play Nobleman's reel. Real films replace them via /api/videos (see loadVideos). */
   DEMO_FILM = { id: "1197058424", hash: "796798a19d" };
-  stageNames = ["Pre-production", "Production", "Editing", "Client review", "Finalizing", "Delivered"];
+  stageNames = ["Planning", "Filming", "Editing", "Your review", "Final polish", "Delivered"];
   projects = [
-    { id: "meridian", title: "Meridian Campaign", type: "Brand campaign · Commercial", img: this.IMG.proj, pct: 72, stageIdx: 2, nextLabel: "Estimated next milestone", next: "October 6", nextWhat: "Version 4 ready for review", hasCut: true },
-    { id: "social", title: "Social Content Package", type: "Branded content · 12 vertical cuts", img: this.IMG.social, pct: 28, stageIdx: 1, nextLabel: "Next shoot day", next: "October 2", nextWhat: "Day 2 of 3 · San Diego", hasCut: false },
+    { id: "meridian", title: "Meridian Campaign", type: "Brand campaign · Commercial", img: this.IMG.proj, pct: 72, stageIdx: 2, nextLabel: "Coming up next (estimated)", next: "October 6", nextWhat: "Version 4 ready for you to watch", hasCut: true },
+    { id: "social", title: "Social Content Package", type: "Branded content · 12 short vertical videos", img: this.IMG.social, pct: 28, stageIdx: 1, nextLabel: "Next filming day", next: "October 2", nextWhat: "Day 2 of 3 · San Diego", hasCut: false },
   ];
   library = [
-    { id: "hero", kind: "video", vimeo: this.DEMO_FILM, kindLabel: "Film", title: "Campaign Hero Film", dur: "4:21", res: "4K", delivered: "September 20, 2026", desc: "The four-minute brand film, cut for web, the launch event and the dealer network.", img: this.IMG.hero, downloads: [["4K Master · ProRes 422 HQ", "38.2 GB"], ["1080p Web · H.264", "2.1 GB"], ["Captioned version · 1080p", "2.1 GB"]] },
-    { id: "c30", kind: "video", vimeo: this.DEMO_FILM, kindLabel: "Commercial", title: "30-Second Commercial", dur: "0:30", res: "4K", delivered: "September 22, 2026", desc: "Broadcast cutdown with stereo and 5.1 mixes.", img: this.IMG.c30, downloads: [["4K Master · ProRes 422 HQ", "4.6 GB"], ["1080p Web · H.264", "310 MB"], ["Clean version · no titles", "4.6 GB"]] },
-    { id: "vert", kind: "video", vimeo: this.DEMO_FILM, kindLabel: "Social", title: "Vertical Social Cut", dur: "0:45", res: "9:16", vertical: true, delivered: "September 22, 2026", desc: "For Reels, Shorts and TikTok. Burned-in captions and safe-zone framing.", img: this.IMG.vertical, downloads: [["Vertical · 1080 × 1920", "640 MB"], ["Square · 1080 × 1080", "580 MB"]] },
-    { id: "bts", kind: "video", vimeo: this.DEMO_FILM, kindLabel: "Film", title: "Behind the Scenes", dur: "2:48", res: "4K", delivered: "September 24, 2026", desc: "Three shoot days on the water and in the studio.", img: this.IMG.bts, downloads: [["1080p Web · H.264", "1.4 GB"]] },
-    { id: "photo", kind: "photo", kindLabel: "Photography", title: "Photography Selects", dur: "48 images", res: "RAW + JPEG", delivered: "September 24, 2026", desc: "Retouched campaign stills from shoot days one and three.", img: this.IMG.photo, downloads: [["Retouched JPEG · full resolution", "1.9 GB"], ["Web-ready JPEG · 2048px", "210 MB"]] },
-    { id: "raw", kind: "archive", kindLabel: "Archive", title: "Raw Footage Archive", dur: "412 GB", res: "Camera originals", delivered: "On request", desc: "Every camera original from the production, organized by shoot day and camera. Kept permanently.", img: this.IMG.crew, downloads: [] },
+    { id: "hero", kind: "video", vimeo: this.DEMO_FILM, kindLabel: "Film", title: "Campaign Hero Film", dur: "4:21", res: "4K", delivered: "September 20, 2026", desc: "The four-minute brand film, cut for web, the launch event and the dealer network.", img: this.IMG.hero, downloads: [["Editing master · 4K (very large, for TV or future edits)", "38.2 GB"], ["Web and social · 1080p", "2.1 GB"], ["Captioned version · 1080p", "2.1 GB"]] },
+    { id: "c30", kind: "video", vimeo: this.DEMO_FILM, kindLabel: "Commercial", title: "30-Second Commercial", dur: "0:30", res: "4K", delivered: "September 22, 2026", desc: "The TV version, with stereo and surround sound.", img: this.IMG.c30, downloads: [["Editing master · 4K (very large, for TV or future edits)", "4.6 GB"], ["Web and social · 1080p", "310 MB"], ["Clean version · no titles", "4.6 GB"]] },
+    { id: "vert", kind: "video", vimeo: this.DEMO_FILM, kindLabel: "Social", title: "Vertical Social Video", dur: "0:45", res: "Vertical for phones", vertical: true, delivered: "September 22, 2026", desc: "For Instagram Reels, YouTube Shorts and TikTok. Captions built in, and framed so app buttons never cover anything important.", img: this.IMG.vertical, downloads: [["Vertical for phones · 1080 × 1920", "640 MB"], ["Square · 1080 × 1080", "580 MB"]] },
+    { id: "bts", kind: "video", vimeo: this.DEMO_FILM, kindLabel: "Film", title: "Behind the Scenes", dur: "2:48", res: "4K", delivered: "September 24, 2026", desc: "Three shoot days on the water and in the studio.", img: this.IMG.bts, downloads: [["Web and social · 1080p", "1.4 GB"]] },
+    { id: "photo", kind: "photo", kindLabel: "Photography", title: "Photography Selects", dur: "48 images", res: "Originals + ready-to-use", delivered: "September 24, 2026", desc: "Retouched photos from filming days one and three.", img: this.IMG.photo, downloads: [["Retouched photos · full size", "1.9 GB"], ["Web-ready photos · smaller files", "210 MB"]] },
+    { id: "raw", kind: "archive", kindLabel: "Archive", title: "Raw Footage Archive", dur: "412 GB", res: "Everything we filmed", delivered: "Ask us for a copy", desc: "Every clip we filmed, organized by filming day and camera. We keep it on file for you; ask whenever you need it.", img: this.IMG.crew, downloads: [] },
   ];
   versions = [
-    { v: 1, vimeo: this.DEMO_FILM, title: "Campaign Film", date: "September 12", base: "Superseded", note: "First assembly. Placeholder music." },
-    { v: 2, vimeo: this.DEMO_FILM, title: "Campaign Film", date: "September 21", base: "Changes requested September 26", note: "Your September 15 notes applied. New music throughout." },
-    { v: 3, vimeo: this.DEMO_FILM, title: "Campaign Film", date: "September 28", base: "Ready for review", note: "Opening reworked around the wide shot. Color pass on the water sequence." },
+    { v: 1, vimeo: this.DEMO_FILM, title: "Campaign Film", date: "September 12", base: "Replaced by a newer version", note: "First full draft, with temporary music." },
+    { v: 2, vimeo: this.DEMO_FILM, title: "Campaign Film", date: "September 21", base: "Changes requested September 26", note: "Your September 15 changes made. New music throughout." },
+    { v: 3, vimeo: this.DEMO_FILM, title: "Campaign Film", date: "September 28", base: "Ready for you to review", note: "Opening reworked around the wide shot. Color adjusted on the water scenes." },
   ];
-  team = [{ role: "Producer", name: "Jean", img: null }, { role: "Director & DP", name: "Justin", img: this.IMG.p2 }, { role: "Editor", name: "Marcus Lee", img: null }];
-  activityRows = [["September 28", "Version 3 uploaded for review"], ["September 26", "Your notes on Version 2 received"], ["September 24", "Project entered editing"], ["September 18", "Production wrapped · three shoot days"]];
-  documentRows = [["Production agreement", "Signed August 12"], ["Invoice 0142 · Deposit", "Paid August 14"], ["Invoice 0147 · Production", "Due October 10"], ["Project brief", "Updated August 20"], ["Call sheet · Day 3", "September 16"]];
+  team = [{ role: "Producer", name: "Jean", img: null }, { role: "Director & camera lead", name: "Justin", img: this.IMG.p2 }, { role: "Editor", name: "Marcus Lee", img: null }];
+  activityRows = [["September 28", "Version 3 ready for you to watch"], ["September 26", "We got your changes to Version 2"], ["September 24", "Editing started"], ["September 18", "Filming finished (three days)"]];
+  documentRows = [["Production agreement", "Signed August 12"], ["Invoice 0142 · Deposit", "Paid August 14"], ["Invoice 0147 · Production", "Due October 10"], ["Project brief", "Updated August 20"], ["Filming schedule · Day 3", "September 16"]];
   userRows = [["Jonathan Reyes", "Marketing Director", "You"], ["Priya Natarajan", "Social Media Manager", ""], ["David Kessler", "Chief Executive", ""]];
   requestedRows = ["Music licensing confirmation (PDF)", "Dealer logo set (vector)"];
-  extendRows = [["15-second social cut", "Designed for Reels, Shorts and TikTok. Cut from the hero film."], ["Additional language version", "Subtitled or re-voiced for export markets."], ["Paid-ad cutdowns", "6- and 10-second bumpers for pre-roll."]];
+  extendRows = [["15-second social video", "For Instagram Reels, YouTube Shorts and TikTok. Made from the hero film."], ["A version in another language", "With subtitles or a new voiceover, for customers abroad."], ["Short ads", "6- and 10-second ads that play before YouTube videos."]];
   filters = ["All", "Logos", "Brand guide", "References", "Music", "Photos", "Documents"];
   videoRef = React.createRef(); commentRef = React.createRef(); requestRef = React.createRef(); fileRef = React.createRef(); messageRef = React.createRef(); messagesRef = React.createRef();
   loginEmailRef = React.createRef(); loginPassRef = React.createRef();
@@ -842,7 +890,7 @@ class Component extends DCLogic {
       const tag = (e.target && e.target.tagName) || "";
       if (tag === "INPUT" || tag === "TEXTAREA") return;
       if (e.key === " " && this.state.view === "review" && this.player) { e.preventDefault(); this.togglePlay(); }
-      if (e.key === "Escape") { if (this.state.view === "item") this.go("library"); else if (this.state.view === "project") this.go("projects"); }
+      if (e.key === "Escape") { if (this.state.helpOpen) { this.setState({ helpOpen: false }); return; } if (this.state.view === "item") this.go("library"); else if (this.state.view === "project") this.go("projects"); }
     };
     window.addEventListener("keydown", this.onKey);
     if (this.state.loading) {
@@ -880,7 +928,9 @@ class Component extends DCLogic {
     this.player = null; this.playerEl = null;
     if (this.state.playing) this.setState({ playing: false });
   }
-  go(view, extra) { this.setState(Object.assign({ view, requesting: false, downloadsOpen: false, shareOpen: false }, extra || {})); try { window.scrollTo({ top: 0 }); } catch (e) {} }
+  go(view, extra) { this.setState(Object.assign({ view, requesting: false, confirming: false, helpOpen: false, downloadsOpen: false, shareOpen: false }, extra || {})); try { window.scrollTo({ top: 0 }); } catch (e) {} }
+  /** In the demo nothing is saved or sent, so actions that would contact someone say so plainly. */
+  say(real, demo) { this.toast(this.state.preview ? "Demo only: " + demo : real); }
   toast(text) { clearTimeout(this.toastT); this.setState({ toast: text }); this.toastT = setTimeout(() => this.setState({ toast: null }), 2800); }
   togglePlay() { if (!this.player) return; (this.state.playing ? this.player.pause() : this.player.play()).catch(() => {}); }
   seek(s) { const d = this.state.duration || 0; const t = Math.max(0, d ? Math.min(s, d - 0.5) : s); if (this.player) this.player.setCurrentTime(t).catch(() => {}); this.setState({ time: t }); }
@@ -910,10 +960,10 @@ class Component extends DCLogic {
       };
       setTimeout(tick, 250 + k * 120);
     });
-    this.toast(arr.length === 1 ? "Uploading " + arr[0].name : "Uploading " + arr.length + " files");
+    this.say(arr.length === 1 ? "Uploading " + arr[0].name : "Uploading " + arr.length + " files", "files you add here stay on your computer.");
   }
-  postComment() { const el = this.commentRef.current; const text = el && el.value.trim(); if (!text) { if (el) el.focus(); return; } const t = this.state.time; this.setState(s => ({ comments: s.comments.concat([{ t, text, who: "Jonathan", when: "Just now" }]) })); el.value = ""; this.toast("Note added at " + this.fmt(t)); }
-  postMessage() { const el = this.messageRef.current; const text = el && el.value.trim(); if (!text) { if (el) el.focus(); return; } this.setState(s => ({ messages: [{ who: "Jonathan", when: "Just now", text }].concat(s.messages) })); el.value = ""; this.toast("Sent. Jean and Justin reply within one business day."); }
+  postComment() { const el = this.commentRef.current; const text = el && el.value.trim(); if (!text) { if (el) el.focus(); return; } const t = this.state.time; this.setState(s => ({ comments: s.comments.concat([{ t, text, who: "Jonathan", when: "Just now" }]) })); el.value = ""; this.toast("Comment added at " + this.fmt(t)); }
+  postMessage() { const el = this.messageRef.current; const text = el && el.value.trim(); if (!text) { if (el) el.focus(); return; } this.setState(s => ({ messages: [{ who: "Jonathan", when: "Just now", text }].concat(s.messages) })); el.value = ""; this.say("Sent. Jean and Justin usually reply within one business day.", "in the real portal, your message goes to Jean and Justin."); }
   renderVals() {
     if (this.state.auth !== "in") return this.authVals();
     const S = this.state, mob = this.mob, view = S.view, preview = !!this.props.previewMobile;
@@ -941,7 +991,7 @@ class Component extends DCLogic {
     const approvedOnce = verDecisions.some(d => d.kind === "approved");
     let statusText = ver.base;
     if (last && last.kind === "approved") statusText = "Approved " + last.date;
-    else if (last && last.kind === "changes") statusText = approvedOnce ? "New revision requested " + last.date : "Changes requested " + last.date;
+    else if (last && last.kind === "changes") statusText = approvedOnce ? "More changes requested " + last.date : "Changes requested " + last.date;
     const needsReview = !S.decisions.some(d => d.v === latestV);
     const stagesFor = (p) => this.stageNames.map((name, i) => ({ name, current: i === p.stageIdx, line: i <= p.stageIdx ? ink : hairline, op: i <= p.stageIdx ? 1 : 0.45 }));
     const mkProj = (p) => Object.assign({}, p, { stage: this.stageNames[p.stageIdx], go: () => this.go("project", { project: p.id }) });
@@ -950,15 +1000,22 @@ class Component extends DCLogic {
     const libMeta = (it) => it.kind === "archive" ? it.dur + " · " + it.res + " · " + it.delivered : it.dur + " · " + it.res + " · Delivered " + it.delivered;
     const libRow = (it) => Object.assign({}, it, { meta: libMeta(it), thumbW: it.vertical ? "auto" : "100%", open: openItem(it.id) });
     const isActive = (id) => view === id || (id === "projects" && view === "project") || (id === "library" && view === "item");
-    const navItem = ([id, label]) => ({ label, go: () => this.go(id), bg: isActive(id) ? pillOn : "transparent", op: isActive(id) ? 1 : 0.72, badge: id === "review" && needsReview, dot: isActive(id) ? ink : (id === "review" && needsReview ? "#e5322d" : "transparent") });
+    const next = needsReview
+      ? { title: "Watch Version " + latestV + " of your " + vers[vers.length - 1].title, text: "Justin reworked the opening around your note on the wide shot. Watch it, then approve it or ask for changes.", btn: "Watch Version " + latestV, go: () => this.go("review", { version: latestV }) }
+      : S.decisions.some(d => d.v === latestV && d.kind === "approved")
+        ? { title: "You’re all caught up", text: "You approved Version " + latestV + ". We’ll let you know when there’s something new to watch.", btn: "See your finished films", go: () => this.go("library") }
+        : { title: "Your changes are with the team", text: "We’ll let you know when the next version is ready to watch.", btn: "See your finished films", go: () => this.go("library") };
+    const ICONS = { home: "media/icons/anchor.png", projects: "media/icons/camera.png", review: "media/icons/play.png", library: "media/icons/growth.png", files: "media/icons/send.png" };
+    const navItem = ([id, label]) => ({ label, go: () => this.go(id), current: isActive(id) ? "page" : "false", icon: ICONS[id] || "", iconDisp: ICONS[id] ? "block" : "none", avatarDisp: ICONS[id] ? "none" : "flex", badgeDisp: id === "review" && needsReview && !isActive(id) ? "block" : "none", bg: isActive(id) ? pillOn : "transparent", op: isActive(id) ? 1 : 0.74, badge: id === "review" && needsReview, dot: isActive(id) ? ink : (id === "review" && needsReview ? "#e5322d" : "transparent") });
     const shareUrl = "https://portal.noblemanproductions.gotit2work.com/s/" + item.id + "-8fa2c1";
     const toggle = (key, label, sub) => ({ label, sub, on: !!S.prefs[key], bg: S.prefs[key] ? ink : "transparent", knob: S.prefs[key] ? "23px" : "3px", knobBg: S.prefs[key] ? bg : ink, flip: () => this.setState(s => ({ prefs: Object.assign({}, s.prefs, { [key]: !s.prefs[key] }) })) });
     const filesShown = S.files.filter(f => S.fileFilter === "All" || f.cat === S.fileFilter).map(f => Object.assign({}, f, { pct: Math.round(f.pct) + "%", lineOp: f.pct < 100 ? 1 : 0, status: f.pct < 100 ? "Uploading " + Math.round(f.pct) + "%" : "Uploaded" }));
     const decisionButtons = [];
-    if (!(last && last.kind === "approved")) decisionButtons.push({ label: "Approve this cut", fn: () => { this.setState(s => ({ decisions: s.decisions.concat([{ v: s.version, kind: "approved", date: this.today(), text: "Version " + s.version + " approved" }]) })); this.toast("Approved. Jean and Justin have been notified."); }, bg: light ? "#031e25" : "#f4f4f2", color: light ? "#f4f4f2" : "#031e25", border: "transparent" });
-    decisionButtons.push({ label: "Request changes", fn: () => this.setState({ requesting: true }), bg: "transparent", color: ink, border: outline });
+    const approveNow = () => { this.setState(s => ({ decisions: s.decisions.concat([{ v: s.version, kind: "approved", date: this.today(), text: "Version " + s.version + " approved" }]) })); this.say("Approved. Jean and Justin have been told.", "in the real portal, Jean and Justin would be told you approved it."); };
+    if (!(last && last.kind === "approved")) decisionButtons.push({ label: "Approve Version " + S.version, fn: () => this.setState({ confirming: true, requesting: false }), bg: light ? "#031e25" : "#f4f4f2", color: light ? "#f4f4f2" : "#031e25", border: "transparent" });
+    decisionButtons.push({ label: "Ask for changes", fn: () => this.setState({ requesting: true, confirming: false }), bg: "transparent", color: ink, border: outline });
     const itemMeta = item.kind === "archive"
-      ? [{ k: "Size", v: "412 GB" }, { k: "Contents", v: "Camera originals · 3 shoot days · 2 cameras" }, { k: "Retention", v: "Permanent archive" }]
+      ? [{ k: "Size", v: "412 GB" }, { k: "Contents", v: "Everything we filmed · 3 filming days · 2 cameras" }, { k: "Kept", v: "On file with Nobleman" }]
       : [{ k: item.kind === "photo" ? "Images" : "Duration", v: item.dur }, { k: item.kind === "photo" ? "Formats" : "Resolution", v: item.res }, { k: "Delivered", v: item.delivered }, { k: "Available until", v: "December 31, 2027" }];
     return {
       bg, ink, hairline, card, outline, navBg: light ? "rgba(255,255,255,0.78)" : "rgba(3,30,37,0.72)",
@@ -969,7 +1026,7 @@ class Component extends DCLogic {
       loading: S.loading, loaderOp: S.loaderOp,
       isDesktop: !mob, isMobile: mob, padTop: mob ? "84px" : "112px", bottomPad: mob ? "96px" : "0",
       gapXL: mob ? "48px" : "80px", gapL: mob ? "36px" : "56px",
-      heroRatio: mob ? "4/5" : "21/9", stageCols: mob ? "repeat(3,1fr)" : "repeat(6,1fr)",
+      heroRatio: mob ? "4/3" : "21/9", stageCols: mob ? "repeat(3,1fr)" : "repeat(6,1fr)",
       splitCols: mob ? "1fr" : "minmax(0,1.25fr) minmax(0,1fr)", splitColsR: mob ? "1fr" : "minmax(0,1fr) minmax(0,1.25fr)",
       splitColsEq: mob ? "1fr" : "1fr 1fr", splitColsRev: mob ? "1fr" : "minmax(0,.9fr) minmax(0,1.1fr)",
       textOrder: mob ? "2" : "1", imgOrder: mob ? "1" : "2",
@@ -997,8 +1054,8 @@ class Component extends DCLogic {
         blurb: S.vimeo && S.vimeo.library ? (heroItem.desc || "Every version is in your library.") : "The four-minute brand film. Master, web and captioned versions are in your library.",
       },
       libSummary: S.vimeo && S.vimeo.library
-        ? lib.length + (lib.length === 1 ? " finished piece." : " finished pieces.")
-        : "Five finished pieces and one archive. Available until December 31, 2027.",
+        ? lib.length + (lib.length === 1 ? " finished film." : " finished films.") + " Watch, download or share them."
+        : "Your finished films and photos. Watch, download or share them. Kept here until December 31, 2027.",
       reviewEmbed: this.embedUrl(ver.vimeo, { controls: 0 }),
       reviewTitle: vers[vers.length - 1].title, latestCut: vers[vers.length - 1],
       statusText, team: this.team.map(withImg), activity: this.activityRows.map(([date, text]) => ({ date, text })),
@@ -1006,7 +1063,7 @@ class Component extends DCLogic {
       projectTiles: this.projects.map(mkProj),
       proj: mkProj(proj), projStages: stagesFor(proj), projHasCut: proj.hasCut, projNoCut: !proj.hasCut,
       projDeliverables: lib.slice(0, 4).map(libRow), recentFiles: S.files.slice(0, 3), requestedCount: this.requestedRows.length,
-      documents: this.documentRows.map(([name, meta]) => ({ name, meta, open: () => this.toast(name + " · opening PDF") })),
+      documents: this.documentRows.map(([name, meta]) => ({ name, meta, open: () => this.say("Opening " + name, "documents don’t open in the demo.") })),
       messages: S.messages, messagesRef: this.messagesRef, messageRef: this.messageRef,
       sendMessage: () => this.postMessage(), messageKey: (e) => { if (e.key === "Enter") this.postMessage(); },
       ver, versions: vers.map(x => Object.assign({}, x, { current: x.v === latestV, pick: () => this.setState({ version: x.v, requesting: false }), border: x.v === S.version ? ink : hairline, bg: x.v === S.version ? pillOn : "transparent", color: ink })),
@@ -1017,20 +1074,20 @@ class Component extends DCLogic {
       addAtCurrent: () => { if (this.player && S.playing) this.player.pause().catch(() => {}); const el = this.commentRef.current; if (el) el.focus(); },
       comments: S.comments.slice().sort((a, b) => a.t - b.t).map(c => Object.assign({}, c, { tc: this.fmt(c.t), seek: () => this.seek(c.t) })), commentCount: S.comments.length, commentRef: this.commentRef,
       addComment: () => this.postComment(), commentKey: (e) => { if (e.key === "Enter") this.postComment(); },
-      notRequesting: !S.requesting, requesting: S.requesting, decisionButtons, hasDecisions: verDecisions.length > 0, decisions: verDecisions, requestRef: this.requestRef,
-      submitRequest: () => { const el = this.requestRef.current; const text = el && el.value.trim(); if (!text) { if (el) el.focus(); return; } this.setState(s => ({ requesting: false, decisions: s.decisions.concat([{ v: s.version, kind: "changes", date: this.today(), text: "Revision requested: “" + text + "”" }]), messages: [{ who: "Jonathan", when: "Just now", text: "Change request on Version " + s.version + ": " + text }].concat(s.messages) })); this.toast("Request sent. Justin will confirm the plan within one business day."); },
+      notRequesting: !S.requesting && !S.confirming, requesting: S.requesting, decisionButtons, hasDecisions: verDecisions.length > 0, decisions: verDecisions, requestRef: this.requestRef,
+      submitRequest: () => { const el = this.requestRef.current; const text = el && el.value.trim(); if (!text) { if (el) el.focus(); return; } this.setState(s => ({ requesting: false, decisions: s.decisions.concat([{ v: s.version, kind: "changes", date: this.today(), text: "Changes requested: “" + text + "”" }]), messages: [{ who: "Jonathan", when: "Just now", text: "Changes to Version " + s.version + ": " + text }].concat(s.messages) })); this.say("Sent. Justin will confirm the plan, usually within one business day.", "in the real portal, your changes go to Justin."); },
       cancelRequest: () => this.setState({ requesting: false }),
       libraryRows: lib.slice(1).map(libRow),
-      extend: this.extendRows.map(([title, desc]) => ({ title, desc, ask: () => this.toast("Sent to Jean. Expect a quote the same business day.") })),
+      extend: this.extendRows.map(([title, desc]) => ({ title, desc, ask: () => this.say("Sent to Jean. She’ll reply with a price, usually within one business day.", "in the real portal, this asks Jean for a price.") })),
       item: Object.assign({}, item, { embed: this.embedUrl(item.vimeo), isVideo: item.kind === "video", isPhoto: item.kind === "photo", isArchive: item.kind === "archive", notArchive: item.kind !== "archive", playerRatio: item.vertical ? "9/16" : "16/9", playerW: item.vertical ? "min(100%, 400px)" : "100%", watchLabel: item.kind === "photo" ? "View gallery" : "Watch" }),
       itemMeta, gallery: [{ img: this.IMG.photo, ratio: "16/9", span: mob ? "auto" : "1 / -1" }, { img: this.IMG.bts, ratio: "16/9", span: "auto" }, { img: this.IMG.hero, ratio: "16/9", span: "auto" }],
-      watchItem: () => { if (this.player) this.player.play().catch(() => {}); else this.toast("Full-resolution gallery arrives with the download"); },
+      watchItem: () => { if (this.player) this.player.play().catch(() => {}); else this.toast("You get every photo in full size with the download."); },
       toggleDownloads: () => this.setState(s => ({ downloadsOpen: !s.downloadsOpen, shareOpen: false })), toggleShare: () => this.setState(s => ({ shareOpen: !s.shareOpen, downloadsOpen: false })),
       downloadsOpen: S.downloadsOpen, shareOpen: S.shareOpen, downloadsBg: S.downloadsOpen ? pillOn : "transparent", shareBg: S.shareOpen ? pillOn : "transparent",
-      itemDownloads: item.downloads.map(([name, size]) => ({ name, size, get: () => this.toast(parseFloat(size) > 10 && size.includes("GB") ? "Preparing " + name.split(" · ")[0] + " · a resumable link is on its way to your email" : "Download started · " + size) })),
+      itemDownloads: item.downloads.map(([name, size]) => ({ name, size, get: () => this.say(parseFloat(size) > 10 && size.includes("GB") ? "Preparing " + name.split(" · ")[0] + ". We’ll email you a download link." : "Download started · " + size, "downloads are switched off in the demo.") })),
       shareUrl, copyLink: () => { try { navigator.clipboard.writeText(shareUrl); } catch (e) {} this.toast("Private link copied"); },
       transferNone: !S.transfer, transferLink: S.transfer === "link", transferDrive: S.transfer === "drive", linkUntil: this.plusDays(7),
-      requestLink: () => { this.setState({ transfer: "link" }); this.toast("Transfer link sent"); }, requestDrive: () => { this.setState({ transfer: "drive" }); this.toast("Drive request sent to Jean"); },
+      requestLink: () => { this.setState({ transfer: "link" }); this.say("Download link sent to your email", "no email was sent."); }, requestDrive: () => { this.setState({ transfer: "drive" }); this.say("Drive request sent to Jean", "in the real portal, this goes to Jean."); },
       dragOver: (e) => { e.preventDefault(); if (!S.drag) this.setState({ drag: true }); }, dragLeave: () => { if (S.drag) this.setState({ drag: false }); },
       drop: (e) => { e.preventDefault(); this.setState({ drag: false }); this.addFiles(e.dataTransfer && e.dataTransfer.files); },
       dropBorder: S.drag ? ink : outline, dropBg: S.drag ? card : "transparent",
@@ -1039,9 +1096,18 @@ class Component extends DCLogic {
       fileFilters: this.filters.map(label => ({ label, pick: () => this.setState({ fileFilter: label }), border: label === S.fileFilter ? ink : hairline, bg: label === S.fileFilter ? pillOn : "transparent", color: ink })),
       filesShown, noFilesShown: filesShown.length === 0,
       users: this.userRows.map(([name, role, tag]) => ({ name, role, tag })),
-      channelPrefs: [toggle("email", "Email", "jonathan@meridianmarine.com"), toggle("sms", "Text message", "+1 (619) ••• ••14"), toggle("portal", "In the portal", "Quiet badge on Review and Library")],
-      eventPrefs: [toggle("cuts", "A new cut is ready for review"), toggle("stages", "My project changes stage"), toggle("delivery", "A final film is delivered"), toggle("msgs", "Nobleman sends a message")],
+      channelPrefs: [toggle("email", "Email", "jonathan@meridianmarine.com"), toggle("sms", "Text message", "+1 (619) ••• ••14"), toggle("portal", "In the portal", "A small red dot on Review and Library")],
+      eventPrefs: [toggle("cuts", "A new version is ready to watch"), toggle("stages", "My project moves to its next stage"), toggle("delivery", "A final film is delivered"), toggle("msgs", "Nobleman sends a message")],
       toastOn: !!S.toast, toastText: S.toast || "",
+      isDemo: !!S.preview, helpOpen: !!S.helpOpen, openHelp: () => this.setState({ helpOpen: true }), closeHelp: () => this.setState({ helpOpen: false }),
+      helpSteps: [
+        { icon: "media/icons/anchor.png", title: "Home", text: "Shows your next step. Start here every time.", go: () => this.go("home") },
+        { icon: "media/icons/play.png", title: "Review", text: "Watch the newest version. Leave a comment on any moment, then approve it or ask for changes.", go: () => this.go("review") },
+        { icon: "media/icons/growth.png", title: "Library", text: "Your finished films and photos, ready to watch, download or share.", go: () => this.go("library") },
+        { icon: "media/icons/send.png", title: "Files", text: "Send us logos, music and anything else we need.", go: () => this.go("files") },
+      ],
+      next, nextCols: mob ? "1fr" : "1fr auto", watchLatest: "Watch Version " + latestV,
+      confirming: !!S.confirming, confirmApprove: () => { this.setState({ confirming: false }); approveNow(); }, cancelApprove: () => this.setState({ confirming: false }),
     };
   }
 }

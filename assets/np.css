@@ -1,0 +1,73 @@
+/* Nobleman Productions: display type and motion shared by every page.
+   Loaded from <head> before the runtime renders, so the first render already has it. Motion rules only apply
+   once assets/np.js puts .np-motion on <html>. It doesn't under prefers-reduced-motion, and if the script
+   never loads nothing is hidden, so content can't get stuck invisible. */
+:root{--np-ease:cubic-bezier(.16,1,.3,1);--np-serif:'Cormorant Garamond',Georgia,'Times New Roman',serif}
+
+/* Type: a classical display serif for headlines (it echoes the Nobleman wordmark); Inter stays for text. */
+h1,h2,.np-display{font-family:var(--np-serif);font-weight:500;letter-spacing:-0.015em;font-kerning:normal}
+h1{letter-spacing:-0.022em}
+.np-it{font-style:italic;font-weight:400}
+.np-line{display:block;overflow:hidden;padding:0 .08em .14em;margin:0 -.08em -.14em}
+.np-line>span{display:inline-block}
+
+/* "production.": the i wears the red REC light as its dot. The real "i" stays in the text (search, screen readers,
+   copying); CSS paints the glyph transparent from its top down to the gap above the stem, which removes only its
+   own dot, and draws the red one there. The em offsets are measured from Cormorant Garamond Italic 400 relative to
+   the letter's box, so this only switches on once that font has really loaded (np.js adds .np-serif). */
+.np-serif .np-rec-i{position:relative;-webkit-text-fill-color:transparent;background:linear-gradient(to bottom,transparent .469em,currentColor .469em);-webkit-background-clip:text;background-clip:text}
+.np-serif .np-rec-i::after{content:"";position:absolute;left:.171em;top:.369em;width:.1em;height:.1em;margin:-.05em 0 0 -.05em;border-radius:50%;background:#e5322d;box-shadow:0 0 .06em rgba(229,50,45,.9),0 0 .24em rgba(229,50,45,.5);animation:npRec 1.2s steps(1) infinite}
+@keyframes npRec{0%,49%{opacity:1}50%,100%{opacity:.15}}
+
+/* Scroll progress hairline (created by np.js). */
+.np-progress{position:fixed;left:0;top:0;right:0;height:2px;background:linear-gradient(90deg,#e5322d,#ff7a6b);transform:scaleX(0);transform-origin:0 50%;z-index:70;pointer-events:none}
+
+/* Scroll reveals. Fades use filter:opacity() so an element's own inline opacity survives; the transition is
+   !important because several cards carry an inline transition for their theme colour (kept in the list).
+   Never hide a revealing element with clip-path: IntersectionObserver measures the clipped area, so a clipped
+   element can look off-screen and never reveal. The "title" wipe uses a mask driven by --np-m instead. */
+@property --np-m{syntax:'<percentage>';inherits:false;initial-value:112%}
+.np-motion [data-reveal]{filter:opacity(0) blur(0px);transition:filter 1s var(--np-ease),transform 1.35s var(--np-ease),--np-m 1.5s var(--np-ease),background-color .9s ease!important;transition-delay:var(--np-d,0ms)!important}
+.np-motion [data-reveal=""]{transform:translate3d(0,64px,0);filter:opacity(0) blur(10px)}
+.np-motion [data-reveal="card"]{transform:perspective(1400px) translate3d(0,170px,0) rotateX(20deg) scale(.9);transform-origin:50% 0}
+.np-motion [data-reveal="left"]{transform:translate3d(-12vw,0,0) rotate(-2deg)}
+.np-motion [data-reveal="right"]{transform:translate3d(12vw,0,0) rotate(2deg)}
+.np-motion [data-reveal="title"]{--np-m:0%;transform:translate3d(0,.35em,0);-webkit-mask-image:linear-gradient(to top,#000 calc(var(--np-m) - 14%),transparent var(--np-m));mask-image:linear-gradient(to top,#000 calc(var(--np-m) - 14%),transparent var(--np-m))}
+.np-motion [data-reveal="zoom"]{transform:scale(.88);filter:opacity(0) blur(8px)}
+.np-motion [data-reveal][data-in]{filter:none;transform:none;--np-m:114%}
+
+/* Landing: letterbox bars open, the poster settles, lines rise out of a mask. [data-intro="n"] sets the order.
+   Held until the display font is ready (np.js adds .np-fonts, at most ~1 s) so text never swaps mid-motion. */
+@keyframes npRise{from{transform:translate3d(0,112%,0) rotate(2deg)}to{transform:none}}
+@keyframes npFade{from{filter:opacity(0);transform:translate3d(0,26px,0)}to{filter:none;transform:none}}
+@keyframes npSettle{from{transform:scale(1.2)}to{transform:none}}
+@keyframes npBar{from{transform:scaleY(1)}to{transform:scaleY(0)}}
+.np-motion [data-intro]{animation:npFade 1.3s var(--np-ease) both}
+.np-motion .np-line>[data-intro]{animation-name:npRise;animation-duration:1.6s}
+.np-motion [data-intro="0"]{animation-delay:.2s}
+.np-motion [data-intro="1"]{animation-delay:.35s}
+.np-motion [data-intro="2"]{animation-delay:.5s}
+.np-motion [data-intro="3"]{animation-delay:.75s}
+.np-motion [data-intro="4"]{animation-delay:.9s}
+.np-motion [data-intro="5"]{animation-delay:1.05s}
+.np-motion [data-intro="6"]{animation-delay:1.25s}
+.np-motion [data-intro="7"]{animation-delay:1.5s}
+.np-motion:not(.np-fonts) [data-intro]{animation-play-state:paused}
+[data-letterbox]{display:none}
+.np-motion [data-letterbox]{display:block;position:absolute;left:0;right:0;height:14vh;background:#000;z-index:4;pointer-events:none;animation:npBar 1.6s cubic-bezier(.76,0,.24,1) .3s both}
+.np-motion [data-letterbox="top"]{top:0;transform-origin:50% 0}
+.np-motion [data-letterbox="bottom"]{bottom:0;transform-origin:50% 100%}
+.np-motion [data-hero-zoom]{animation:npSettle 3s var(--np-ease) both}
+
+/* Hero on scroll: the picture pushes in while the words drift up and fade (np.js sets --np-hero, 0 to 1). */
+.np-motion [data-hero-media]{transform:scale(calc(1 + var(--np-hero, 0) * .14))}
+.np-motion [data-hero-content]{transform:translate3d(0,calc(var(--np-hero, 0) * -20vh),0);opacity:calc(1 - var(--np-hero, 0) * 1.5)}
+
+/* Logo marquee: small white marks, edges fade out, hover pauses. The fade sits on a static inner frame, not
+   the band, so the band's own background stays solid. */
+.np-logos-fade{-webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
+.np-logos:hover [data-marquee]{animation-play-state:paused!important}
+.np-logo{display:block;width:auto;opacity:.78;transition:opacity .3s ease}
+.np-logo:hover{opacity:1}
+
+@media (prefers-reduced-motion: reduce){[data-marquee],.np-rec-i::after{animation:none!important}}

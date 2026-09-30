@@ -29,6 +29,16 @@ Client portal for Nobleman Productions at `portal.noblemanproductions.gotit2work
 - The browser parses the raw template before the runtime renders it, so a bound `src="{{ x }}"` makes it request the literal `/{{ x }}` (a 404 on every load). Bind URLs as `sc-camel-src="{{ x }}"`: the runtime turns it into the React `src` prop and the browser ignores it. The same applies to `poster`, `srcset`, and iframe `src`.
 - `animation:viewIn` ends on `transform:none` and overrides an inline `transform`. Don't centre an animated element with `translateX(-50%)`; use `left:0;right:0;margin:0 auto;width:max-content` (as the toast does).
 
+## Clarity conventions — keep these when changing the UI
+
+- Every word a client sees follows `docs/WRITING.md` (from the Murphy's Laws poster): plain words, buttons that name the action, no promise that isn't always true, no feature described that doesn't exist, confirmation before anything hard to undo.
+- Actions that would contact someone or move a file use `this.say(real, demo)`, never a bare `toast`: in demo mode (`state.preview`) it says plainly that nothing was sent ("Demo only: …").
+- Home always leads with **Your next step** (`next` in `renderVals`); keep it to one clear action.
+- Every screen has a one-line purpose sentence under its title and a way back. The **Help** panel (`helpSteps`) explains the four main screens; add a step if you add a screen.
+- Approving a version asks first (`confirming`). Keep a confirmation on anything hard to undo.
+- Look matches the website: `assets/np.css` + `assets/np.js` (copied from the website; bump `?v=`), headlines are Cormorant Garamond, and the mobile bar uses the website's maritime icons in `media/icons/` (anchor = Home, camera = Projects, porthole play = Review, pennant = Library, paper boat = Files; Account is the user's initials).
+- A button that is `display:flex` with a `gap` spaces every text node apart, so give it one bound label (`{{ watchLatest }}`), not text plus a binding.
+
 ## Verifying changes
 
 No test suite yet. What worked: point `@neondatabase/serverless` at a shim backed by PGlite (real Postgres in WASM, `npm i @electric-sql/pglite`) that loads `schema.sql`, run the `api/*.js` handlers behind a small local server, and script the lifecycle with fetch: bootstrap, login, admin create and delete, revocation, cross-origin 403, throttle 429. For Vimeo, stub `api.vimeo.com` responses in the local server (folder id → video objects) and check per-viewer folder isolation. For the player, serve Vimeo's real `player.js` with a stand-in iframe speaking its postMessage protocol (`{event:"ready"}`, `{method:"addEventListener"}` → `{event:"playing"}`). Drive the UI with Playwright and the preinstalled Chromium (`/opt/pw-browsers`).
