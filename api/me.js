@@ -1,9 +1,14 @@
 import { sql } from "./_db.js";
-import { session, clearSessionCookie, isUuid } from "./_auth.js";
+import { session, clearSessionCookie, isUuid, DEMO_MODE, DEMO_USER } from "./_auth.js";
+
+// Without a session: 401, or the sample client when PORTAL_MODE=demo.
+const signedOut = (res) =>
+  DEMO_MODE ? res.status(200).json({ user: DEMO_USER, demo: true }) : res.status(401).json({ error: "Not signed in" });
 
 export default async function handler(req, res) {
+  res.setHeader("Cache-Control", "private, no-store");
   const s = await session(req);
-  if (!s || !isUuid(s.sub)) return res.status(401).json({ error: "Not signed in" });
+  if (!s || !isUuid(s.sub)) return signedOut(res);
 
   try {
     const rows = await sql`
@@ -14,7 +19,7 @@ export default async function handler(req, res) {
     const u = rows[0];
     if (!u) {
       clearSessionCookie(res);
-      return res.status(401).json({ error: "Not signed in" });
+      return signedOut(res);
     }
 
     return res.status(200).json({

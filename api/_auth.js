@@ -7,6 +7,14 @@ const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const isUuid = (v) => typeof v === "string" && UUID_RE.test(v);
 
+/**
+ * PORTAL_MODE=demo opens the portal to anyone as the sample client, with no sign-in. It is an explicit
+ * server setting, never a fallback: with it unset, visitors must sign in. Real sessions still win in demo
+ * mode, so staff can sign in (at /?signin) and see their own account.
+ */
+export const DEMO_MODE = process.env.PORTAL_MODE === "demo";
+export const DEMO_USER = { id: null, email: null, name: "Jonathan Reyes", title: "Marketing Director", role: "client", clientId: null, clientName: "Meridian" };
+
 function secret() {
   const s = process.env.SESSION_SECRET;
   if (!s || s.length < 32) throw new Error("SESSION_SECRET must be set to at least 32 characters");

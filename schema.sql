@@ -60,3 +60,7 @@ create table if not exists projects (
 );
 
 create index if not exists projects_client_idx on projects(client_id) where archived = false;
+
+-- The Vimeo folder holding this project's cuts and deliverables (the number in the folder's URL,
+-- vimeo.com/user/.../folder/<id>). /api/videos reads it; the portal shows its sample films until it is set.
+alter table projects add column if not exists vimeo_folder_id text;
