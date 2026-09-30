@@ -4,6 +4,7 @@ Client portal for Nobleman Productions at `portal.noblemanproductions.gotit2work
 
 ## Ownership and infrastructure
 
+- Vercel project `nobleman-portal` (`prj_3HnVWrxGKofXm6EUvEPF1Jg2xCR8`), created 2026-09-30 in team `gotit2-work`: framework Other, Node 22.x, Vercel Authentication on previews only (production is public), custom domain attached and ownership-verified. Env: `PORTAL_MODE=demo` (Production, Preview, Development). No database, `SESSION_SECRET`, or Vimeo token yet. Not yet linked to GitHub: the Vercel GitHub App was not installed on `Gotit2work`, so deploys from Git failed with `repo_not_found`. Once linked (Project → Settings → Git), deploy the fix branch or merged `main` to production.
 - **Alexis owns `gotit2work.com`.** DNS is at GoDaddy (`ns17/ns18.domaincontrol.com`). The apex points at Lovable (`185.158.133.1`) and email is Microsoft 365. Touch neither; this project only needs a CNAME for `portal.noblemanproductions`.
 - Vercel: account `amangual1`, team `Gotit2Work` (slug `gotit2-work`, id `team_b7Eucmxp9X2SzzAHXZPA92Qh`). On Hobby by the owner's choice while the portal is a demo; commercial use requires Pro.
 - Database: Neon Postgres through Vercel Storage (`DATABASE_URL`; `POSTGRES_URL` also accepted). The schema is `schema.sql` and is idempotent; re-run the whole file after changes.
