@@ -1,5 +1,6 @@
 -- Nobleman client portal — schema
--- Run once against your Neon database (Neon console -> SQL Editor).
+-- Run against your Neon database (Neon console -> SQL Editor). Every statement is idempotent,
+-- so re-running the whole file after an update is safe and only adds what is missing.
 
 create extension if not exists pgcrypto;
 
@@ -29,6 +30,19 @@ create table if not exists users (
 
 create index if not exists users_client_idx on users(client_id);
 
+-- Failed sign-ins, used to throttle password guessing (see api/login.js).
+-- The API prunes rows older than a day, so this stays small.
+create table if not exists login_attempts (
+  id     bigserial primary key,
+  email  text not null,
+  ip     text not null,
+  at     timestamptz not null default now()
+);
+
+create index if not exists login_attempts_email_idx on login_attempts(email, at);
+create index if not exists login_attempts_ip_idx on login_attempts(ip, at);
+create index if not exists login_attempts_at_idx on login_attempts(at);
+
 create table if not exists projects (
   id            uuid primary key default gen_random_uuid(),
   client_id     uuid not null references clients(id) on delete cascade,
@@ -46,3 +60,7 @@ create table if not exists projects (
 );
 
 create index if not exists projects_client_idx on projects(client_id) where archived = false;
+
+-- The Vimeo folder holding this project's cuts and deliverables (the number in the folder's URL,
+-- vimeo.com/user/.../folder/<id>). /api/videos reads it; the portal shows its sample films until it is set.
+alter table projects add column if not exists vimeo_folder_id text;

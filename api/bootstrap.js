@@ -1,5 +1,11 @@
 import bcrypt from "bcryptjs";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { sql } from "./_db.js";
+import { readBody, rejectCrossOrigin } from "./_auth.js";
+
+// Constant-time comparison, so the response time does not hint at how much of the secret was right.
+const sameSecret = (a, b) =>
+  timingSafeEqual(createHash("sha256").update(String(a)).digest(), createHash("sha256").update(String(b)).digest());
 
 /**
  * One-time setup: creates the first admin.
@@ -11,12 +17,14 @@ import { sql } from "./_db.js";
  */
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (rejectCrossOrigin(req, res)) return;
 
   const expected = process.env.BOOTSTRAP_SECRET;
   if (!expected) return res.status(500).json({ error: "BOOTSTRAP_SECRET is not set." });
 
-  const b = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
-  if (String(b.secret || "") !== expected) return res.status(403).json({ error: "Wrong secret." });
+  const b = readBody(req, res);
+  if (!b) return;
+  if (!sameSecret(b.secret || "", expected)) return res.status(403).json({ error: "Wrong secret." });
 
   const name = String(b.name || "").trim();
   const email = String(b.email || "").trim().toLowerCase();
