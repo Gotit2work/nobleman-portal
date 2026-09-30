@@ -71,6 +71,6 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error("login failed", err);
-    return res.status(500).json({ error: "Sign-in is unavailable right now." });
+    return res.status(500).json({ error: "Sign-in isn’t working right now. Try again in a few minutes, or email alexis@gotit2work.com." });
   }
 }
