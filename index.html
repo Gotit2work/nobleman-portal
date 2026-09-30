@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Cormorant+Garamond:ital,wght@1,400;1,500&amp;display=swap" rel="stylesheet">
+<script src="https://player.vimeo.com/api/player.js"></script>
+<style>
+body{margin:0;background:#031e25;color:#f4f4f2;font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit}a:hover{color:inherit}
+*{box-sizing:border-box}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #e5322d;outline-offset:2px}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:.15}}
+@keyframes viewIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes loadLine{from{width:0}to{width:100%}}
+@keyframes grain{0%,100%{transform:translate(0,0)}20%{transform:translate(-2%,1%)}40%{transform:translate(1%,-2%)}60%{transform:translate(-1%,2%)}80%{transform:translate(2%,-1%)}}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(229,50,45,.55)}70%{box-shadow:0 0 0 12px rgba(229,50,45,0)}100%{box-shadow:0 0 0 0 rgba(229,50,45,0)}}
+@keyframes kb{from{transform:scale(1)}to{transform:scale(1.04)}}
+</style>
+</helmet>
+<div data-screen-label="Client portal" style="position:relative;min-height:100vh;background:{{ bg }};color:{{ ink }};transition:background-color 700ms ease, color 700ms ease;font-family:Inter,system-ui,sans-serif;padding-bottom:{{ bottomPad }};{{ rootFrame }}">
+
+  <sc-if value="{{ loading }}" hint-placeholder-val="{{ false }}">
+  <div style="position:{{ fixedPos }};inset:0;z-index:100;background:#031e25;color:#f4f4f2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;opacity:{{ loaderOp }};transition:opacity 700ms ease;pointer-events:none">
+    <img src="assets/Nobleman_Mark_White.png" alt="" style="height:56px;width:auto;display:block">
+    <div style="width:180px;height:1px;background:rgba(244,244,242,0.18);overflow:hidden"><div style="height:100%;background:#f4f4f2;animation:loadLine 1.4s cubic-bezier(.16,.84,.3,1) both"></div></div>
+    <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;opacity:.6">Private screening room</div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ authScreen }}" hint-placeholder-val="{{ false }}">
+  <div style="position:{{ fixedPos }};inset:0;z-index:100;background:#031e25;color:#f4f4f2;display:flex;align-items:center;justify-content:center;padding:24px">
+    <sc-if value="{{ authChecking }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:28px">
+        <img src="assets/Nobleman_Mark_White.png" alt="" style="height:56px;width:auto;display:block">
+        <div style="width:180px;height:1px;background:rgba(244,244,242,0.18);overflow:hidden"><div style="height:100%;background:#f4f4f2;animation:loadLine 1.4s cubic-bezier(.16,.84,.3,1) both"></div></div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ signedOut }}" hint-placeholder-val="{{ true }}">
+      <div style="width:100%;max-width:400px;display:flex;flex-direction:column;gap:32px;animation:viewIn 600ms cubic-bezier(.16,.84,.3,1) both">
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <img src="assets/Nobleman_Logo_White.png" alt="Nobleman" style="height:28px;width:auto;display:block">
+          <div style="display:flex;align-items:center;gap:10px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;opacity:.6">Client portal<span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.8);display:inline-block;animation:blink 1.2s steps(1) infinite;flex:none"></span></div>
+        </div>
+        <form onSubmit="{{ doLogin }}" style="display:flex;flex-direction:column;gap:20px">
+          <label style="display:flex;flex-direction:column;gap:8px"><span style="font-size:11px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;opacity:.6">Email</span><input ref="{{ loginEmailRef }}" required type="email" name="email" autoComplete="username" style="height:50px;padding:0 15px;border:1px solid rgba(244,244,242,0.22);border-radius:6px;background:rgba(244,244,242,0.06);font:inherit;font-size:16px;color:#f4f4f2;outline:none;width:100%" style-focus="border-color:#f4f4f2"></label>
+          <label style="display:flex;flex-direction:column;gap:8px"><span style="font-size:11px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;opacity:.6">Password</span><input ref="{{ loginPassRef }}" required type="password" name="password" autoComplete="current-password" style="height:50px;padding:0 15px;border:1px solid rgba(244,244,242,0.22);border-radius:6px;background:rgba(244,244,242,0.06);font:inherit;font-size:16px;color:#f4f4f2;outline:none;width:100%" style-focus="border-color:#f4f4f2"></label>
+          <sc-if value="{{ authErr }}" hint-placeholder-val="{{ false }}">
+            <div role="alert" style="padding:13px 15px;border:1px solid #e5322d;border-radius:6px;background:rgba(229,50,45,0.12);font-size:14px;line-height:1.5">{{ authErr }}</div>
+          </sc-if>
+          <button type="submit" disabled="{{ authBusy }}" style="height:50px;margin-top:4px;border:0;border-radius:6px;background:{{ loginBtnBg }};color:#031e25;font:inherit;font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;cursor:{{ loginBtnCursor }};transition:background 150ms">{{ loginBtnLabel }}</button>
+        </form>
+        <div style="font-size:13px;line-height:1.6;opacity:.55;border-top:1px solid rgba(244,244,242,0.16);padding-top:20px">Trouble signing in? Email <a href="mailto:alexis@gotit2work.com" style="color:inherit">alexis@gotit2work.com</a>.</div>
+      </div>
+    </sc-if>
+  </div>
+  </sc-if>
+
+  <div aria-hidden="true" style="position:{{ fixedPos }};inset:-50%;width:200%;height:200%;pointer-events:none;z-index:90;display:{{ grainDisp }};opacity:{{ grainOp }};background-image:url('data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%222%22 stitchTiles=%22stitch%22/%3E%3CfeColorMatrix values=%220 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 1 0%22/%3E%3C/filter%3E%3Crect width=%22300%22 height=%22300%22 filter=%22url(%23n)%22/%3E%3C/svg%3E');background-size:300px 300px;animation:grain 1.1s steps(5) infinite;mix-blend-mode:overlay"></div>
+
+  <sc-if value="{{ isDesktop }}" hint-placeholder-val="{{ true }}">
+  <header style="position:{{ fixedPos }};top:14px;left:16px;right:16px;z-index:50;display:flex;justify-content:center;pointer-events:none">
+    <div style="pointer-events:auto;width:100%;max-width:1280px;height:56px;padding:0 8px 0 22px;border-radius:40px;display:flex;align-items:center;gap:8px;background:{{ navBg }};backdrop-filter:blur(20px) saturate(1.2);-webkit-backdrop-filter:blur(20px) saturate(1.2);border:1px solid {{ hairline }};box-shadow:inset 0 1px 0 rgba(255,255,255,0.14), 0 12px 40px -22px rgba(3,30,37,0.6);transition:background-color 700ms, border-color 700ms;color:{{ ink }}">
+      <button onClick="{{ goHome }}" aria-label="Portal home" style="border:0;background:none;padding:0;cursor:pointer;display:flex;align-items:center;margin-right:14px"><img src="assets/Nobleman_Logo_White.png" alt="Nobleman" style="height:24px;width:auto;display:{{ showWhite }}"><img src="assets/Nobleman_Logo_Black.png" alt="Nobleman" style="height:24px;width:auto;display:{{ showBlack }}"></button>
+      <span style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.5;padding-right:16px;border-right:1px solid {{ hairline }};margin-right:8px;white-space:nowrap">Client portal</span>
+      <nav style="display:flex;align-items:center;gap:2px;flex:1">
+        <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="5">
+          <button onClick="{{ n.go }}" style="height:36px;padding:0 14px;border:0;border-radius:32px;background:{{ n.bg }};color:inherit;font:inherit;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;opacity:{{ n.op }};transition:background 200ms, opacity 200ms" style-hover="opacity:1;background:rgba(127,127,127,0.12)">{{ n.label }}<sc-if value="{{ n.badge }}" hint-placeholder-val="{{ false }}"><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.8);display:inline-block;animation:blink 1.2s steps(1) infinite"></span></sc-if></button>
+        </sc-for>
+      </nav>
+      <button onClick="{{ goAccount }}" style="height:40px;padding:0 6px 0 14px;border:0;border-radius:32px;background:{{ accountBg }};color:inherit;font:inherit;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:10px;transition:background 200ms" style-hover="background:rgba(127,127,127,0.12)">{{ userName }}<span style="width:28px;height:28px;border-radius:50%;background:{{ ink }};color:{{ bg }};display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;letter-spacing:.04em;transition:background-color 700ms,color 700ms">{{ userInitials }}</span></button>
+    </div>
+  </header>
+  </sc-if>
+
+  <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}">
+  <header style="position:{{ fixedPos }};top:12px;left:0;right:0;z-index:50;display:flex;justify-content:center;pointer-events:none">
+    <button onClick="{{ goHome }}" style="pointer-events:auto;height:44px;padding:0 18px;border-radius:40px;display:flex;align-items:center;gap:12px;background:{{ navBg }};backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid {{ hairline }};color:{{ ink }};font:inherit;cursor:pointer;transition:background-color 700ms"><img src="assets/Nobleman_Logo_White.png" alt="Nobleman" style="height:22px;width:auto;display:{{ showWhite }}"><img src="assets/Nobleman_Logo_Black.png" alt="Nobleman" style="height:22px;width:auto;display:{{ showBlack }}"><span style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;opacity:.5;padding-left:12px;border-left:1px solid {{ hairline }}">Portal</span></button>
+  </header>
+  <nav style="position:{{ fixedPos }};left:12px;right:12px;bottom:12px;z-index:50;height:64px;padding:0 6px;border-radius:40px;display:flex;align-items:center;justify-content:space-between;gap:2px;background:{{ navBg }};backdrop-filter:blur(20px) saturate(1.2);-webkit-backdrop-filter:blur(20px) saturate(1.2);border:1px solid {{ hairline }};box-shadow:inset 0 1px 0 rgba(255,255,255,0.16), 0 16px 40px -18px rgba(3,30,37,0.7);color:{{ ink }};transition:background-color 700ms, border-color 700ms">
+    <sc-for list="{{ mobileNav }}" as="n" hint-placeholder-count="5">
+      <button onClick="{{ n.go }}" style="flex:1;height:52px;border:0;border-radius:32px;background:{{ n.bg }};color:inherit;font:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;cursor:pointer;min-width:0;opacity:{{ n.op }}"><span style="width:5px;height:5px;border-radius:50%;background:{{ n.dot }};transition:background 200ms"></span><span style="font-size:11px;letter-spacing:.04em">{{ n.label }}</span></button>
+    </sc-for>
+  </nav>
+  </sc-if>
+
+  <!-- HOME -->
+  <sc-if value="{{ vHome }}" hint-placeholder-val="{{ true }}">
+  <main data-screen-label="Portal · Home" style="max-width:1280px;margin:0 auto;padding:{{ padTop }} 24px 64px;display:flex;flex-direction:column;gap:{{ gapXL }};animation:viewIn 700ms cubic-bezier(.16,.84,.3,1) both">
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <h1 style="margin:0;font-size:clamp(32px,4vw,48px);font-weight:500;letter-spacing:-0.01em;line-height:1.1">{{ greeting }}, Jonathan.</h1>
+      <p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:clamp(21px,2.2vw,27px);opacity:.72">Here’s where your production stands.</p>
+    </div>
+
+    <section style="display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap">
+        <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Your project</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+        <button onClick="{{ goProjects }}" style="height:36px;padding:0 4px;border:0;background:none;color:inherit;font:inherit;font-size:14px;cursor:pointer;opacity:.7;transition:opacity 200ms" style-hover="opacity:1">All productions →</button>
+      </div>
+      <button onClick="{{ goProjectMeridian }}" style="position:relative;display:block;width:100%;border:0;padding:0;background:#031e25;color:#f4f4f2;text-align:left;cursor:pointer;aspect-ratio:{{ heroRatio }};overflow:hidden;font:inherit">
+        <img src="{{ featured.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;animation:kb 20s ease-in-out infinite alternate;opacity:.92">
+        <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(3,30,37,0.05) 30%,rgba(3,30,37,0.88) 100%)"></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;padding:clamp(20px,3vw,40px);display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:10px"><span style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;opacity:.7">{{ featured.type }}</span><span style="font-size:clamp(32px,4.5vw,64px);font-weight:500;letter-spacing:-0.015em;line-height:1">{{ featured.title }}</span></div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px"><span style="font-size:clamp(40px,5vw,72px);font-weight:300;letter-spacing:-0.03em;line-height:1;font-variant-numeric:tabular-nums">{{ featured.pct }}<span style="font-size:.4em;vertical-align:top;opacity:.7">%</span></span><span style="display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase">{{ featured.stage }}<span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.8);display:inline-block;animation:blink 1.2s steps(1) infinite"></span></span></div>
+        </div>
+      </button>
+      <div style="display:grid;grid-template-columns:{{ stageCols }};gap:12px 6px">
+        <sc-for list="{{ featuredStages }}" as="s" hint-placeholder-count="6">
+          <div style="display:flex;flex-direction:column;gap:12px;min-width:0"><div style="height:1px;background:{{ s.line }};transition:background 700ms"></div><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:{{ s.op }};display:flex;align-items:center;gap:8px;line-height:1.3">{{ s.name }}<sc-if value="{{ s.current }}" hint-placeholder-val="{{ false }}"><span style="width:5px;height:5px;border-radius:50%;background:#e5322d;display:inline-block;flex:none"></span></sc-if></div></div>
+        </sc-for>
+      </div>
+      <div style="display:flex;justify-content:space-between;gap:8px 16px;flex-wrap:wrap;font-size:14px;border-top:1px solid {{ hairline }};padding-top:16px">
+        <span style="opacity:.6">{{ featured.nextLabel }}</span>
+        <span><span style="font-weight:500">{{ featured.next }}</span><span style="opacity:.6"> · {{ featured.nextWhat }}</span></span>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:24px">
+      <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Needs your attention</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.8);display:inline-block;flex:none;animation:blink 1.2s steps(1) infinite"></span></span>
+      <div style="display:grid;grid-template-columns:{{ splitCols }};gap:clamp(20px,3vw,44px);align-items:center">
+        <button onClick="{{ goReview }}" aria-label="Review Campaign Film, version 3" style="position:relative;display:block;width:100%;aspect-ratio:16/9;border:0;padding:0;background:#000;color:#f4f4f2;cursor:pointer;overflow:hidden;font:inherit">
+          <img src="{{ reviewImg }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.6s cubic-bezier(.16,.84,.3,1)" style-hover="transform:scale(1.03)">
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none"><span style="width:68px;height:68px;border-radius:50%;border:1px solid rgba(244,244,242,.6);display:flex;align-items:center;justify-content:center;background:rgba(3,30,37,.35);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)"><span style="width:0;height:0;border-left:16px solid #f4f4f2;border-top:10px solid transparent;border-bottom:10px solid transparent;margin-left:5px"></span></span></div>
+          <div style="position:absolute;left:0;right:0;top:0;padding:16px 18px;display:flex;justify-content:space-between;font-size:11px;letter-spacing:.14em;text-transform:uppercase;pointer-events:none;text-shadow:0 1px 8px rgba(0,0,0,.6)"><span>Version 3</span><span>Review copy</span></div>
+        </button>
+        <div style="display:flex;flex-direction:column;gap:18px;align-items:flex-start">
+          <div><div style="font-size:clamp(28px,3vw,40px);font-weight:500;letter-spacing:-0.01em;line-height:1.1">Campaign Film</div><div style="margin-top:8px;font-size:15px;opacity:.7">Meridian Campaign · Version 3 · Uploaded September 28</div></div>
+          <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;padding:8px 14px;border:1px solid {{ hairline }};border-radius:32px">{{ statusText }}</span>
+          <p style="margin:0;font-size:15px;line-height:1.55;opacity:.75;max-width:440px;text-wrap:pretty">Justin reworked the opening around your note on the wide shot. Watch it through once, then approve or request changes.</p>
+          <button onClick="{{ goReview }}" style="height:48px;padding:0 26px;border-radius:32px;border:0;background:{{ btnBg }};color:{{ btnInk }};font:inherit;font-size:15px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:10px;transition:opacity 200ms" style-hover="opacity:.85">Review film</button>
+        </div>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap">
+        <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Recently delivered</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+        <button onClick="{{ goLibrary }}" style="height:36px;padding:0 4px;border:0;background:none;color:inherit;font:inherit;font-size:14px;cursor:pointer;opacity:.7;transition:opacity 200ms" style-hover="opacity:1">Open library →</button>
+      </div>
+      <div style="display:grid;grid-template-columns:{{ splitColsR }};gap:clamp(20px,3vw,44px);align-items:center">
+        <div style="display:flex;flex-direction:column;gap:18px;align-items:flex-start;order:{{ textOrder }}">
+          <div><div style="font-size:clamp(28px,3vw,40px);font-weight:500;letter-spacing:-0.01em;line-height:1.1">Campaign Hero Film</div><div style="margin-top:8px;font-size:15px;opacity:.7">4:21 · 4K · Delivered September 20</div></div>
+          <p style="margin:0;font-size:15px;line-height:1.55;opacity:.75;max-width:420px;text-wrap:pretty">The four-minute brand film. Master, web and captioned versions are in your library.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap"><button onClick="{{ openHero }}" style="height:48px;padding:0 26px;border-radius:32px;border:0;background:{{ btnBg }};color:{{ btnInk }};font:inherit;font-size:15px;font-weight:500;cursor:pointer;transition:opacity 200ms" style-hover="opacity:.85">Watch film</button><button onClick="{{ copyHeroLink }}" style="height:48px;padding:0 22px;border-radius:32px;border:1px solid {{ outline }};background:transparent;color:inherit;font:inherit;font-size:15px;cursor:pointer;transition:background 200ms" style-hover="background:rgba(127,127,127,0.12)">Copy private link</button></div>
+        </div>
+        <button onClick="{{ openHero }}" aria-label="Watch Campaign Hero Film" style="position:relative;display:block;width:100%;aspect-ratio:16/9;border:0;padding:0;background:#000;cursor:pointer;overflow:hidden;order:{{ imgOrder }}"><img src="{{ heroImg }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.6s cubic-bezier(.16,.84,.3,1)" style-hover="transform:scale(1.03)"></button>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:20px">
+      <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Also in production</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+      <button onClick="{{ goProjectSocial }}" style="display:grid;grid-template-columns:{{ rowCols }};gap:16px 20px;align-items:center;width:100%;border:0;border-top:1px solid {{ hairline }};border-bottom:1px solid {{ hairline }};padding:20px 0;background:none;color:inherit;text-align:left;cursor:pointer;font:inherit">
+        <img src="{{ social.img }}" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover;display:block">
+        <div style="min-width:0"><div style="font-size:20px;font-weight:500;letter-spacing:-0.01em">{{ social.title }}</div><div style="font-size:14px;opacity:.6;margin-top:4px">{{ social.type }}</div></div>
+        <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;grid-column:{{ stageCol }}"><span style="display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.1em;text-transform:uppercase">{{ social.stage }}<span style="width:5px;height:5px;border-radius:50%;background:#e5322d;display:inline-block"></span></span><span style="opacity:.6">{{ social.nextWhat }} · {{ social.next }}</span></div>
+        <span style="opacity:.5;justify-self:end;display:{{ arrowDisp }}">→</span>
+      </button>
+    </section>
+
+    <div style="display:grid;grid-template-columns:{{ splitColsEq }};gap:clamp(40px,5vw,72px)">
+      <section style="display:flex;flex-direction:column;gap:24px">
+        <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Your Nobleman team</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+        <div style="display:flex;gap:20px;flex-wrap:wrap">
+          <sc-for list="{{ team }}" as="m" hint-placeholder-count="3">
+            <div style="display:flex;flex-direction:column;gap:12px;width:128px">
+              <sc-if value="{{ m.hasImg }}" hint-placeholder-val="{{ true }}"><img src="{{ m.img }}" alt="{{ m.name }}" style="width:128px;aspect-ratio:4/5;object-fit:cover;display:block;filter:grayscale(1) contrast(1.05)"></sc-if>
+              <sc-if value="{{ m.noImg }}" hint-placeholder-val="{{ false }}"><div style="width:128px;aspect-ratio:4/5;background:{{ card }};display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:40px;opacity:.8">{{ m.initial }}</div></sc-if>
+              <div><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:.55">{{ m.role }}</div><div style="font-size:16px;font-weight:500;margin-top:4px">{{ m.name }}</div></div>
+            </div>
+          </sc-for>
+        </div>
+        <button onClick="{{ goMessages }}" style="align-self:flex-start;height:44px;padding:0 20px;border-radius:32px;border:1px solid {{ outline }};background:transparent;color:inherit;font:inherit;font-size:14px;cursor:pointer;transition:background 200ms" style-hover="background:rgba(127,127,127,0.12)">Message the team</button>
+      </section>
+      <section style="display:flex;flex-direction:column;gap:16px">
+        <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Recent activity</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ activity }}" as="a" hint-placeholder-count="4">
+            <div style="display:grid;grid-template-columns:130px 1fr;gap:16px;padding:14px 0;border-top:1px solid {{ hairline }};font-size:14px"><span style="opacity:.55">{{ a.date }}</span><span>{{ a.text }}</span></div>
+          </sc-for>
+        </div>
+      </section>
+    </div>
+  </main>
+  </sc-if>
+
+  <!-- PROJECTS -->
+  <sc-if value="{{ vProjects }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="Portal · Productions" style="max-width:1280px;margin:0 auto;padding:{{ padTop }} 24px 64px;display:flex;flex-direction:column;gap:{{ gapXL }};animation:viewIn 700ms cubic-bezier(.16,.84,.3,1) both">
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <h1 style="margin:0;font-size:clamp(32px,4vw,48px);font-weight:500;letter-spacing:-0.01em;line-height:1.1">Productions</h1>
+      <p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:clamp(21px,2.2vw,27px);opacity:.72">Two productions in progress with Nobleman.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:{{ splitColsEq }};gap:clamp(24px,3vw,40px)">
+      <sc-for list="{{ projectTiles }}" as="p" hint-placeholder-count="2">
+        <button onClick="{{ p.go }}" style="display:flex;flex-direction:column;gap:18px;border:0;padding:0;background:none;color:inherit;text-align:left;cursor:pointer;font:inherit">
+          <div style="position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;background:#031e25"><img src="{{ p.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.6s cubic-bezier(.16,.84,.3,1)" style-hover="transform:scale(1.03)"><span style="position:absolute;right:18px;top:16px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#f4f4f2;text-shadow:0 1px 8px rgba(0,0,0,.6);display:inline-flex;align-items:center;gap:8px">{{ p.stage }}<span style="width:5px;height:5px;border-radius:50%;background:#e5322d;display:inline-block"></span></span></div>
+          <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start">
+            <div><div style="font-size:clamp(22px,2.4vw,30px);font-weight:500;letter-spacing:-0.01em;line-height:1.1">{{ p.title }}</div><div style="font-size:14px;opacity:.6;margin-top:6px">{{ p.type }}</div></div>
+            <span style="font-size:28px;font-weight:300;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;line-height:1">{{ p.pct }}<span style="font-size:.5em;vertical-align:top;opacity:.7">%</span></span>
+          </div>
+          <div style="font-size:14px;border-top:1px solid {{ hairline }};padding-top:12px"><span style="opacity:.6">{{ p.nextLabel }} · </span><span style="font-weight:500">{{ p.next }}</span></div>
+        </button>
+      </sc-for>
+    </div>
+    <section style="display:flex;flex-direction:column;gap:16px">
+      <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Completed</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;border-top:1px solid {{ hairline }};border-bottom:1px solid {{ hairline }};padding:22px 0">
+        <div><div style="font-size:18px;font-weight:500">Finished work lives in your library.</div><div style="font-size:14px;opacity:.6;margin-top:4px">Five deliverables so far from the Meridian Campaign.</div></div>
+        <button onClick="{{ goLibrary }}" style="height:44px;padding:0 20px;border-radius:32px;border:1px solid {{ outline }};background:transparent;color:inherit;font:inherit;font-size:14px;cursor:pointer;transition:background 200ms" style-hover="background:rgba(127,127,127,0.12)">Open library</button>
+      </div>
+    </section>
+  </main>
+  </sc-if>
+
+  <!-- PROJECT -->
+  <sc-if value="{{ vProject }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="Portal · Project" style="max-width:1280px;margin:0 auto;padding:{{ padTop }} 24px 64px;display:flex;flex-direction:column;gap:{{ gapL }};animation:viewIn 700ms cubic-bezier(.16,.84,.3,1) both">
+    <button onClick="{{ goProjects }}" style="align-self:flex-start;height:36px;padding:0 4px;border:0;background:none;color:inherit;font:inherit;font-size:14px;cursor:pointer;opacity:.7;transition:opacity 200ms" style-hover="opacity:1">← Productions</button>
+    <div style="position:relative;aspect-ratio:{{ heroRatio }};overflow:hidden;background:#031e25;color:#f4f4f2">
+      <img src="{{ proj.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;animation:kb 20s ease-in-out infinite alternate;opacity:.92">
+      <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(3,30,37,0.05) 30%,rgba(3,30,37,0.88) 100%)"></div>
+      <div style="position:absolute;left:0;right:0;bottom:0;padding:clamp(20px,3vw,40px);display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap">
+        <div style="display:flex;flex-direction:column;gap:10px"><span style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;opacity:.7">{{ proj.type }}</span><h1 style="margin:0;font-size:clamp(32px,4.5vw,64px);font-weight:500;letter-spacing:-0.015em;line-height:1">{{ proj.title }}</h1></div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px"><span style="font-size:clamp(40px,5vw,72px);font-weight:300;letter-spacing:-0.03em;line-height:1;font-variant-numeric:tabular-nums">{{ proj.pct }}<span style="font-size:.4em;vertical-align:top;opacity:.7">%</span></span><span style="display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase">{{ proj.stage }}<span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.8);display:inline-block;animation:blink 1.2s steps(1) infinite"></span></span></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:{{ stageCols }};gap:12px 6px">
+      <sc-for list="{{ projStages }}" as="s" hint-placeholder-count="6">
+        <div style="display:flex;flex-direction:column;gap:12px;min-width:0"><div style="height:1px;background:{{ s.line }}"></div><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:{{ s.op }};display:flex;align-items:center;gap:8px;line-height:1.3">{{ s.name }}<sc-if value="{{ s.current }}" hint-placeholder-val="{{ false }}"><span style="width:5px;height:5px;border-radius:50%;background:#e5322d;display:inline-block;flex:none"></span></sc-if></div></div>
+      </sc-for>
+    </div>
+    <div style="display:flex;justify-content:space-between;gap:8px 16px;flex-wrap:wrap;font-size:14px;border-top:1px solid {{ hairline }};padding-top:16px">
+      <span style="opacity:.6">{{ proj.nextLabel }}</span>
+      <span><span style="font-weight:500">{{ proj.next }}</span><span style="opacity:.6"> · {{ proj.nextWhat }}</span></span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:{{ splitCols }};gap:clamp(32px,4vw,64px);align-items:start">
+      <section style="display:flex;flex-direction:column;gap:20px">
+        <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Latest cut</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+        <sc-if value="{{ projHasCut }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ goReview }}" aria-label="Review the latest cut" style="position:relative;display:block;width:100%;aspect-ratio:16/9;border:0;padding:0;background:#000;color:#f4f4f2;cursor:pointer;overflow:hidden;font:inherit">
+            <img src="{{ reviewImg }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.6s cubic-bezier(.16,.84,.3,1)" style-hover="transform:scale(1.03)">
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none"><span style="width:60px;height:60px;border-radius:50%;border:1px solid rgba(244,244,242,.6);display:flex;align-items:center;justify-content:center;background:rgba(3,30,37,.35)"><span style="width:0;height:0;border-left:14px solid #f4f4f2;border-top:9px solid transparent;border-bottom:9px solid transparent;margin-left:4px"></span></span></div>
+          </button>
+          <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center"><div><div style="font-size:18px;font-weight:500">Campaign Film · Version 3</div><div style="font-size:14px;opacity:.6;margin-top:4px">{{ statusText }} · Uploaded September 28</div></div><button onClick="{{ goReview }}" style="height:44px;padding:0 20px;border-radius:32px;border:0;background:{{ btnBg }};color:{{ btnInk }};font:inherit;font-size:14px;font-weight:500;cursor:pointer;transition:opacity 200ms" style-hover="opacity:.85">Review film</button></div>
+        </sc-if>
+        <sc-if value="{{ projNoCut }}" hint-placeholder-val="{{ false }}">
+          <div style="border:1px solid {{ hairline }};padding:clamp(24px,3vw,40px);display:flex;flex-direction:column;gap:10px"><div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.6">Your first cut is in production</div><div style="font-size:20px;font-weight:500;line-height:1.3;text-wrap:balance">Two shoot days remain. We’ll let you know the moment the first cut is ready to watch.</div></div>
+        </sc-if>
+      </section>
+      <section style="display:flex;flex-direction:column;gap:20px">
+        <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Your Nobleman team</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ team }}" as="m" hint-placeholder-count="3">
+            <div style="display:grid;grid-template-columns:56px 1fr;gap:16px;align-items:center;padding:12px 0;border-top:1px solid {{ hairline }}">
+              <sc-if value="{{ m.hasImg }}" hint-placeholder-val="{{ true }}"><img src="{{ m.img }}" alt="" style="width:56px;aspect-ratio:4/5;object-fit:cover;display:block;filter:grayscale(1)"></sc-if>
+              <sc-if value="{{ m.noImg }}" hint-placeholder-val="{{ false }}"><div style="width:56px;aspect-ratio:4/5;background:{{ card }};display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:24px;opacity:.8">{{ m.initial }}</div></sc-if>
+              <div><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:.55">{{ m.role }}</div><div style="font-size:16px;font-weight:500;margin-top:3px">{{ m.name }}</div></div>
+            </div>
+          </sc-for>
+        </div>
+        <button onClick="{{ goMessages }}" style="align-self:flex-start;height:44px;padding:0 20px;border-radius:32px;border:1px solid {{ outline }};background:transparent;color:inherit;font:inherit;font-size:14px;cursor:pointer;transition:background 200ms" style-hover="background:rgba(127,127,127,0.12)">Message the team</button>
+      </section>
+    </div>
+
+    <sc-if value="{{ projHasCut }}" hint-placeholder-val="{{ true }}">
+    <section style="display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap"><span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Deliverables</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span><button onClick="{{ goLibrary }}" style="height:36px;padding:0 4px;border:0;background:none;color:inherit;font:inherit;font-size:14px;cursor:pointer;opacity:.7" style-hover="opacity:1">Open library →</button></div>
+      <div style="display:flex;flex-direction:column;border-top:1px solid {{ hairline }}">
+        <sc-for list="{{ projDeliverables }}" as="it" hint-placeholder-count="4">
+          <button onClick="{{ it.open }}" style="display:grid;grid-template-columns:{{ delivCols }};gap:16px 20px;align-items:center;width:100%;padding:14px 0;border:0;border-bottom:1px solid {{ hairline }};background:none;color:inherit;text-align:left;cursor:pointer;font:inherit;transition:background 200ms" style-hover="background:rgba(127,127,127,0.06)">
+            <div style="aspect-ratio:16/9;overflow:hidden;background:#031e25;display:flex;justify-content:center"><img src="{{ it.img }}" alt="" style="width:{{ it.thumbW }};height:100%;object-fit:cover;display:block"></div>
+            <div style="min-width:0"><div style="font-size:17px;font-weight:500">{{ it.title }}</div><div style="font-size:13px;opacity:.6;margin-top:3px">{{ it.meta }}</div></div>
+            <span style="opacity:.5;justify-self:end">→</span>
+          </button>
+        </sc-for>
+      </div>
+    </section>
+    </sc-if>
+
+    <div style="display:grid;grid-template-columns:{{ splitColsEq }};gap:clamp(32px,4vw,64px);align-items:start">
+      <section style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap"><span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Project materials</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span><button onClick="{{ goFiles }}" style="height:36px;padding:0 4px;border:0;background:none;color:inherit;font:inherit;font-size:14px;cursor:pointer;opacity:.7" style-hover="opacity:1">Manage files →</button></div>
+        <div style="display:flex;flex-direction:column;border-top:1px solid {{ hairline }}">
+          <sc-for list="{{ recentFiles }}" as="f" hint-placeholder-count="3">
+            <div style="display:grid;grid-template-columns:40px 1fr auto;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid {{ hairline }}"><span style="width:40px;height:40px;border:1px solid {{ hairline }};display:flex;align-items:center;justify-content:center;font-size:9px;letter-spacing:.1em;font-weight:600">{{ f.type }}</span><div style="min-width:0"><div style="font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ f.name }}</div><div style="font-size:12px;opacity:.6;margin-top:2px">{{ f.cat }} · {{ f.size }}</div></div><span style="font-size:12px;opacity:.55">{{ f.when }}</span></div>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;font-size:14px"><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;display:inline-block;animation:blink 1.2s steps(1) infinite"></span><span><span style="font-weight:500">{{ requestedCount }} items still needed</span><span style="opacity:.6"> · requested September 24</span></span></div>
+      </section>
+      <section style="display:flex;flex-direction:column;gap:16px">
+        <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Documents</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+        <div style="display:flex;flex-direction:column;border-top:1px solid {{ hairline }}">
+          <sc-for list="{{ documents }}" as="d" hint-placeholder-count="5">
+            <button onClick="{{ d.open }}" style="display:flex;justify-content:space-between;align-items:center;gap:16px;width:100%;padding:14px 0;border:0;border-bottom:1px solid {{ hairline }};background:none;color:inherit;text-align:left;cursor:pointer;font:inherit"><span style="font-size:14px;font-weight:500">{{ d.name }}</span><span style="font-size:13px;opacity:.55;white-space:nowrap">{{ d.meta }}</span></button>
+          </sc-for>
+        </div>
+      </section>
+    </div>
+
+    <div style="display:grid;grid-template-columns:{{ splitColsEq }};gap:clamp(32px,4vw,64px);align-items:start">
+      <section ref="{{ messagesRef }}" style="display:flex;flex-direction:column;gap:16px">
+        <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Project messages</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ messages }}" as="m" hint-placeholder-count="3">
+            <div style="display:flex;flex-direction:column;gap:6px;padding:16px 0;border-top:1px solid {{ hairline }}"><div style="font-size:12px;opacity:.55">{{ m.who }} · {{ m.when }}</div><div style="font-size:15px;line-height:1.55">{{ m.text }}</div></div>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:10px;border-top:1px solid {{ hairline }};padding-top:16px">
+          <input ref="{{ messageRef }}" onKeyDown="{{ messageKey }}" placeholder="Write to Jean and Justin" aria-label="Message" style="flex:1;height:46px;padding:0 16px;border:1px solid {{ hairline }};border-radius:32px;background:{{ card }};color:inherit;font:inherit;font-size:14px;min-width:0">
+          <button onClick="{{ sendMessage }}" style="height:46px;padding:0 20px;border-radius:32px;border:0;background:{{ btnBg }};color:{{ btnInk }};font:inherit;font-size:14px;font-weight:500;cursor:pointer">Send</button>
+        </div>
+      </section>
+      <section style="display:flex;flex-direction:column;gap:16px">
+        <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Activity</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ activity }}" as="a" hint-placeholder-count="4">
+            <div style="display:grid;grid-template-columns:130px 1fr;gap:16px;padding:14px 0;border-top:1px solid {{ hairline }};font-size:14px"><span style="opacity:.55">{{ a.date }}</span><span>{{ a.text }}</span></div>
+          </sc-for>
+        </div>
+      </section>
+    </div>
+  </main>
+  </sc-if>
+
+  <!-- REVIEW -->
+  <sc-if value="{{ vReview }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="Portal · Review" style="max-width:1280px;margin:0 auto;padding:{{ padTop }} 24px 64px;display:flex;flex-direction:column;gap:28px;animation:viewIn 700ms cubic-bezier(.16,.84,.3,1) both">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Review · Meridian Campaign</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.8);display:inline-block;flex:none;animation:blink 1.2s steps(1) infinite"></span></span>
+        <h1 style="margin:0;font-size:clamp(30px,3.6vw,46px);font-weight:500;letter-spacing:-0.01em;line-height:1.05">Campaign Film</h1>
+        <div style="font-size:14px;opacity:.65">Version {{ ver.v }} · Uploaded {{ ver.date }}</div>
+      </div>
+      <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;padding:10px 16px;border:1px solid {{ hairline }};border-radius:32px">{{ statusText }}</span>
+    </div>
+
+    <div style="position:relative;z-index:95;background:#000;aspect-ratio:16/9;overflow:hidden;box-shadow:0 40px 120px -40px rgba(0,0,0,.85)">
+      <iframe ref="{{ videoRef }}" src="https://player.vimeo.com/video/1197058424?h=796798a19d&amp;title=0&amp;byline=0&amp;portrait=0&amp;controls=0&amp;dnt=1&amp;playsinline=1" title="Campaign Film" allow="autoplay; fullscreen; picture-in-picture" style="position:absolute;inset:0;width:100%;height:100%;border:0;display:block"></iframe>
+      <div style="position:absolute;left:0;right:0;top:0;padding:16px 20px;display:flex;justify-content:space-between;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#f4f4f2;pointer-events:none;text-shadow:0 1px 8px rgba(0,0,0,.6)"><span>Campaign Film · V{{ ver.v }}</span><span style="display:inline-flex;align-items:center;gap:8px">Review copy<span style="width:6px;height:6px;border-radius:50%;background:#e5322d;display:inline-block;animation:blink 1.2s steps(1) infinite"></span></span></div>
+      <div style="position:absolute;left:0;right:0;bottom:0;padding:24px 20px 14px;display:flex;flex-direction:column;gap:8px;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.6));color:#f4f4f2">
+        <div onClick="{{ seekTo }}" role="slider" aria-label="Playhead" aria-valuenow="{{ timeSec }}" style="position:relative;height:28px;display:flex;align-items:center;cursor:pointer">
+          <div style="position:absolute;left:0;right:0;height:2px;background:rgba(244,244,242,.25)"></div>
+          <div style="position:absolute;left:0;height:2px;background:#f4f4f2;width:{{ progressPct }}"></div>
+          <sc-for list="{{ markers }}" as="m" hint-placeholder-count="3">
+            <button onClick="{{ m.seek }}" title="{{ m.tc }}" aria-label="Comment at {{ m.tc }}" style="position:absolute;left:{{ m.left }};top:50%;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;border:0;padding:0;background:#e5322d;animation:pulse 2.6s ease-out infinite;animation-delay:{{ m.delay }};cursor:pointer"></button>
+          </sc-for>
+          <div style="position:absolute;left:{{ progressPct }};top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#f4f4f2;pointer-events:none"></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
+          <div style="display:flex;align-items:center;gap:14px">
+            <button onClick="{{ togglePlay }}" aria-label="Play or pause" style="width:44px;height:44px;border-radius:50%;border:1px solid rgba(244,244,242,.5);background:rgba(3,30,37,.45);color:#f4f4f2;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0"><sc-if value="{{ paused }}" hint-placeholder-val="{{ true }}"><span style="width:0;height:0;border-left:12px solid #f4f4f2;border-top:7px solid transparent;border-bottom:7px solid transparent;margin-left:3px"></span></sc-if><sc-if value="{{ playing }}" hint-placeholder-val="{{ false }}"><span style="display:flex;gap:4px"><span style="width:3px;height:14px;background:#f4f4f2"></span><span style="width:3px;height:14px;background:#f4f4f2"></span></span></sc-if></button>
+            <span style="font-variant-numeric:tabular-nums;font-size:13px;letter-spacing:.06em">{{ tcCur }} <span style="opacity:.5">/ {{ tcDur }}</span></span>
+          </div>
+          <button onClick="{{ addAtCurrent }}" style="height:36px;padding:0 14px;border-radius:32px;border:1px solid rgba(244,244,242,.4);background:rgba(3,30,37,.3);color:#f4f4f2;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap">Note at {{ tcCur }}</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:{{ splitColsRev }};gap:clamp(28px,4vw,64px);align-items:start">
+      <div style="display:flex;flex-direction:column;gap:32px">
+        <section style="display:flex;flex-direction:column;gap:14px">
+          <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Version history</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <sc-for list="{{ versions }}" as="x" hint-placeholder-count="3">
+              <button onClick="{{ x.pick }}" style="height:40px;padding:0 16px;border-radius:32px;border:1px solid {{ x.border }};background:{{ x.bg }};color:{{ x.color }};font:inherit;font-size:13px;cursor:pointer;display:inline-flex;gap:8px;align-items:center;transition:background 200ms">V{{ x.v }}<sc-if value="{{ x.current }}" hint-placeholder-val="{{ false }}"><span style="font-size:10px;letter-spacing:.12em;opacity:.75">CURRENT</span></sc-if></button>
+            </sc-for>
+          </div>
+          <div style="font-size:14px;line-height:1.5;opacity:.7">{{ ver.note }}</div>
+        </section>
+        <section style="display:flex;flex-direction:column;gap:14px">
+          <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Your decision</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+          <sc-if value="{{ notRequesting }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <sc-for list="{{ decisionButtons }}" as="b" hint-placeholder-count="2">
+                <button onClick="{{ b.fn }}" style="height:48px;padding:0 24px;border-radius:32px;border:1px solid {{ b.border }};background:{{ b.bg }};color:{{ b.color }};font:inherit;font-size:15px;font-weight:500;cursor:pointer;transition:opacity 200ms" style-hover="opacity:.85">{{ b.label }}</button>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{ requesting }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <textarea ref="{{ requestRef }}" rows="4" placeholder="What should change? Reference timecodes where you can." aria-label="Requested changes" style="width:100%;padding:14px 16px;border:1px solid {{ hairline }};border-radius:14px;background:{{ card }};color:inherit;font:inherit;font-size:15px;line-height:1.5;resize:vertical"></textarea>
+              <div style="display:flex;gap:10px;flex-wrap:wrap"><button onClick="{{ submitRequest }}" style="height:48px;padding:0 24px;border-radius:32px;border:0;background:{{ btnBg }};color:{{ btnInk }};font:inherit;font-size:15px;font-weight:500;cursor:pointer">Send request</button><button onClick="{{ cancelRequest }}" style="height:48px;padding:0 12px;border:0;background:none;color:inherit;font:inherit;font-size:14px;cursor:pointer;opacity:.7">Cancel</button></div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ hasDecisions }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;border-top:1px solid {{ hairline }}">
+              <sc-for list="{{ decisions }}" as="d" hint-placeholder-count="1">
+                <div style="display:grid;grid-template-columns:130px 1fr;gap:16px;padding:12px 0;border-bottom:1px solid {{ hairline }};font-size:14px"><span style="opacity:.55">{{ d.date }}</span><span>{{ d.text }}</span></div>
+              </sc-for>
+            </div>
+          </sc-if>
+          <p style="margin:0;font-size:13px;line-height:1.5;opacity:.55;max-width:420px;text-wrap:pretty">Approving locks this version for finishing. You can still request changes afterwards; they become a new revision request.</p>
+        </section>
+      </div>
+      <section style="display:flex;flex-direction:column;gap:14px">
+        <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Comments · {{ commentCount }}</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ comments }}" as="c" hint-placeholder-count="3">
+            <div style="display:grid;grid-template-columns:64px 1fr;gap:16px;padding:16px 0;border-top:1px solid {{ hairline }}">
+              <button onClick="{{ c.seek }}" style="height:30px;border:1px solid {{ hairline }};border-radius:32px;background:none;color:inherit;font:inherit;font-size:12px;font-variant-numeric:tabular-nums;cursor:pointer;letter-spacing:.04em;padding:0;transition:background 200ms" style-hover="background:rgba(127,127,127,0.12)">{{ c.tc }}</button>
+              <div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:15px;line-height:1.5">{{ c.text }}</div><div style="font-size:12px;opacity:.55">{{ c.who }} · {{ c.when }}</div></div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:10px;border-top:1px solid {{ hairline }};padding-top:16px">
+          <span style="height:46px;display:inline-flex;align-items:center;padding:0 12px;border:1px solid {{ hairline }};border-radius:32px;font-size:12px;font-variant-numeric:tabular-nums;flex:none">{{ tcCur }}</span>
+          <input ref="{{ commentRef }}" onKeyDown="{{ commentKey }}" placeholder="Add a note at this timecode" aria-label="New comment" style="flex:1;height:46px;padding:0 16px;border:1px solid {{ hairline }};border-radius:32px;background:{{ card }};color:inherit;font:inherit;font-size:14px;min-width:0">
+          <button onClick="{{ addComment }}" style="height:46px;padding:0 20px;border-radius:32px;border:0;background:{{ btnBg }};color:{{ btnInk }};font:inherit;font-size:14px;font-weight:500;cursor:pointer">Add</button>
+        </div>
+      </section>
+    </div>
+  </main>
+  </sc-if>
+
+  <!-- LIBRARY -->
+  <sc-if value="{{ vLibrary }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="Portal · Library" style="max-width:1280px;margin:0 auto;padding:{{ padTop }} 24px 64px;display:flex;flex-direction:column;gap:{{ gapL }};animation:viewIn 700ms cubic-bezier(.16,.84,.3,1) both">
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Library</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+      <h1 style="margin:0;font-size:clamp(32px,4vw,48px);font-weight:500;letter-spacing:-0.01em;line-height:1.1">Your Nobleman Library</h1>
+      <p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:clamp(21px,2.2vw,27px);opacity:.72">Five finished pieces and one archive. Available until December 31, 2027.</p>
+    </div>
+    <button onClick="{{ openHero }}" style="position:relative;display:block;width:100%;border:0;padding:0;background:#031e25;color:#f4f4f2;text-align:left;cursor:pointer;aspect-ratio:{{ heroRatio }};overflow:hidden;font:inherit">
+      <img src="{{ heroImg }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.8s cubic-bezier(.16,.84,.3,1)" style-hover="transform:scale(1.03)">
+      <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(3,30,37,0) 40%,rgba(3,30,37,0.85) 100%)"></div>
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none"><span style="width:76px;height:76px;border-radius:50%;border:1px solid rgba(244,244,242,.6);display:flex;align-items:center;justify-content:center;background:rgba(3,30,37,.35);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)"><span style="width:0;height:0;border-left:18px solid #f4f4f2;border-top:11px solid transparent;border-bottom:11px solid transparent;margin-left:5px"></span></span></div>
+      <div style="position:absolute;left:0;right:0;bottom:0;padding:clamp(20px,3vw,40px);display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+        <div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;opacity:.7">Latest delivery · Film</span><span style="font-size:clamp(28px,4vw,56px);font-weight:500;letter-spacing:-0.015em;line-height:1">Campaign Hero Film</span></div>
+        <span style="font-size:14px;opacity:.85">4:21 · 4K · Delivered September 20</span>
+      </div>
+    </button>
+    <div style="display:flex;flex-direction:column;border-top:1px solid {{ hairline }}">
+      <sc-for list="{{ libraryRows }}" as="it" hint-placeholder-count="5">
+        <button onClick="{{ it.open }}" style="display:grid;grid-template-columns:{{ libCols }};gap:clamp(16px,2.5vw,32px);align-items:center;width:100%;padding:18px 0;border:0;border-bottom:1px solid {{ hairline }};background:none;color:inherit;text-align:left;cursor:pointer;font:inherit;transition:background 200ms" style-hover="background:rgba(127,127,127,0.06)">
+          <div style="aspect-ratio:16/9;overflow:hidden;background:#031e25;display:flex;justify-content:center"><img src="{{ it.img }}" alt="" style="width:{{ it.thumbW }};height:100%;object-fit:cover;display:block;transition:transform 1.6s cubic-bezier(.16,.84,.3,1)" style-hover="transform:scale(1.04)"></div>
+          <div style="display:flex;flex-direction:column;gap:6px;min-width:0"><span style="font-size:clamp(18px,2vw,24px);font-weight:500;letter-spacing:-0.01em;line-height:1.2">{{ it.title }}</span><span style="font-size:14px;opacity:.6">{{ it.meta }}</span></div>
+          <span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:.55;display:{{ arrowDisp }}">{{ it.kindLabel }}</span>
+          <span style="opacity:.5;justify-self:end;display:{{ arrowDisp }}">→</span>
+        </button>
+      </sc-for>
+    </div>
+    <section style="display:grid;grid-template-columns:{{ splitColsEq }};gap:clamp(24px,4vw,64px);padding-top:8px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Extend your campaign</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+        <h2 style="margin:0;font-size:clamp(24px,2.6vw,34px);font-weight:500;letter-spacing:-0.01em;line-height:1.15;text-wrap:balance">Get more from this production.</h2>
+        <p style="margin:0;font-size:15px;line-height:1.55;opacity:.7;max-width:420px;text-wrap:pretty">Everything below cuts from footage we already have. No new shoot day, and Jean will quote it before anything starts.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;border-top:1px solid {{ hairline }}">
+        <sc-for list="{{ extend }}" as="e" hint-placeholder-count="3">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 0;border-bottom:1px solid {{ hairline }}"><div style="min-width:0"><div style="font-size:16px;font-weight:500">{{ e.title }}</div><div style="font-size:13px;opacity:.6;margin-top:3px;line-height:1.4">{{ e.desc }}</div></div><button onClick="{{ e.ask }}" style="height:40px;padding:0 16px;border-radius:32px;border:1px solid {{ outline }};background:transparent;color:inherit;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap;transition:background 200ms" style-hover="background:rgba(127,127,127,0.12)">Ask Nobleman</button></div>
+        </sc-for>
+      </div>
+    </section>
+  </main>
+  </sc-if>
+
+  <!-- LIBRARY ITEM -->
+  <sc-if value="{{ vItem }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="Portal · Deliverable" style="max-width:1280px;margin:0 auto;padding:{{ padTop }} 24px 64px;display:flex;flex-direction:column;gap:28px;animation:viewIn 700ms cubic-bezier(.16,.84,.3,1) both">
+    <button onClick="{{ goLibrary }}" style="align-self:flex-start;height:36px;padding:0 4px;border:0;background:none;color:inherit;font:inherit;font-size:14px;cursor:pointer;opacity:.7;transition:opacity 200ms" style-hover="opacity:1">← Library</button>
+    <sc-if value="{{ item.isVideo }}" hint-placeholder-val="{{ true }}">
+      <div style="position:relative;z-index:95;background:#000;aspect-ratio:{{ item.playerRatio }};overflow:hidden;width:{{ item.playerW }};max-width:100%;margin:0 auto;box-shadow:0 40px 120px -40px rgba(0,0,0,.5)"><iframe ref="{{ videoRef }}" src="https://player.vimeo.com/video/1197058424?h=796798a19d&amp;title=0&amp;byline=0&amp;portrait=0&amp;dnt=1&amp;playsinline=1" title="{{ item.title }}" allow="autoplay; fullscreen; picture-in-picture" style="position:absolute;inset:0;width:100%;height:100%;border:0;display:block"></iframe></div>
+    </sc-if>
+    <sc-if value="{{ item.isPhoto }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid;grid-template-columns:{{ galleryCols }};gap:8px">
+        <sc-for list="{{ gallery }}" as="g" hint-placeholder-count="3"><div style="aspect-ratio:{{ g.ratio }};overflow:hidden;background:#031e25;grid-column:{{ g.span }}"><img src="{{ g.img }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;filter:grayscale(1) contrast(1.05)"></div></sc-for>
+      </div>
+      <div style="font-size:13px;opacity:.55;text-align:center">3 of 48 · Full contact sheet arrives with the download</div>
+    </sc-if>
+    <sc-if value="{{ item.isArchive }}" hint-placeholder-val="{{ false }}">
+      <div style="position:relative;aspect-ratio:{{ heroRatio }};overflow:hidden;background:#031e25;color:#f4f4f2"><img src="{{ item.img }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.7"><div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(3,30,37,0.1),rgba(3,30,37,0.9))"></div><div style="position:absolute;left:0;right:0;bottom:0;padding:clamp(20px,3vw,40px);display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap"><span style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.75">Camera originals · 3 shoot days · 2 cameras</span><span style="font-size:clamp(40px,6vw,88px);font-weight:300;letter-spacing:-0.03em;line-height:1">412<span style="font-size:.35em;vertical-align:top;opacity:.7;margin-left:6px">GB</span></span></div></div>
+    </sc-if>
+    <div style="display:grid;grid-template-columns:{{ splitColsRev }};gap:clamp(28px,4vw,64px);align-items:start">
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">{{ item.kindLabel }} · Meridian Campaign</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+        <h1 style="margin:0;font-size:clamp(30px,3.6vw,46px);font-weight:500;letter-spacing:-0.01em;line-height:1.05">{{ item.title }}</h1>
+        <p style="margin:0;font-size:16px;line-height:1.55;opacity:.75;max-width:520px;text-wrap:pretty">{{ item.desc }}</p>
+        <div style="display:flex;flex-direction:column;border-top:1px solid {{ hairline }};max-width:520px">
+          <sc-for list="{{ itemMeta }}" as="r" hint-placeholder-count="4"><div style="display:grid;grid-template-columns:140px 1fr;gap:16px;padding:12px 0;border-bottom:1px solid {{ hairline }};font-size:14px"><span style="opacity:.55">{{ r.k }}</span><span>{{ r.v }}</span></div></sc-for>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:24px">
+        <sc-if value="{{ item.notArchive }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button onClick="{{ watchItem }}" style="height:48px;padding:0 26px;border-radius:32px;border:0;background:{{ btnBg }};color:{{ btnInk }};font:inherit;font-size:15px;font-weight:500;cursor:pointer;transition:opacity 200ms" style-hover="opacity:.85">{{ item.watchLabel }}</button>
+            <button onClick="{{ toggleDownloads }}" style="height:48px;padding:0 22px;border-radius:32px;border:1px solid {{ outline }};background:{{ downloadsBg }};color:inherit;font:inherit;font-size:15px;cursor:pointer;transition:background 200ms" style-hover="background:rgba(127,127,127,0.12)">Download</button>
+            <button onClick="{{ toggleShare }}" style="height:48px;padding:0 22px;border-radius:32px;border:1px solid {{ outline }};background:{{ shareBg }};color:inherit;font:inherit;font-size:15px;cursor:pointer;transition:background 200ms" style-hover="background:rgba(127,127,127,0.12)">Share</button>
+          </div>
+          <sc-if value="{{ downloadsOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;border-top:1px solid {{ hairline }};animation:viewIn 400ms ease both">
+              <sc-for list="{{ itemDownloads }}" as="d" hint-placeholder-count="3">
+                <button onClick="{{ d.get }}" style="display:flex;justify-content:space-between;align-items:center;gap:16px;width:100%;padding:14px 0;border:0;border-bottom:1px solid {{ hairline }};background:none;color:inherit;text-align:left;cursor:pointer;font:inherit;transition:background 200ms" style-hover="background:rgba(127,127,127,0.06)"><span style="font-size:15px;font-weight:500">{{ d.name }}</span><span style="display:inline-flex;align-items:center;gap:14px;font-size:13px;opacity:.65;white-space:nowrap">{{ d.size }}<span style="font-size:16px">↓</span></span></button>
+              </sc-for>
+              <p style="margin:12px 0 0;font-size:13px;line-height:1.5;opacity:.55">Files over 10 GB are prepared first; we email you a resumable link within a few minutes.</p>
+            </div>
+          </sc-if>
+          <sc-if value="{{ shareOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:12px;border:1px solid {{ hairline }};padding:20px;animation:viewIn 400ms ease both">
+              <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;opacity:.55">Private link</div>
+              <div style="display:flex;gap:10px"><input readOnly value="{{ shareUrl }}" aria-label="Private link" style="flex:1;height:46px;padding:0 16px;border:1px solid {{ hairline }};border-radius:32px;background:{{ card }};color:inherit;font:inherit;font-size:13px;min-width:0"><button onClick="{{ copyLink }}" style="height:46px;padding:0 20px;border-radius:32px;border:0;background:{{ btnBg }};color:{{ btnInk }};font:inherit;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap">Copy</button></div>
+              <div style="font-size:13px;line-height:1.5;opacity:.6">Anyone with the link can watch. Downloads stay off. The link expires in 30 days; ask Nobleman to extend it or add a password.</div>
+            </div>
+          </sc-if>
+        </sc-if>
+        <sc-if value="{{ item.isArchive }}" hint-placeholder-val="{{ false }}">
+          <div style="border:1px solid {{ hairline }};padding:clamp(20px,3vw,28px);display:flex;flex-direction:column;gap:16px">
+            <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.55">Delivery options</div>
+            <p style="margin:0;font-size:15px;line-height:1.55;opacity:.8;text-wrap:pretty">A file this size doesn’t belong in a browser download. Choose how you’d like it.</p>
+            <sc-if value="{{ transferNone }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column;border-top:1px solid {{ hairline }}">
+                <button onClick="{{ requestLink }}" style="display:flex;justify-content:space-between;align-items:center;gap:16px;width:100%;padding:16px 0;border:0;border-bottom:1px solid {{ hairline }};background:none;color:inherit;text-align:left;cursor:pointer;font:inherit;transition:background 200ms" style-hover="background:rgba(127,127,127,0.06)"><div><div style="font-size:16px;font-weight:500">Resumable transfer link</div><div style="font-size:13px;opacity:.6;margin-top:3px">Encrypted. Resumes if your connection drops. Valid 7 days.</div></div><span style="opacity:.5">→</span></button>
+                <button onClick="{{ requestDrive }}" style="display:flex;justify-content:space-between;align-items:center;gap:16px;width:100%;padding:16px 0;border:0;border-bottom:1px solid {{ hairline }};background:none;color:inherit;text-align:left;cursor:pointer;font:inherit;transition:background 200ms" style-hover="background:rgba(127,127,127,0.06)"><div><div style="font-size:16px;font-weight:500">Ship a drive</div><div style="font-size:13px;opacity:.6;margin-top:3px">2 TB SSD, insured, 2–3 business days to your office.</div></div><span style="opacity:.5">→</span></button>
+              </div>
+            </sc-if>
+            <sc-if value="{{ transferLink }}" hint-placeholder-val="{{ false }}">
+              <div style="border-top:1px solid {{ hairline }};padding-top:16px;display:flex;flex-direction:column;gap:6px;animation:viewIn 400ms ease both"><div style="font-size:16px;font-weight:500">Transfer link sent to jonathan@meridianmarine.com</div><div style="font-size:14px;opacity:.65;line-height:1.5">Valid until {{ linkUntil }}. It resumes automatically if the connection drops, and Nobleman is notified when the transfer completes.</div></div>
+            </sc-if>
+            <sc-if value="{{ transferDrive }}" hint-placeholder-val="{{ false }}">
+              <div style="border-top:1px solid {{ hairline }};padding-top:16px;display:flex;flex-direction:column;gap:6px;animation:viewIn 400ms ease both"><div style="font-size:16px;font-weight:500">Drive request received</div><div style="font-size:14px;opacity:.65;line-height:1.5">Jean will confirm the shipping address and tracking within one business day.</div></div>
+            </sc-if>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </main>
+  </sc-if>
+
+  <!-- FILES -->
+  <sc-if value="{{ vFiles }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="Portal · Files" style="max-width:1280px;margin:0 auto;padding:{{ padTop }} 24px 64px;display:flex;flex-direction:column;gap:{{ gapL }};animation:viewIn 700ms cubic-bezier(.16,.84,.3,1) both">
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Project materials · Meridian Campaign</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+      <h1 style="margin:0;font-size:clamp(32px,4vw,48px);font-weight:500;letter-spacing:-0.01em;line-height:1.1">Project materials</h1>
+      <p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:clamp(21px,2.2vw,27px);opacity:.72">Upload anything Nobleman needs for production.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:{{ splitCols }};gap:clamp(24px,4vw,56px);align-items:stretch">
+      <div onDragOver="{{ dragOver }}" onDragEnter="{{ dragOver }}" onDragLeave="{{ dragLeave }}" onDrop="{{ drop }}" style="border:1px dashed {{ dropBorder }};background:{{ dropBg }};padding:clamp(32px,5vw,64px) 24px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;min-height:280px;transition:background 200ms,border-color 200ms">
+        <div style="font-size:clamp(22px,2.4vw,30px);font-weight:500;letter-spacing:-0.01em">Drop files here</div>
+        <div style="font-size:14px;opacity:.6;max-width:380px;line-height:1.5;text-wrap:pretty">Logos, brand guides, references, music, photos or documents. Large files are fine; uploads resume if interrupted.</div>
+        <button onClick="{{ browse }}" style="margin-top:6px;height:48px;padding:0 26px;border-radius:32px;border:0;background:{{ btnBg }};color:{{ btnInk }};font:inherit;font-size:15px;font-weight:500;cursor:pointer;transition:opacity 200ms" style-hover="opacity:.85">Browse files</button>
+        <input ref="{{ fileRef }}" type="file" multiple onChange="{{ filesPicked }}" aria-label="Choose files" style="display:none">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Still needed</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.8);display:inline-block;flex:none;animation:blink 1.2s steps(1) infinite"></span></span>
+        <div style="display:flex;flex-direction:column;border-top:1px solid {{ hairline }}">
+          <sc-for list="{{ requested }}" as="r" hint-placeholder-count="2">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 0;border-bottom:1px solid {{ hairline }}"><span style="font-size:15px;font-weight:500">{{ r.text }}</span><button onClick="{{ browse }}" style="height:38px;padding:0 16px;border-radius:32px;border:1px solid {{ outline }};background:transparent;color:inherit;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap;transition:background 200ms" style-hover="background:rgba(127,127,127,0.12)">Upload</button></div>
+          </sc-for>
+        </div>
+        <p style="margin:0;font-size:13px;line-height:1.5;opacity:.55">Requested by Jean on September 24. Needed before the finishing pass in October.</p>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <sc-for list="{{ fileFilters }}" as="f" hint-placeholder-count="7">
+          <button onClick="{{ f.pick }}" style="height:36px;padding:0 14px;border-radius:32px;border:1px solid {{ f.border }};background:{{ f.bg }};color:{{ f.color }};font:inherit;font-size:13px;cursor:pointer;transition:background 200ms">{{ f.label }}</button>
+        </sc-for>
+      </div>
+      <div style="display:flex;flex-direction:column;border-top:1px solid {{ hairline }}">
+        <sc-for list="{{ filesShown }}" as="f" hint-placeholder-count="5">
+          <div style="position:relative;display:grid;grid-template-columns:{{ fileCols }};gap:16px;align-items:center;padding:16px 0;border-bottom:1px solid {{ hairline }}">
+            <span style="width:44px;height:44px;border:1px solid {{ hairline }};display:flex;align-items:center;justify-content:center;font-size:10px;letter-spacing:.1em;font-weight:600">{{ f.type }}</span>
+            <div style="min-width:0"><div style="font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ f.name }}</div><div style="font-size:13px;opacity:.6;margin-top:3px">{{ f.cat }} · {{ f.size }}</div></div>
+            <span style="font-size:13px;opacity:.6;display:{{ arrowDisp }}">{{ f.by }} · {{ f.when }}</span>
+            <span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:.6;justify-self:end;white-space:nowrap">{{ f.status }}</span>
+            <div style="position:absolute;left:0;bottom:-1px;height:1px;background:{{ ink }};width:{{ f.pct }};opacity:{{ f.lineOp }};transition:width 200ms"></div>
+          </div>
+        </sc-for>
+      </div>
+      <sc-if value="{{ noFilesShown }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:32px 0;font-size:15px;opacity:.6">Nothing in this category yet. Drop a file above and it lands here.</div>
+      </sc-if>
+    </div>
+  </main>
+  </sc-if>
+
+  <!-- ACCOUNT -->
+  <sc-if value="{{ vAccount }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="Portal · Account" style="max-width:1280px;margin:0 auto;padding:{{ padTop }} 24px 64px;display:flex;flex-direction:column;gap:{{ gapL }};animation:viewIn 700ms cubic-bezier(.16,.84,.3,1) both">
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Account</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+      <h1 style="margin:0;font-size:clamp(32px,4vw,48px);font-weight:500;letter-spacing:-0.01em;line-height:1.1">Jonathan Reyes</h1>
+      <p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:clamp(21px,2.2vw,27px);opacity:.72">Marketing Director · Meridian Marine</p>
+    </div>
+    <div style="display:grid;grid-template-columns:{{ splitColsEq }};gap:clamp(32px,4vw,64px);align-items:start">
+      <section style="display:flex;flex-direction:column;gap:16px">
+        <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">People on this account</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+        <div style="display:flex;flex-direction:column;border-top:1px solid {{ hairline }}">
+          <sc-for list="{{ users }}" as="u" hint-placeholder-count="3">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid {{ hairline }}"><div><div style="font-size:15px;font-weight:500">{{ u.name }}</div><div style="font-size:13px;opacity:.6;margin-top:2px">{{ u.role }}</div></div><span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:.55">{{ u.tag }}</span></div>
+          </sc-for>
+        </div>
+        <p style="margin:0;font-size:13px;line-height:1.5;opacity:.55;max-width:420px">Everyone here sees the same projects and can approve cuts. Ask Nobleman to add or remove people.</p>
+      </section>
+      <section style="display:flex;flex-direction:column;gap:24px">
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">Notify me by</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+          <div style="display:flex;flex-direction:column;border-top:1px solid {{ hairline }}">
+            <sc-for list="{{ channelPrefs }}" as="t" hint-placeholder-count="3">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid {{ hairline }}"><div><div style="font-size:15px;font-weight:500">{{ t.label }}</div><div style="font-size:13px;opacity:.6;margin-top:2px">{{ t.sub }}</div></div><button onClick="{{ t.flip }}" role="switch" aria-checked="{{ t.on }}" aria-label="{{ t.label }}" style="width:44px;height:24px;border-radius:32px;border:1px solid {{ hairline }};background:{{ t.bg }};position:relative;cursor:pointer;padding:0;flex:none;transition:background 200ms"><span style="position:absolute;top:3px;left:{{ t.knob }};width:16px;height:16px;border-radius:50%;background:{{ t.knobBg }};transition:left 200ms"></span></button></div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <span style="display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase"><span style="opacity:.55">When</span><span style="width:6px;height:6px;border-radius:50%;background:#e5322d;box-shadow:0 0 8px rgba(229,50,45,.7);display:inline-block;flex:none"></span></span>
+          <div style="display:flex;flex-direction:column;border-top:1px solid {{ hairline }}">
+            <sc-for list="{{ eventPrefs }}" as="t" hint-placeholder-count="4">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid {{ hairline }}"><div style="font-size:15px">{{ t.label }}</div><button onClick="{{ t.flip }}" role="switch" aria-checked="{{ t.on }}" aria-label="{{ t.label }}" style="width:44px;height:24px;border-radius:32px;border:1px solid {{ hairline }};background:{{ t.bg }};position:relative;cursor:pointer;padding:0;flex:none;transition:background 200ms"><span style="position:absolute;top:3px;left:{{ t.knob }};width:16px;height:16px;border-radius:50%;background:{{ t.knobBg }};transition:left 200ms"></span></button></div>
+            </sc-for>
+          </div>
+          <p style="margin:0;font-size:13px;line-height:1.5;opacity:.55">Only when something meaningful changes. Never marketing.</p>
+        </div>
+      </section>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;border-top:1px solid {{ hairline }};padding-top:20px">
+      <button onClick="{{ signOut }}" style="height:44px;padding:0 20px;border-radius:32px;border:1px solid {{ outline }};background:transparent;color:inherit;font:inherit;font-size:14px;cursor:pointer;transition:background 200ms" style-hover="background:rgba(127,127,127,0.12)">Sign out</button>
+      <span style="font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:18px;opacity:.6">portal.noblemanproductions.gotit2work.com · private</span>
+    </div>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ toastOn }}" hint-placeholder-val="{{ false }}">
+  <div role="status" style="position:{{ fixedPos }};left:50%;bottom:{{ toastBottom }};transform:translateX(-50%);z-index:110;padding:13px 20px;border-radius:32px;background:{{ ink }};color:{{ bg }};font-size:14px;box-shadow:0 12px 40px -12px rgba(0,0,0,.5);animation:viewIn 300ms ease both;white-space:nowrap;max-width:calc(100vw - 32px);overflow:hidden;text-overflow:ellipsis">{{ toastText }}</div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;startView&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;projects&quot;,&quot;project&quot;,&quot;review&quot;,&quot;library&quot;,&quot;item&quot;,&quot;files&quot;,&quot;account&quot;],&quot;default&quot;:&quot;home&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Preview&quot;},&quot;cinematicLoad&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Motion&quot;},&quot;grain&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Motion&quot;},&quot;previewMobile&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Preview&quot;}}">
+class Component extends DCLogic {
+  IMG = {
+    proj: "media/a00.png",
+    social: "media/a03.png",
+    review: "media/a01.png",
+    hero: "media/a07.png",
+    c30: "media/a08.png",
+    vertical: "media/a05.png",
+    bts: "media/a09.png",
+    photo: "media/a10.png",
+    crew: "media/a04.png",
+    p2: "media/a11.png",
+  };
+  stageNames = ["Pre-production", "Production", "Editing", "Client review", "Finalizing", "Delivered"];
+  projects = [
+    { id: "meridian", title: "Meridian Campaign", type: "Brand campaign · Commercial", img: this.IMG.proj, pct: 72, stageIdx: 2, nextLabel: "Estimated next milestone", next: "October 6", nextWhat: "Version 4 ready for review", hasCut: true },
+    { id: "social", title: "Social Content Package", type: "Branded content · 12 vertical cuts", img: this.IMG.social, pct: 28, stageIdx: 1, nextLabel: "Next shoot day", next: "October 2", nextWhat: "Day 2 of 3 · San Diego", hasCut: false },
+  ];
+  library = [
+    { id: "hero", kind: "video", kindLabel: "Film", title: "Campaign Hero Film", dur: "4:21", res: "4K", delivered: "September 20, 2026", desc: "The four-minute brand film, cut for web, the launch event and the dealer network.", img: this.IMG.hero, downloads: [["4K Master · ProRes 422 HQ", "38.2 GB"], ["1080p Web · H.264", "2.1 GB"], ["Captioned version · 1080p", "2.1 GB"]] },
+    { id: "c30", kind: "video", kindLabel: "Commercial", title: "30-Second Commercial", dur: "0:30", res: "4K", delivered: "September 22, 2026", desc: "Broadcast cutdown with stereo and 5.1 mixes.", img: this.IMG.c30, downloads: [["4K Master · ProRes 422 HQ", "4.6 GB"], ["1080p Web · H.264", "310 MB"], ["Clean version · no titles", "4.6 GB"]] },
+    { id: "vert", kind: "video", kindLabel: "Social", title: "Vertical Social Cut", dur: "0:45", res: "9:16", vertical: true, delivered: "September 22, 2026", desc: "For Reels, Shorts and TikTok. Burned-in captions and safe-zone framing.", img: this.IMG.vertical, downloads: [["Vertical · 1080 × 1920", "640 MB"], ["Square · 1080 × 1080", "580 MB"]] },
+    { id: "bts", kind: "video", kindLabel: "Film", title: "Behind the Scenes", dur: "2:48", res: "4K", delivered: "September 24, 2026", desc: "Three shoot days on the water and in the studio.", img: this.IMG.bts, downloads: [["1080p Web · H.264", "1.4 GB"]] },
+    { id: "photo", kind: "photo", kindLabel: "Photography", title: "Photography Selects", dur: "48 images", res: "RAW + JPEG", delivered: "September 24, 2026", desc: "Retouched campaign stills from shoot days one and three.", img: this.IMG.photo, downloads: [["Retouched JPEG · full resolution", "1.9 GB"], ["Web-ready JPEG · 2048px", "210 MB"]] },
+    { id: "raw", kind: "archive", kindLabel: "Archive", title: "Raw Footage Archive", dur: "412 GB", res: "Camera originals", delivered: "On request", desc: "Every camera original from the production, organized by shoot day and camera. Kept permanently.", img: this.IMG.crew, downloads: [] },
+  ];
+  versions = [
+    { v: 1, date: "September 12", base: "Superseded", note: "First assembly. Placeholder music." },
+    { v: 2, date: "September 21", base: "Changes requested September 26", note: "Your September 15 notes applied. New music throughout." },
+    { v: 3, date: "September 28", base: "Ready for review", note: "Opening reworked around the wide shot. Color pass on the water sequence." },
+  ];
+  team = [{ role: "Producer", name: "Jean", img: null }, { role: "Director & DP", name: "Justin", img: this.IMG.p2 }, { role: "Editor", name: "Marcus Lee", img: null }];
+  activityRows = [["September 28", "Version 3 uploaded for review"], ["September 26", "Your notes on Version 2 received"], ["September 24", "Project entered editing"], ["September 18", "Production wrapped · three shoot days"]];
+  documentRows = [["Production agreement", "Signed August 12"], ["Invoice 0142 · Deposit", "Paid August 14"], ["Invoice 0147 · Production", "Due October 10"], ["Project brief", "Updated August 20"], ["Call sheet · Day 3", "September 16"]];
+  userRows = [["Jonathan Reyes", "Marketing Director", "You"], ["Priya Natarajan", "Social Media Manager", ""], ["David Kessler", "Chief Executive", ""]];
+  requestedRows = ["Music licensing confirmation (PDF)", "Dealer logo set (vector)"];
+  extendRows = [["15-second social cut", "Designed for Reels, Shorts and TikTok. Cut from the hero film."], ["Additional language version", "Subtitled or re-voiced for export markets."], ["Paid-ad cutdowns", "6- and 10-second bumpers for pre-roll."]];
+  filters = ["All", "Logos", "Brand guide", "References", "Music", "Photos", "Documents"];
+  videoRef = React.createRef(); commentRef = React.createRef(); requestRef = React.createRef(); fileRef = React.createRef(); messageRef = React.createRef(); messagesRef = React.createRef();
+  loginEmailRef = React.createRef(); loginPassRef = React.createRef();
+  state = {
+    auth: "loading", user: null, authErr: "", authBusy: false, preview: false,
+    view: this.props.startView || "home", project: "meridian",
+    loading: (this.props.cinematicLoad ?? true) && !this.seen(), loaderOp: 1, mobile: this.isMobile(),
+    time: 0, duration: 0, playing: false, version: 3, decisions: [], requesting: false,
+    comments: [{ t: 12, text: "Can we hold this wide a beat longer before the cut?", who: "Jonathan", when: "Sep 26" }, { t: 41, text: "Love this shot.", who: "Jonathan", when: "Sep 26" }, { t: 65, text: "Swapped to the alternate angle here per your note.", who: "Justin · Nobleman", when: "Sep 28" }],
+    item: "hero", downloadsOpen: false, shareOpen: false, transfer: null,
+    files: [
+      { id: 1, name: "Meridian_Brand_Guide_2026.pdf", cat: "Brand guide", size: "14.2 MB", when: "Sep 4", by: "Jonathan", type: "PDF", pct: 100 },
+      { id: 2, name: "Meridian_Logo_Primary.ai", cat: "Logos", size: "2.8 MB", when: "Sep 4", by: "Jonathan", type: "AI", pct: 100 },
+      { id: 3, name: "Launch_Deck_September.pdf", cat: "Documents", size: "38 MB", when: "Sep 9", by: "Priya", type: "PDF", pct: 100 },
+      { id: 4, name: "Reference_Cut_Sea_Trials.mp4", cat: "References", size: "420 MB", when: "Sep 10", by: "Jonathan", type: "MP4", pct: 100 },
+      { id: 5, name: "Hull_Detail_Photos.zip", cat: "Photos", size: "1.1 GB", when: "Sep 15", by: "Priya", type: "ZIP", pct: 100 },
+    ],
+    drag: false, fileFilter: "All",
+    messages: [
+      { who: "Justin · Nobleman", when: "Sep 28, 4:12 PM", text: "Version 3 is up. We reworked the opening 20 seconds around your note on the wide shot." },
+      { who: "Jonathan", when: "Sep 26, 9:40 AM", text: "Notes are in on V2. The music change in the middle section is the main one." },
+      { who: "Jean · Nobleman", when: "Sep 24, 11:05 AM", text: "Production wrapped Thursday. Editing starts today; expect the next cut around the 28th." },
+    ],
+    prefs: { email: true, sms: false, portal: true, cuts: true, stages: true, delivery: true, msgs: true },
+    toast: null,
+  };
+  /** Asks the server who we are. 404 means no backend is deployed (design preview), so we
+   *  fall through to a demo identity rather than locking the design file behind a login. */
+  checkAuth() {
+    fetch("/api/me", { credentials: "same-origin" })
+      .then(async (r) => {
+        if (r.ok) { const d = await r.json(); this.setState({ auth: "in", user: d.user }); return; }
+        if (r.status === 401) { this.setState({ auth: "out" }); return; }
+        if (r.status === 404) { this.setState({ auth: "in", user: this.demoUser, preview: true }); return; }
+        this.setState({ auth: "out", authErr: "The portal is having trouble. Try again in a moment." });
+      })
+      .catch(() => this.setState({ auth: "in", user: this.demoUser, preview: true }));
+  }
+  demoUser = { name: "Jonathan Reyes", title: "Marketing Director", role: "client", clientName: "Meridian" };
+  doLogin(e) {
+    e.preventDefault();
+    if (this.state.authBusy) return;
+    const email = (this.loginEmailRef.current && this.loginEmailRef.current.value || "").trim();
+    const password = (this.loginPassRef.current && this.loginPassRef.current.value) || "";
+    if (!email || !password) return;
+    this.setState({ authBusy: true, authErr: "" });
+    fetch("/api/login", {
+      method: "POST", credentials: "same-origin",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    })
+      .then(async (r) => {
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.error || "Could not sign you in.");
+        this.setState({ auth: "in", user: d.user, authBusy: false, authErr: "" });
+      })
+      .catch((err) => this.setState({ authBusy: false, authErr: err.message || "Could not sign you in." }));
+  }
+  signOut() {
+    fetch("/api/logout", { method: "POST", credentials: "same-origin" })
+      .catch(() => {})
+      .then(() => this.setState({ auth: "out", user: null, view: "home" }));
+  }
+  initials(name) {
+    return String(name || "").trim().split(/\s+/).slice(0, 2).map(w => w.charAt(0).toUpperCase()).join("") || "—";
+  }
+  authVals() {
+    const checking = this.state.auth === "loading";
+    return {
+      bg: "#031e25", ink: "#f4f4f2", bottomPad: "0",
+      fixedPos: this.props.previewMobile ? "absolute" : "fixed",
+      rootFrame: this.props.previewMobile ? "width:390px;" : "",
+      grainDisp: "none", grainOp: 0, loading: false,
+      authScreen: true, authChecking: checking, signedOut: !checking,
+      authErr: this.state.authErr, authBusy: this.state.authBusy,
+      loginBtnLabel: this.state.authBusy ? "Signing in" : "Sign in",
+      loginBtnBg: this.state.authBusy ? "rgba(244,244,242,0.55)" : "#f4f4f2",
+      loginBtnCursor: this.state.authBusy ? "default" : "pointer",
+      loginEmailRef: this.loginEmailRef, loginPassRef: this.loginPassRef,
+      doLogin: (e) => this.doLogin(e),
+    };
+  }
+  seen() { try { return !!sessionStorage.getItem("np-portal-seen"); } catch (e) { return false; } }
+  isMobile() { return typeof window !== "undefined" && (window.matchMedia("(max-width: 759px)").matches || window.innerWidth < 760); }
+  get mob() { return !!this.props.previewMobile || this.state.mobile; }
+  componentDidMount() {
+    this.checkAuth();
+    this.onResize = () => { if (this.props.previewMobile) return; const m = this.isMobile(); if (m !== this.state.mobile) this.setState({ mobile: m }); };
+    window.addEventListener("resize", this.onResize);
+    this.onKey = (e) => {
+      const tag = (e.target && e.target.tagName) || "";
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.key === " " && this.state.view === "review" && this.player) { e.preventDefault(); this.togglePlay(); }
+      if (e.key === "Escape") { if (this.state.view === "item") this.go("library"); else if (this.state.view === "project") this.go("projects"); }
+    };
+    window.addEventListener("keydown", this.onKey);
+    if (this.state.loading) {
+      this.t1 = setTimeout(() => this.setState({ loaderOp: 0 }), 1500);
+      this.t2 = setTimeout(() => { this.setState({ loading: false }); try { sessionStorage.setItem("np-portal-seen", "1"); } catch (e) {} }, 2200);
+    }
+    this.attachPlayer();
+  }
+  componentDidUpdate() { this.attachPlayer(); }
+  componentWillUnmount() {
+    window.removeEventListener("resize", this.onResize); window.removeEventListener("keydown", this.onKey);
+    clearTimeout(this.t1); clearTimeout(this.t2); clearTimeout(this.toastT); this.detachPlayer();
+  }
+  attachPlayer() {
+    const el = this.videoRef.current;
+    if (!el) { if (this.player) this.detachPlayer(); return; }
+    if (this.player && this.playerEl === el) return;
+    this.detachPlayer();
+    if (!window.Vimeo) { this.retryT = setTimeout(() => this.attachPlayer(), 300); return; }
+    this.playerEl = el;
+    const p = this.player = new window.Vimeo.Player(el);
+    p.getDuration().then(d => this.setState({ duration: d })).catch(() => {});
+    if (this.state.view === "review") {
+      p.on("timeupdate", e => { this.setState({ time: e.seconds }); try { localStorage.setItem("np-review-time", String(e.seconds)); } catch (err) {} });
+      p.on("play", () => this.setState({ playing: true }));
+      p.on("pause", () => this.setState({ playing: false }));
+      p.on("ended", () => this.setState({ playing: false }));
+      let t0 = 0; try { t0 = parseFloat(localStorage.getItem("np-review-time") || "0") || 0; } catch (e) {}
+      if (t0 > 1) p.setCurrentTime(t0).then(() => this.setState({ time: t0 })).catch(() => {});
+    }
+  }
+  detachPlayer() {
+    clearTimeout(this.retryT);
+    if (this.player) { try { this.player.off("timeupdate"); this.player.off("play"); this.player.off("pause"); this.player.off("ended"); } catch (e) {} }
+    this.player = null; this.playerEl = null;
+    if (this.state.playing) this.setState({ playing: false });
+  }
+  go(view, extra) { this.setState(Object.assign({ view, requesting: false, downloadsOpen: false, shareOpen: false }, extra || {})); try { window.scrollTo({ top: 0 }); } catch (e) {} }
+  toast(text) { clearTimeout(this.toastT); this.setState({ toast: text }); this.toastT = setTimeout(() => this.setState({ toast: null }), 2800); }
+  togglePlay() { if (!this.player) return; (this.state.playing ? this.player.pause() : this.player.play()).catch(() => {}); }
+  seek(s) { const d = this.state.duration || 0; const t = Math.max(0, d ? Math.min(s, d - 0.5) : s); if (this.player) this.player.setCurrentTime(t).catch(() => {}); this.setState({ time: t }); }
+  fmt(s) { s = Math.max(0, Math.floor(s || 0)); return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); }
+  today() { return new Date().toLocaleDateString("en-US", { month: "long", day: "numeric" }); }
+  plusDays(n) { const d = new Date(); d.setDate(d.getDate() + n); return d.toLocaleDateString("en-US", { month: "long", day: "numeric" }); }
+  ext(name) { const m = /\.([a-z0-9]+)$/i.exec(name || ""); return m ? m[1].toUpperCase().slice(0, 4) : "FILE"; }
+  guessCat(name) {
+    const n = (name || "").toLowerCase(), e = this.ext(name).toLowerCase();
+    if (n.includes("brand") || n.includes("guide")) return "Brand guide";
+    if (["ai", "svg", "eps"].includes(e) || n.includes("logo")) return "Logos";
+    if (["mp3", "wav", "aif", "aiff", "m4a"].includes(e)) return "Music";
+    if (["jpg", "jpeg", "png", "heic", "tif", "tiff", "raw", "dng"].includes(e)) return "Photos";
+    if (["mp4", "mov", "m4v", "webm"].includes(e)) return "References";
+    return "Documents";
+  }
+  size(b) { if (!b && b !== 0) return ""; if (b >= 1e9) return (b / 1e9).toFixed(1) + " GB"; if (b >= 1e6) return (b / 1e6).toFixed(1) + " MB"; return Math.max(1, Math.round(b / 1e3)) + " KB"; }
+  addFiles(list) {
+    const arr = Array.from(list || []); if (!arr.length) return;
+    const now = Date.now();
+    const items = arr.map((f, i) => ({ id: now + i, name: f.name, type: this.ext(f.name), cat: this.guessCat(f.name), size: this.size(f.size), by: "Jonathan", when: "Just now", pct: 0 }));
+    this.setState(s => ({ files: items.concat(s.files), fileFilter: "All" }));
+    items.forEach((it, k) => {
+      const tick = () => {
+        let done = false;
+        this.setState(s => ({ files: s.files.map(f => { if (f.id !== it.id) return f; const p = Math.min(100, f.pct + 7 + Math.random() * 12); if (p >= 100) done = true; return Object.assign({}, f, { pct: p }); }) }), () => { if (!done) setTimeout(tick, 140); });
+      };
+      setTimeout(tick, 250 + k * 120);
+    });
+    this.toast(arr.length === 1 ? "Uploading " + arr[0].name : "Uploading " + arr.length + " files");
+  }
+  postComment() { const el = this.commentRef.current; const text = el && el.value.trim(); if (!text) { if (el) el.focus(); return; } const t = this.state.time; this.setState(s => ({ comments: s.comments.concat([{ t, text, who: "Jonathan", when: "Just now" }]) })); el.value = ""; this.toast("Note added at " + this.fmt(t)); }
+  postMessage() { const el = this.messageRef.current; const text = el && el.value.trim(); if (!text) { if (el) el.focus(); return; } this.setState(s => ({ messages: [{ who: "Jonathan", when: "Just now", text }].concat(s.messages) })); el.value = ""; this.toast("Sent. Jean and Justin reply within one business day."); }
+  renderVals() {
+    if (this.state.auth !== "in") return this.authVals();
+    const S = this.state, mob = this.mob, view = S.view, preview = !!this.props.previewMobile;
+    const me = S.user || this.demoUser;
+    const light = view === "library" || view === "item" || view === "files" || view === "account";
+    const bg = light ? "#ffffff" : "#031e25", ink = light ? "#0a0a0a" : "#f4f4f2";
+    const hairline = light ? "#e5e7eb" : "rgba(244,244,242,0.16)";
+    const card = light ? "#f3f4f6" : "rgba(244,244,242,0.06)";
+    const outline = light ? "rgba(10,10,10,0.45)" : "rgba(244,244,242,0.55)";
+    const pillOn = "rgba(127,127,127,0.16)";
+    const proj = this.projects.find(p => p.id === S.project) || this.projects[0];
+    const featured = this.projects[0], social = this.projects[1];
+    const item = this.library.find(i => i.id === S.item) || this.library[0];
+    const ver = this.versions.find(v => v.v === S.version) || this.versions[2];
+    const dur = S.duration || 0;
+    const pct = dur ? Math.min(100, (S.time / dur) * 100) : 0;
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+    const verDecisions = S.decisions.filter(d => d.v === S.version);
+    const last = verDecisions[verDecisions.length - 1];
+    const approvedOnce = verDecisions.some(d => d.kind === "approved");
+    let statusText = ver.base;
+    if (last && last.kind === "approved") statusText = "Approved " + last.date;
+    else if (last && last.kind === "changes") statusText = approvedOnce ? "New revision requested " + last.date : "Changes requested " + last.date;
+    const needsReview = !S.decisions.some(d => d.v === 3);
+    const stagesFor = (p) => this.stageNames.map((name, i) => ({ name, current: i === p.stageIdx, line: i <= p.stageIdx ? ink : hairline, op: i <= p.stageIdx ? 1 : 0.45 }));
+    const mkProj = (p) => Object.assign({}, p, { stage: this.stageNames[p.stageIdx], go: () => this.go("project", { project: p.id }) });
+    const withImg = (m) => Object.assign({}, m, { hasImg: !!m.img, noImg: !m.img, initial: m.name.charAt(0) });
+    const openItem = (id) => () => this.go("item", { item: id });
+    const libMeta = (it) => it.kind === "archive" ? it.dur + " · " + it.res + " · " + it.delivered : it.dur + " · " + it.res + " · Delivered " + it.delivered;
+    const libRow = (it) => Object.assign({}, it, { meta: libMeta(it), thumbW: it.vertical ? "auto" : "100%", open: openItem(it.id) });
+    const isActive = (id) => view === id || (id === "projects" && view === "project") || (id === "library" && view === "item");
+    const navItem = ([id, label]) => ({ label, go: () => this.go(id), bg: isActive(id) ? pillOn : "transparent", op: isActive(id) ? 1 : 0.72, badge: id === "review" && needsReview, dot: isActive(id) ? ink : (id === "review" && needsReview ? "#e5322d" : "transparent") });
+    const shareUrl = "https://portal.noblemanproductions.gotit2work.com/s/" + item.id + "-8fa2c1";
+    const toggle = (key, label, sub) => ({ label, sub, on: !!S.prefs[key], bg: S.prefs[key] ? ink : "transparent", knob: S.prefs[key] ? "23px" : "3px", knobBg: S.prefs[key] ? bg : ink, flip: () => this.setState(s => ({ prefs: Object.assign({}, s.prefs, { [key]: !s.prefs[key] }) })) });
+    const filesShown = S.files.filter(f => S.fileFilter === "All" || f.cat === S.fileFilter).map(f => Object.assign({}, f, { pct: Math.round(f.pct) + "%", lineOp: f.pct < 100 ? 1 : 0, status: f.pct < 100 ? "Uploading " + Math.round(f.pct) + "%" : "Uploaded" }));
+    const decisionButtons = [];
+    if (!(last && last.kind === "approved")) decisionButtons.push({ label: "Approve this cut", fn: () => { this.setState(s => ({ decisions: s.decisions.concat([{ v: s.version, kind: "approved", date: this.today(), text: "Version " + s.version + " approved" }]) })); this.toast("Approved. Jean and Justin have been notified."); }, bg: light ? "#031e25" : "#f4f4f2", color: light ? "#f4f4f2" : "#031e25", border: "transparent" });
+    decisionButtons.push({ label: "Request changes", fn: () => this.setState({ requesting: true }), bg: "transparent", color: ink, border: outline });
+    const itemMeta = item.kind === "archive"
+      ? [{ k: "Size", v: "412 GB" }, { k: "Contents", v: "Camera originals · 3 shoot days · 2 cameras" }, { k: "Retention", v: "Permanent archive" }]
+      : [{ k: item.kind === "photo" ? "Images" : "Duration", v: item.dur }, { k: item.kind === "photo" ? "Formats" : "Resolution", v: item.res }, { k: "Delivered", v: item.delivered }, { k: "Available until", v: "December 31, 2027" }];
+    return {
+      bg, ink, hairline, card, outline, navBg: light ? "rgba(255,255,255,0.78)" : "rgba(3,30,37,0.72)",
+      btnBg: light ? "#031e25" : "#f4f4f2", btnInk: light ? "#f4f4f2" : "#031e25",
+      showWhite: light ? "none" : "block", showBlack: light ? "block" : "none",
+      grainDisp: (this.props.grain ?? true) ? "block" : "none", grainOp: light ? 0.05 : 0.09,
+      fixedPos: preview ? "absolute" : "fixed", rootFrame: preview ? "width:390px;" : "",
+      loading: S.loading, loaderOp: S.loaderOp,
+      isDesktop: !mob, isMobile: mob, padTop: mob ? "84px" : "112px", bottomPad: mob ? "96px" : "0",
+      gapXL: mob ? "48px" : "80px", gapL: mob ? "36px" : "56px",
+      heroRatio: mob ? "4/5" : "21/9", stageCols: mob ? "repeat(3,1fr)" : "repeat(6,1fr)",
+      splitCols: mob ? "1fr" : "minmax(0,1.25fr) minmax(0,1fr)", splitColsR: mob ? "1fr" : "minmax(0,1fr) minmax(0,1.25fr)",
+      splitColsEq: mob ? "1fr" : "1fr 1fr", splitColsRev: mob ? "1fr" : "minmax(0,.9fr) minmax(0,1.1fr)",
+      textOrder: mob ? "2" : "1", imgOrder: mob ? "1" : "2",
+      rowCols: mob ? "96px 1fr" : "180px 1.4fr 1fr auto", stageCol: mob ? "2" : "auto", arrowDisp: mob ? "none" : "inline",
+      libCols: mob ? "120px 1fr" : "220px 1fr 140px 40px", delivCols: mob ? "96px 1fr auto" : "150px 1fr auto",
+      fileCols: mob ? "44px 1fr auto" : "44px 1fr 200px 130px", galleryCols: mob ? "1fr" : "2fr 1fr",
+      toastBottom: mob ? "92px" : "28px",
+      navItems: [["home", "Home"], ["projects", "Projects"], ["review", "Review"], ["library", "Library"], ["files", "Files"]].map(navItem),
+      mobileNav: [["home", "Home"], ["projects", "Projects"], ["review", "Review"], ["library", "Library"], ["account", "Account"]].map(navItem),
+      accountBg: view === "account" ? pillOn : "transparent",
+      authScreen: false, authChecking: false, signedOut: false,
+      userName: (me.name || "").split(" ")[0] || "Account", userInitials: this.initials(me.name),
+      isAdmin: me.role === "admin", isClientUser: me.role !== "admin",
+      signOut: () => this.signOut(),
+      goHome: () => this.go("home"), goProjects: () => this.go("projects"), goReview: () => this.go("review"), goLibrary: () => this.go("library"), goFiles: () => this.go("files"), goAccount: () => this.go("account"),
+      goProjectMeridian: () => this.go("project", { project: "meridian" }), goProjectSocial: () => this.go("project", { project: "social" }),
+      goMessages: () => { this.go("project", { project: "meridian" }); setTimeout(() => { const el = this.messagesRef.current; if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 110, behavior: "smooth" }); }, 150); },
+      vHome: view === "home", vProjects: view === "projects", vProject: view === "project", vReview: view === "review", vLibrary: view === "library", vItem: view === "item", vFiles: view === "files", vAccount: view === "account",
+      greeting, featured: mkProj(featured), social: mkProj(social), featuredStages: stagesFor(featured), reviewImg: this.IMG.review, heroImg: this.IMG.hero,
+      statusText, team: this.team.map(withImg), activity: this.activityRows.map(([date, text]) => ({ date, text })),
+      openHero: openItem("hero"), copyHeroLink: () => { try { navigator.clipboard.writeText("https://portal.noblemanproductions.gotit2work.com/s/hero-8fa2c1"); } catch (e) {} this.toast("Private link copied"); },
+      projectTiles: this.projects.map(mkProj),
+      proj: mkProj(proj), projStages: stagesFor(proj), projHasCut: proj.hasCut, projNoCut: !proj.hasCut,
+      projDeliverables: this.library.slice(0, 4).map(libRow), recentFiles: S.files.slice(0, 3), requestedCount: this.requestedRows.length,
+      documents: this.documentRows.map(([name, meta]) => ({ name, meta, open: () => this.toast(name + " · opening PDF") })),
+      messages: S.messages, messagesRef: this.messagesRef, messageRef: this.messageRef,
+      sendMessage: () => this.postMessage(), messageKey: (e) => { if (e.key === "Enter") this.postMessage(); },
+      ver, versions: this.versions.map(x => Object.assign({}, x, { current: x.v === 3, pick: () => this.setState({ version: x.v, requesting: false }), border: x.v === S.version ? ink : hairline, bg: x.v === S.version ? pillOn : "transparent", color: ink })),
+      videoRef: this.videoRef, timeSec: Math.round(S.time), progressPct: pct.toFixed(2) + "%", tcCur: this.fmt(S.time), tcDur: dur ? this.fmt(dur) : "--:--", playing: S.playing, paused: !S.playing,
+      togglePlay: () => this.togglePlay(),
+      seekTo: (e) => { if (!dur) return; const r = e.currentTarget.getBoundingClientRect(); this.seek(((e.clientX - r.left) / r.width) * dur); },
+      markers: S.comments.map((c, i) => ({ left: Math.min(100, (c.t / (dur || 90)) * 100).toFixed(2) + "%", tc: this.fmt(c.t), delay: (i * 0.6) + "s", seek: (e) => { e.stopPropagation(); this.seek(c.t); } })),
+      addAtCurrent: () => { if (this.player && S.playing) this.player.pause().catch(() => {}); const el = this.commentRef.current; if (el) el.focus(); },
+      comments: S.comments.slice().sort((a, b) => a.t - b.t).map(c => Object.assign({}, c, { tc: this.fmt(c.t), seek: () => this.seek(c.t) })), commentCount: S.comments.length, commentRef: this.commentRef,
+      addComment: () => this.postComment(), commentKey: (e) => { if (e.key === "Enter") this.postComment(); },
+      notRequesting: !S.requesting, requesting: S.requesting, decisionButtons, hasDecisions: verDecisions.length > 0, decisions: verDecisions, requestRef: this.requestRef,
+      submitRequest: () => { const el = this.requestRef.current; const text = el && el.value.trim(); if (!text) { if (el) el.focus(); return; } this.setState(s => ({ requesting: false, decisions: s.decisions.concat([{ v: s.version, kind: "changes", date: this.today(), text: "Revision requested: “" + text + "”" }]), messages: [{ who: "Jonathan", when: "Just now", text: "Change request on Version " + s.version + ": " + text }].concat(s.messages) })); this.toast("Request sent. Justin will confirm the plan within one business day."); },
+      cancelRequest: () => this.setState({ requesting: false }),
+      libraryRows: this.library.slice(1).map(libRow),
+      extend: this.extendRows.map(([title, desc]) => ({ title, desc, ask: () => this.toast("Sent to Jean. Expect a quote the same business day.") })),
+      item: Object.assign({}, item, { isVideo: item.kind === "video", isPhoto: item.kind === "photo", isArchive: item.kind === "archive", notArchive: item.kind !== "archive", playerRatio: item.vertical ? "9/16" : "16/9", playerW: item.vertical ? "min(100%, 400px)" : "100%", watchLabel: item.kind === "photo" ? "View gallery" : "Watch" }),
+      itemMeta, gallery: [{ img: this.IMG.photo, ratio: "16/9", span: mob ? "auto" : "1 / -1" }, { img: this.IMG.bts, ratio: "16/9", span: "auto" }, { img: this.IMG.hero, ratio: "16/9", span: "auto" }],
+      watchItem: () => { if (this.player) this.player.play().catch(() => {}); else this.toast("Full-resolution gallery arrives with the download"); },
+      toggleDownloads: () => this.setState(s => ({ downloadsOpen: !s.downloadsOpen, shareOpen: false })), toggleShare: () => this.setState(s => ({ shareOpen: !s.shareOpen, downloadsOpen: false })),
+      downloadsOpen: S.downloadsOpen, shareOpen: S.shareOpen, downloadsBg: S.downloadsOpen ? pillOn : "transparent", shareBg: S.shareOpen ? pillOn : "transparent",
+      itemDownloads: item.downloads.map(([name, size]) => ({ name, size, get: () => this.toast(parseFloat(size) > 10 && size.includes("GB") ? "Preparing " + name.split(" · ")[0] + " · a resumable link is on its way to your email" : "Download started · " + size) })),
+      shareUrl, copyLink: () => { try { navigator.clipboard.writeText(shareUrl); } catch (e) {} this.toast("Private link copied"); },
+      transferNone: !S.transfer, transferLink: S.transfer === "link", transferDrive: S.transfer === "drive", linkUntil: this.plusDays(7),
+      requestLink: () => { this.setState({ transfer: "link" }); this.toast("Transfer link sent"); }, requestDrive: () => { this.setState({ transfer: "drive" }); this.toast("Drive request sent to Jean"); },
+      dragOver: (e) => { e.preventDefault(); if (!S.drag) this.setState({ drag: true }); }, dragLeave: () => { if (S.drag) this.setState({ drag: false }); },
+      drop: (e) => { e.preventDefault(); this.setState({ drag: false }); this.addFiles(e.dataTransfer && e.dataTransfer.files); },
+      dropBorder: S.drag ? ink : outline, dropBg: S.drag ? card : "transparent",
+      browse: () => { const el = this.fileRef.current; if (el) el.click(); }, fileRef: this.fileRef, filesPicked: (e) => { this.addFiles(e.target.files); e.target.value = ""; },
+      requested: this.requestedRows.map(text => ({ text })),
+      fileFilters: this.filters.map(label => ({ label, pick: () => this.setState({ fileFilter: label }), border: label === S.fileFilter ? ink : hairline, bg: label === S.fileFilter ? pillOn : "transparent", color: ink })),
+      filesShown, noFilesShown: filesShown.length === 0,
+      users: this.userRows.map(([name, role, tag]) => ({ name, role, tag })),
+      channelPrefs: [toggle("email", "Email", "jonathan@meridianmarine.com"), toggle("sms", "Text message", "+1 (619) ••• ••14"), toggle("portal", "In the portal", "Quiet badge on Review and Library")],
+      eventPrefs: [toggle("cuts", "A new cut is ready for review"), toggle("stages", "My project changes stage"), toggle("delivery", "A final film is delivered"), toggle("msgs", "Nobleman sends a message")],
+      signOut: () => this.toast("Signed out of this device"),
+      toastOn: !!S.toast, toastText: S.toast || "",
+    };
+  }
+}
+</script>
+<template id="__bundler_thumbnail" data-bg-color="#141414">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1200" height="800" fill="#141414"/>
+    <text x="600" y="440" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="260" font-weight="700" fill="#f5f2ec">P</text>
+  </svg>
+</template>
+</body>
+</html>
