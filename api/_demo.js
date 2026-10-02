@@ -1,5 +1,5 @@
 import { CAPABILITIES, STAGES } from "./_caps.js";
-import { DEFAULTS } from "./_settings.js";
+import { DEFAULTS, resolveBrand } from "./_settings.js";
 import { ROLE_DEFAULTS, STAFF_ROLES, CLIENT_ROLES, STAFF_PERMS, CLIENT_PERMS, rolePermissions } from "./_roles.js";
 import { providerList } from "./_providers/index.js";
 import { EVENTS } from "./_payments.js";
@@ -112,7 +112,7 @@ export function demoPortal() {
     user: { id: "demo-user", email: "jonathan@meridian.example", name: "Jonathan Reyes", title: "Marketing Director", role: "client", access: "approver",
       roleLabel: "Decision maker", perms: ROLE_DEFAULTS.approver, clientId: "demo-client", clientName: "Meridian", clientLogo: null, mustChangePassword: false, notifyEmail: true, twoStep: false },
     demo: true,
-    brand: DEFAULTS.brand,
+    brand: resolveBrand(DEFAULTS.brand),
     welcome: DEFAULTS.welcome,
     announcement: null,
     emailEnabled: true,
@@ -238,7 +238,7 @@ export function demoAdmin(q) {
       { id: "demo-stripe", provider: "stripe", name: "Payments (Stripe)", env: false, status: "ok", lastError: null, checked: ago(0, 2), config: { account: "Nobleman Productions", currency: "usd" } },
     ],
     payments: { ready: true, live: true, webhook: true, currency: "usd", endpoint: "https://portal.noblemanproductions.gotit2work.com/api/connect?webhook=stripe", events: EVENTS },
-    settings: { ...DEFAULTS, notion: { ...DEFAULTS.notion, connectionId: "demo-notion", dataSourceId: "demo", title: "Nobleman Productions projects", lastSync: ago(0, 1) } },
+    settings: { ...DEFAULTS, brand: resolveBrand(DEFAULTS.brand), notion: { ...DEFAULTS.notion, connectionId: "demo-notion", dataSourceId: "demo", title: "Nobleman Productions projects", lastSync: ago(0, 1) } },
     email: true,
     blob: true,
     redirectUri: "https://portal.noblemanproductions.gotit2work.com/api/connect",

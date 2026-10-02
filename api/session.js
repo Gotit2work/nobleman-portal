@@ -6,7 +6,7 @@ import {
   signSession, setSessionCookie, clearSessionCookie, signTicket, readTicket, needsTwoStepSetup,
 } from "./_auth.js";
 import { sameText, seal, open, totpSecret, totpUri, verifyTotp, recoveryCodes, hashToken } from "./_crypto.js";
-import { getSettings, DEFAULTS, LOGIN_UPLOAD } from "./_settings.js";
+import { getSettings, DEFAULTS, LOGIN_UPLOAD, resolveBrand, instanceId } from "./_settings.js";
 import { emailReady, originOf } from "./_notify.js";
 import { createLink, redeemLink, emailLink, emailSignup, throttled, recordAttempt, clearAttempts } from "./_links.js";
 import { audit, clientIp } from "./_audit.js";
@@ -71,7 +71,7 @@ export default async function handler(req, res) {
 
 // The login screen's wording: saved settings, or the defaults when there's no database yet (so the
 // Murphy's Law and studio name show before go-live too).
-const DEFAULT_SCREEN = { brand: DEFAULTS.brand, signin: DEFAULTS.signin, signinLinks: false, signup: false };
+const DEFAULT_SCREEN = { brand: resolveBrand(DEFAULTS.brand), signin: DEFAULTS.signin, signinLinks: false, signup: false };
 async function screen() {
   const s = await getSettings().catch(() => null);
   // Sign-up needs email (the address is confirmed by a link), so it only shows when email works.
@@ -110,8 +110,8 @@ async function status(req, res) {
   if (!dbConfigured()) return res.status(200).json({ ...base, ...DEFAULT_SCREEN, user: null, db: false, setup: false });
   try {
     await ready();
-    const [user, sc, email] = await Promise.all([currentUser(req), screen(), emailReady()]);
-    const out = { ...base, ...sc, email, db: true };
+    const [user, sc, email, instance] = await Promise.all([currentUser(req), screen(), emailReady(), instanceId()]);
+    const out = { ...base, ...sc, email, db: true, instance };
     if (user) return res.status(200).json({ ...out, setup: false, user: publicUser(user), needsTwoStep: await needsTwoStepSetup(user) });
     const owners = await sql`select 1 from users where role = 'admin' limit 1`;
     return res.status(200).json({ ...out, user: null, setup: owners.length === 0, setupReady: !!process.env.BOOTSTRAP_SECRET });

@@ -1,12 +1,13 @@
 # Nobleman client portal — project notes
 
-Client portal for Nobleman Productions at `portal.noblemanproductions.gotit2work.com`. Operated by Alexis / GotIT2Work. The marketing site is `Gotit2work/nobleman-website`; its `docs/DEPLOYMENT.md` is the runbook for both. README.md explains the product, roles, capabilities, Studio, video sources, Notion, env vars, and the go-live steps.
+Client portal for Nobleman Productions at `portal.noblemanproductions.gotit2work.com`, moving to `portal.noblemanproductions.com` (README, "Moving to noblemanproductions.com"; the guide is `docs/MOVE.md` in the website repo). Operated by Alexis / GotIT2Work. The marketing site is `Gotit2work/nobleman-website`; its `docs/DEPLOYMENT.md` is the runbook for both. README.md explains the product, roles, capabilities, Studio, video sources, Notion, env vars, and the go-live steps.
 
 **Staff run everything from Studio; code changes are only for adding or removing capabilities** (README, "Changing what the portal can do"). Anything an admin would want to change (wording on the login screen, who can create an account, stages, defaults, roles, connections) belongs in Settings or Connections, not in code.
 
 ## Ownership and infrastructure
 
 - Vercel project `nobleman-portal` (`prj_3HnVWrxGKofXm6EUvEPF1Jg2xCR8`), team `gotit2-work` (`team_b7Eucmxp9X2SzzAHXZPA92Qh`), framework Other, Node 22.x, Vercel Authentication on previews only. Linked to GitHub `Gotit2work/nobleman-portal` (public so Hobby can deploy it); pushes to `main` deploy to production. DNS: GoDaddy CNAME `portal.noblemanproductions` → `cname.vercel-dns.com`.
+- **Addresses: never hard-code the domain.** Use `addresses()`/`s.brand.portal`, `website`, `privacy` (server) or `data.brand` (page). The domain lives in `HOME` (`api/_settings.js`), and `scripts/move-domain.mjs --apply` changes every mention at once. Keep the old portal address attached in Vercel after a move and never redirect `/api/*` from it: Stripe and Adobe call it.
 - **Alexis owns `gotit2work.com`** (DNS at GoDaddy). The apex points at Lovable (`185.158.133.1`) and email is Microsoft 365. Touch neither.
 - On Hobby by the owner's choice; commercial use requires Pro before clients rely on it. Hobby allows 12 functions; the portal uses 8 (`session`, `portal`, `media`, `files`, `admin`, `share`, `connect`, `cron`). Add actions to an existing route rather than a new file. Hobby crons run once a day, within the hour.
 - Vimeo is Jean's account (`jeangotay`, **Plus**): no API download links (Standard+), so films fall back to "Download on Vimeo".
@@ -59,4 +60,4 @@ Client portal for Nobleman Productions at `portal.noblemanproductions.gotit2work
 
 ## Verifying changes
 
-`cd tests && npm test` (README, "Testing") starts three local servers with PGlite and fakes for every provider, then runs 303 API checks and 134 browser checks on desktop and phone. `npm run shots` captures every screen (desktop 1440, phone 390) into `tests/.work/shots`. Look at the screenshots after any visual change; fonts from Google may be missing in a sandbox. Before shipping, `npx vercel build` with a hand-written `.vercel/project.json` (`{"projectId":"x","orgId":"y","settings":{"framework":null}}`), confirm 8 functions and the cron in `.vercel/output/config.json`, then delete `.vercel/`.
+`cd tests && npm test` (README, "Testing") starts three local servers with PGlite and fakes for every provider, then runs 309 API checks and 141 browser checks on desktop and phone. `npm run shots` captures every screen (desktop 1440, phone 390) into `tests/.work/shots`. Look at the screenshots after any visual change; fonts from Google may be missing in a sandbox. Before shipping, `npx vercel build` with a hand-written `.vercel/project.json` (`{"projectId":"x","orgId":"y","settings":{"framework":null}}`), confirm 8 functions and the cron in `.vercel/output/config.json`, then delete `.vercel/`.

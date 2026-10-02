@@ -21,6 +21,20 @@ function routeOf(path, base) {
   return p.split("/").filter(Boolean).map(decodeURIComponent);
 }
 
+/** An old address sends people on to the portal's address (Studio → Settings → Studio details), the same page,
+ *  but only once that address answers, so a half-finished domain move never strands anyone. API calls are never
+ *  moved (Stripe and Adobe keep reaching the old address), and previews and local copies stay where they are. */
+async function movedOn(s) {
+  const to = s && s.brand && s.brand.portal;
+  if (!to || /(^|\.)localhost$|^127\.|\.vercel\.app$/.test(location.hostname)) return false;
+  let target;
+  try { target = new URL(to); } catch { return false; }
+  if (target.host === location.host) return false;
+  try { await fetch(target.origin + "/api/session", { mode: "no-cors", cache: "no-store", signal: AbortSignal.timeout(5000) }); } catch { return false; }
+  location.replace(target.origin + location.pathname + location.search + location.hash);
+  return true;
+}
+
 function App() {
   const [st, setSt] = useState({ phase: "boot" });
   const [path, setPath] = useState(location.pathname);
@@ -100,6 +114,7 @@ function App() {
     const start = wantsSignUp ? "signup" : undefined;
     let s;
     try { s = await api("/api/session"); } catch (e) { s = { error: e.message }; }
+    if (await movedOn(s)) return;
     try {
       if (wantsDemo) return await loadDemo("/demo");
       if (p.startsWith("/link/")) return setSt({ phase: "gate", gate: "link", session: s });
