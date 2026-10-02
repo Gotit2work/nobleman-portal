@@ -19,6 +19,27 @@
 <link rel="stylesheet" href="/app/portal.css">
 <script src="/assets/np.js?v=9" defer></script>
 <script src="https://player.vimeo.com/api/player.js" async></script>
+<script>
+// If a file the portal needs doesn't arrive (a dropped connection), say so instead of leaving a blank page.
+(function () {
+  function show() {
+    var r = document.getElementById("root");
+    if (!r || r.hasChildNodes()) return;
+    r.innerHTML = '<div role="alert" style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:32px;text-align:center;font-family:Inter,system-ui,sans-serif;color:#f4f4f2;background:#031e25">' +
+      '<img src="/assets/Nobleman_Mark_White.png" alt="" style="height:44px">' +
+      '<p style="margin:0;font-size:18px;line-height:1.5;max-width:420px">The portal didn\u2019t finish loading. This is usually a weak connection.</p>' +
+      '<button onclick="location.reload()" style="height:48px;padding:0 26px;border-radius:30px;border:0;background:#f4f4f2;color:#031e25;font:600 15px Inter,system-ui,sans-serif;cursor:pointer">Reload the page</button>' +
+      '<p style="margin:0;font-size:14px;opacity:.7">Still stuck? Email <a href="mailto:alexis@gotit2work.com" style="color:inherit">alexis@gotit2work.com</a>.</p></div>';
+  }
+  var failed = false;
+  window.addEventListener("error", function (e) {
+    var t = e.target;
+    if (t && t.tagName === "SCRIPT" && /\/(app|vendor)\//.test(t.src || "")) { failed = true; setTimeout(show, 0); }
+  }, true);
+  document.addEventListener("DOMContentLoaded", function () { if (failed) show(); });
+  setTimeout(show, 15000);
+})();
+</script>
 <script src="/vendor/react-18.3.1.production.min.js"></script>
 <script src="/vendor/react-dom-18.3.1.production.min.js"></script>
 </head>
