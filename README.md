@@ -1,146 +1,160 @@
 # Nobleman Productions — Client Portal
 
-Static front end plus serverless API routes, Neon Postgres for data. Vercel runs `npm install`; there is no build step.
-The step-by-step runbook for both Nobleman sites (Vercel, DNS at GoDaddy, validation, rollback) is `docs/DEPLOYMENT.md` in `Gotit2work/nobleman-website`. This README covers what is specific to the portal.
+`portal.noblemanproductions.gotit2work.com`. Clients sign in to watch versions of their films, leave notes pinned to a moment, approve or ask for changes, download finished films, swap files, and message Jean and Justin. Staff run everything from **Studio**: clients, people, projects, the Vimeo folder behind each project, and which of the ten capabilities each project's client gets.
 
-Pages
-- `/` → index.html. The layout is responsive; there is no separate mobile page.
-- `/?signin` → the sign-in screen, even in demo mode.
+The runbook for both Nobleman sites (Vercel, DNS at GoDaddy, validation, rollback) is `docs/DEPLOYMENT.md` in `Gotit2work/nobleman-website`. This README covers what is specific to the portal.
+
+## How it's built
+
+| Part | What | Where |
+|---|---|---|
+| Front end | React 18 + [htm](https://github.com/developit/htm), plain ES modules, no build step | `index.html`, `app/*.js`, `app/portal.css` |
+| Look | The website's type and motion (`assets/np.css`, `assets/np.js`, copied; bump `?v=`), maritime icons in `media/icons/` | |
+| API | Five Vercel functions (Hobby allows 12) | `api/session.js`, `portal.js`, `media.js`, `files.js`, `admin.js` |
+| Data | Postgres (Neon now; any Postgres works). The schema applies itself | `api/_schema.js`, `api/_db.js` |
+| Video | Jean's Vimeo account through its API. The token never reaches the browser | `api/_vimeo.js` |
+| Files | A private Vercel Blob store. Browsers upload straight to it with a short-lived token | `api/files.js` |
+| Email | Resend (optional) | `api/_notify.js` |
+| Vendored | React 18.3.1, htm 3.1.1, `@vercel/blob` 2.8.0 browser client | `vendor/` (immutable cache) |
+
+Pages are client-side routes served by one `index.html` (rewrite in `vercel.json`): `/` Home, `/review`, `/films`, `/files`, `/messages`, `/account`, `/studio/…` (staff), `/demo/…` (the public sample), `/signin`.
+
+**Navigation.** On desktop (960 px and wider) a floating capsule on the left: Home, Review, Films, Files, Messages, Studio (staff), then Help and Account. A glow slides to the current page; hovering shows what each one is for; badges count what's waiting. On phones it becomes a bottom bar (a **More** tab holds the rest when there are more than five).
+
+**Sign-in** is the "screening room": the reel plays behind a REC frame on desktop, with the sign-in door beside it. Forgotten passwords are reset by staff (Studio → People), and the page says so.
+
+## Accounts and capabilities
+
+- **Staff** (`admin`): Jean, Justin, Alexis. See every client and use Studio.
+- **Client** people belong to one client company and see only that company's projects that aren't archived.
+
+New people are added in Studio → People. The portal makes a temporary password, shows it once, and builds an invitation message to copy; the person must choose their own password the first time they sign in. **The portal doesn't email the invitation**; send it however you normally reach them. Changing a password, resetting one, or changing someone's account type or company signs them out everywhere at once.
+
+Each project has ten switches (Studio → Projects → Edit → "What <client> can do"). The server enforces them on every request; the page only hides what's off. Staff can always do everything.
+
+| Switch | Default | What the client gets |
+|---|---|---|
+| Review versions | on | Watch each version, leave notes pinned to a moment |
+| Approve versions | on | Approve, or ask for changes (needs Review) |
+| Download finished films | on | The sizes Vimeo has ready |
+| Download original files | off | Also the original upload (needs Download) |
+| Captions and chapters | on | Caption files (WebVTT) and chapter jumps |
+| Share links | off | Copy a finished film's link (only if the film is shareable on Vimeo) |
+| Play counts | off | Plays per finished film. The portal's player runs with Vimeo's do-not-track setting, so plays in the portal aren't counted |
+| Files from Nobleman | on | Documents staff add: quotes, schedules, call sheets |
+| Uploads | off | Send files, and send video to the project's Vimeo folder |
+| Messages | on | A message thread with Nobleman for the project |
+
+## Vimeo
+
+Each project points at **one folder** in Jean's Vimeo account (Studio → Projects → Edit → Vimeo folder; pick it from the list or type the number at the end of the folder's address).
+
+- A title with a version number becomes a version in **Review**: "Harbor Spot V2", "Harbor Spot v3", "Harbor Spot - Version 4", "Harbor Spot (V5)". Versions with the same name before the number are one cut. "V8 Engine Film" is not a version: the marker must follow a space, dash, or bracket.
+- Any other video in the folder is a finished film in **Films**.
+- Videos a client sends through the portal are listed under **Files** and never shown as films. They arrive in the folder as "From <client>: <file name>", private on Vimeo ("only me").
+- Videos staff send through the portal keep their name, so "… V4" becomes Version 4. They arrive **unlisted** (not on vimeo.com search or profiles, playable through the portal) with downloads off.
+- Videos still processing are skipped until Vimeo has them ready. The folder list is cached for two minutes per server; Studio → Vimeo & connections → **Refresh from Vimeo** clears it.
+
+**Privacy each video needs.** To play in the portal a video must allow embedding: Vimeo → the video → Settings → Privacy → *Who can watch* **Unlisted** or **Hide from Vimeo**, and *Where can this be embedded* **Anywhere** or **Specific domains** including `portal.noblemanproductions.gotit2work.com`. "Only me" videos don't play in the portal.
+
+**Downloads and Jean's plan.** Vimeo only gives download links through its API on **Standard and above**. Jean's account is on **Plus**, so the portal can't list download sizes. Instead, when a film allows downloads on Vimeo (Settings → Privacy → *Allow downloads*) and is shareable (Unlisted or Public), clients get a **Download on Vimeo** button that opens the film's Vimeo page. Otherwise clients see "Downloads aren't available for this film", and staff see the reason. Upgrading to Standard turns on the full list (Original, 4K, 1080p…) with no code change.
+
+**The token.** Vimeo → developer.vimeo.com → **Create an app** (signed in as Jean) → the app → **Generate an access token** → *Authenticated (you)* with these scopes:
+
+| Scope | Used for |
+|---|---|
+| Public, Private | Read the account, folders, and private or hidden videos |
+| Edit | Name uploads and set their privacy |
+| Upload | Accept videos sent through the portal |
+| Video Files | Download links (Standard plan and above) |
+| Stats | Play counts |
+
+Studio → **Vimeo & connections** checks the token and shows a tick or cross for each scope, the plan, and the upload space left.
+
+## Files
+
+Documents and client files live in a **private** Vercel Blob store: nothing in it has a public address. Uploads go straight from the browser to Blob with a token that allows one file at one path; the API only records it once the file has landed. Downloads use a signed link that works for ten minutes. Limit: 500 MB per file. Videos go to the project's Vimeo folder instead when it has one (up to 50 GB each). Deleting a client or project deletes its stored files.
+
+## Email updates (optional)
+
+With `RESEND_API_KEY` and `PORTAL_EMAIL_FROM` set, staff get an email when a client leaves a note, approves or asks for changes, sends a message, or uploads; clients get one when staff message them, add a file, or add a video. Each person can switch these off under Account. Without the variables, nothing is emailed and the Account page doesn't offer the switch.
 
 ## Demo mode
 
-`PORTAL_MODE=demo` opens the portal to anyone as the sample client ("Jonathan Reyes, Meridian"), with no sign-in and no database needed. That's how the live portal runs today. It is an explicit server setting, not a fallback: remove the variable (and redeploy) and every visitor must sign in.
+`PORTAL_MODE=demo` opens the portal at `/` to anyone as a sample client ("Jonathan Reyes, Meridian"), with nothing saved: every action says "Demo only: …". It's a server setting, never a fallback: if the API fails, the sign-in screen shows the problem. The sample is always at `/demo` too, so the website can link to it after go-live. In demo mode, `/signin` still reaches the real sign-in.
 
-In demo mode a real session still wins. Staff can sign in at `/?signin` and see their own account, and signing out returns to the demo. The demo's own Sign out button just explains that it's a demo.
+## Environment variables
 
-## Roles
-
-Two kinds of account, enforced server-side:
-
-- **admin** — Jean, Justin, Alexis. Not tied to any client. Can create and remove accounts and see every client.
-- **client** — belongs to exactly one client organisation and sees only that organisation's work.
-
-The database rejects an admin scoped to a client, and a client user with no client, so the shape can't drift.
-
-## Setup, in order
-
-**1. Create the database.** In the Vercel project: Storage → Create Database → Neon. Vercel sets `DATABASE_URL` for you. (Creating it directly at neon.tech works too — then paste the pooled connection string in as `DATABASE_URL` yourself.)
-
-**2. Create the tables.** Neon console → SQL Editor → paste all of `schema.sql` → Run. Every statement is idempotent: after pulling an update, re-run the whole file to add anything new (for example the `login_attempts` table used for sign-in throttling).
-
-**3. Set the environment variables.**
-
-| Variable | Required | Notes |
+| Variable | Needed | Notes |
 |---|---|---|
-| `DATABASE_URL` | yes | Set automatically if you created Neon through Vercel |
-| `SESSION_SECRET` | yes | 32+ random characters. `openssl rand -base64 48`. Changing it signs everyone out |
-| `BOOTSTRAP_SECRET` | first run only | Any long random string. Guards the one-time admin setup |
-| `PORTAL_MODE` | no | `demo` = public sample portal (see above). Unset = sign-in required |
-| `VIMEO_ACCESS_TOKEN` | no | Enables real films (see "Connecting Vimeo"). Mark it **Sensitive** in Vercel |
-| `VIMEO_DEMO_FOLDER_ID` | no | Vimeo folder the public demo plays from. Without it the demo keeps its sample films |
-| `VIMEO_USER_ID` | no | Owner of the folders, if the token belongs to a different Vimeo user. Defaults to the token's account |
+| `DATABASE_URL` | yes | Set by Vercel when you create Neon under Storage. `POSTGRES_URL` also works |
+| `SESSION_SECRET` | yes | 32+ random characters (`openssl rand -base64 48`). Changing it signs everyone out. Mark **Sensitive** |
+| `BOOTSTRAP_SECRET` | first run | Any long random text. The setup code for the first staff account. Remove after setup |
+| `VIMEO_ACCESS_TOKEN` | for video | Scopes above. Mark **Sensitive** |
+| `VIMEO_USER_ID` | rarely | Only if the token belongs to a different Vimeo user than the folders' owner |
+| `BLOB_READ_WRITE_TOKEN` | for files | Set by Vercel when you connect a Blob store |
+| `RESEND_API_KEY` | no | Turns on email updates |
+| `PORTAL_EMAIL_FROM` | with Resend | For example `Nobleman Productions <portal@gotit2work.com>`. Must be on a domain verified in Resend |
+| `PORTAL_MODE` | no | `demo` = public sample at `/`. Remove it to go live |
 
-**4. Deploy.** Import `Gotit2work/nobleman-portal` into Vercel with Framework Preset **Other**, no build command, no output directory. Then Settings → Domains → `portal.noblemanproductions.gotit2work.com`, and add the CNAME Vercel shows at GoDaddy (Name: `portal.noblemanproductions`). Redeploy after setting environment variables; they only apply to new deployments.
+Environment variables only apply to new deployments: **redeploy after every change**.
 
-**5. Create the first admin.** Once, from your terminal:
+## Going live
 
-```bash
-curl -X POST https://portal.noblemanproductions.gotit2work.com/api/bootstrap \
-  -H 'content-type: application/json' \
-  -d '{"secret":"<BOOTSTRAP_SECRET>","name":"Alexis","email":"alexis@gotit2work.com","password":"<at least 10 chars>"}'
-```
+Today the portal runs with `PORTAL_MODE=demo` and nothing else. In order:
 
-It refuses to run a second time once an admin exists, so it is safe to leave deployed. Remove `BOOTSTRAP_SECRET` afterwards and redeploy anyway; a secret that no longer exists can't leak.
+1. **Database.** Vercel → `nobleman-portal` → Storage → **Create Database** → Neon → region `iad1` (Washington, D.C., next to the functions) → connect it to Production and Preview. *Result:* `DATABASE_URL` appears under Settings → Environment Variables. No SQL to run: the first request creates the tables.
+2. **File storage.** Storage → **Create** → Blob → access **Private** → connect to the project. *Result:* `BLOB_READ_WRITE_TOKEN` appears.
+3. **Secrets.** Add `SESSION_SECRET` and `BOOTSTRAP_SECRET` (Sensitive, Production and Preview).
+4. **Vimeo.** Jean creates the token (scopes above) and adds it as `VIMEO_ACCESS_TOKEN` (Sensitive).
+5. **Email (optional).** Needs a Resend account with `gotit2work.com` verified (website runbook, Phase 5; the same key can serve the website's contact form). Then add `RESEND_API_KEY` (Sensitive) and `PORTAL_EMAIL_FROM`.
+6. **Go live.** Delete `PORTAL_MODE`, then Deployments → latest → **Redeploy**.
+7. **First staff account.** Open the portal. It shows **Set up the portal**: enter the `BOOTSTRAP_SECRET` value as the setup code, your name, email, and a password. You're signed in. It only works while no staff account exists. Then delete `BOOTSTRAP_SECRET` and redeploy.
+8. **Set up.** Studio → Vimeo & connections: every scope ticked. Studio → People: add Jean and Justin as Staff. Studio → Projects → **New project** for each client (create the client in the same step), pick its Vimeo folder, set the switches.
+9. **Invite clients.** Studio → People → Add a person → copy the invitation → send it.
 
-**6. Sign in** at `portal.noblemanproductions.gotit2work.com`.
+**Check it worked.** Sign in on a phone and on a laptop; open a project as a test client account; play a version, leave a note, approve it in a test project, send a message, upload a small file, download it. Studio → Vimeo & connections shows nothing red.
 
-## Adding Jean, Justin, and client accounts
-
-The API is live but **the admin screens are not built yet** — that is the next increment. Until then, create accounts with a signed-in admin session:
-
-```bash
-# sign in and keep the cookie
-curl -c jar.txt -X POST https://portal.noblemanproductions.gotit2work.com/api/login \
-  -H 'content-type: application/json' \
-  -d '{"email":"alexis@gotit2work.com","password":"..."}'
-
-# another admin
-curl -b jar.txt -X POST https://portal.noblemanproductions.gotit2work.com/api/admin/users \
-  -H 'content-type: application/json' \
-  -d '{"name":"Jean","email":"jean@noblemanproductions.com","role":"admin","password":"..."}'
-
-# a client user, creating their organisation at the same time
-curl -b jar.txt -X POST https://portal.noblemanproductions.gotit2work.com/api/admin/users \
-  -H 'content-type: application/json' \
-  -d '{"name":"Jonathan Reyes","email":"jonathan@meridian.com","title":"Marketing Director","role":"client","clientName":"Meridian","password":"..."}'
-
-# list accounts (to find ids), then remove one; their session stops working immediately
-curl -b jar.txt https://portal.noblemanproductions.gotit2work.com/api/admin/users
-curl -b jar.txt -X DELETE https://portal.noblemanproductions.gotit2work.com/api/admin/users \
-  -H 'content-type: application/json' -d '{"id":"<user id>"}'
-```
-
-## API
-
-| Route | Method | Who |
-|---|---|---|
-| `/api/login` | POST | anyone |
-| `/api/logout` | POST | anyone |
-| `/api/me` | GET | signed in (or anyone, in demo mode) |
-| `/api/videos` | GET | signed in (or anyone, in demo mode: demo folder only) |
-| `/api/bootstrap` | POST | secret, once |
-| `/api/admin/users` | GET, POST, DELETE | admin |
-| `/api/admin/clients` | GET, POST | admin |
+**Roll back.** Set `PORTAL_MODE=demo` again and redeploy: the public sample returns and nothing in the database is touched. Or Vercel → Deployments → an earlier one → **Promote to Production**.
 
 ## Security model
 
-- **Sessions** are a signed JWT (HS256, `SESSION_SECRET`) in an httpOnly, Secure, SameSite=Lax cookie, good for 7 days. Every protected request re-reads the account from the database, so removing someone or changing their role takes effect immediately rather than when the cookie expires.
-- **Passwords** are bcrypt hashed (cost 10). Unknown emails are checked against a real dummy hash, so sign-in takes the same ~90 ms whether or not the account exists and timing can't be used to discover accounts.
-- **Throttling.** After 8 failed sign-ins for one email, or 30 from one IP, within 15 minutes, sign-in answers 429 until the window passes. A successful sign-in clears that email's failures. To unlock someone early: `delete from login_attempts where email = '...';` in the Neon SQL editor.
-- **Cross-origin requests.** Every POST/DELETE sent by a browser from another origin is refused (403). SameSite=Lax alone doesn't stop this, because every `*.gotit2work.com` host counts as the same site. Requests without an `Origin` header (curl) are allowed.
-- **Bootstrap secret** is compared in constant time.
-- **Headers:** `X-Frame-Options: DENY` (no clickjacking), `X-Robots-Tag: noindex`, `nosniff`, and `Cache-Control: no-store` on the API.
+- **Sessions:** a signed JWT (HS256, `SESSION_SECRET`) in the `np_session` cookie (httpOnly, Secure, SameSite=Lax, 7 days). Every request re-reads the person from the database and checks the session version, so removal, a reset, or a role change takes effect at once.
+- **Passwords:** bcrypt (cost 10), at least 10 characters, can't be reused when changed. Unknown emails are checked against a real dummy hash so timing doesn't reveal accounts.
+- **Throttling:** 8 failed sign-ins per email or 30 per IP in 15 minutes, then 429 until the window passes. To unlock someone early: Studio → People → Reset password.
+- **Scoping:** clients only ever reach their own company's non-archived projects (`projectFor` in `api/_auth.js`); every capability is checked server-side.
+- **Cross-origin:** POSTs a browser sends from another origin are refused (403). SameSite alone isn't enough because every `*.gotit2work.com` host counts as the same site.
+- **Headers:** `X-Frame-Options: DENY`, `noindex`, `nosniff`, a strict referrer policy, camera/microphone/location off, and `no-store` on the API.
 
-## Connecting Vimeo
+## Moving to Supabase later
 
-The portal is wired for Vimeo already; it only needs a token and folder ids. Until then it shows its sample films.
+The data layer is plain Postgres. To move: create the Supabase project; copy the data (`pg_dump --data-only` from Neon, `psql` into Supabase, or Supabase's import tool); set `DATABASE_URL` to Supabase's **pooled** connection string (port 6543); redeploy. `api/_db.js` uses Neon's HTTP driver for Neon addresses and `postgres.js` for everything else, with prepared statements off for the pooler. The schema applies itself on the first request. To read it as SQL: `node -e "import('./api/_schema.js').then(m => console.log(m.STATEMENTS.join(';\n\n') + ';'))"`.
 
-**How it works.** Each project maps to one Vimeo folder. `GET /api/videos` calls Vimeo's API from the server (the token never reaches the browser), and the page replaces the sample films with what it finds:
+## API
 
-- Titles containing a version number ("Harbor Spot V2", "v3", "Version 4") become **review cuts**. The highest number is the current cut, and the version picker switches between them.
-- Everything else in the folder becomes a **Library** deliverable. The newest one is featured.
-- If the folder has no cuts, or no deliverables, that half keeps the sample content.
-- Videos still transcoding are skipped. Results are cached for two minutes per server instance.
+| Route | Who | |
+|---|---|---|
+| `GET /api/session` | anyone | Who's signed in; whether setup is needed |
+| `POST /api/session` | anyone / signed in | `login`, `logout`, `setup`, `password`, `profile` |
+| `GET /api/portal` | signed in | Everything this person can see; `?demo=1` (anyone), `?thread=`, `?notes=&video=` |
+| `POST /api/portal` | signed in | `note`, `resolve`, `deleteNote`, `decide`, `message` |
+| `GET /api/media` | signed in | Downloads, captions, chapters for one video |
+| `POST /api/media` | signed in | `uploadStart`, `uploadDone`, `uploadCancel` (Vimeo) |
+| `GET/POST /api/files` | signed in | Signed download link; `start`, `done`, `cancel`, `delete` (Blob) |
+| `GET/POST /api/admin` | staff | Overview, `?folders=1`; client, person, and project actions, `vimeoRefresh` |
 
-Who sees which folder:
+## Testing
 
-| Viewer | Folders |
-|---|---|
-| Client | Their own client's active projects with a `vimeo_folder_id` (up to 5) |
-| Admin | `?project=<project uuid>` on `/api/videos`; otherwise the demo folder in demo mode |
-| Anyone, demo mode | `VIMEO_DEMO_FOLDER_ID` only |
-| Anyone, otherwise | Nothing (401) |
+`tests/` runs the whole portal offline: three local servers with an in-memory Postgres (PGlite) and fake Vimeo, Blob, and Resend. Not deployed.
 
-**Setup**
+```bash
+npm ci && (cd tests && npm ci)
+cd tests && npm test        # 102 API checks, then 43 browser checks (desktop and phone)
+npm run shots               # screenshots of every screen in tests/.work/shots
+```
 
-1. developer.vimeo.com → **Create an app** (Jean's Vimeo account, since it owns the videos) → **Authentication → Generate an access token** → *Authenticated (you)*, scopes **Public** and **Private**. Copy the token.
-2. Vercel → portal project → Environment Variables → `VIMEO_ACCESS_TOKEN` (type **Sensitive**, Production and Preview).
-3. For the public demo: make a Vimeo folder (for example "Portal demo") with a few finished films plus a couple of cuts named "… V1", "… V2". Its id is the number at the end of the folder's URL. Set `VIMEO_DEMO_FOLDER_ID` to it.
-4. Redeploy.
-5. For real clients (once the database is set up): re-run `schema.sql` (it adds `projects.vimeo_folder_id`), then `update projects set vimeo_folder_id = '<folder id>' where id = '<project uuid>';` in the Neon SQL editor.
-
-Each video's Vimeo privacy must allow embedding on `portal.noblemanproductions.gotit2work.com` (Settings → Privacy → Embed: *Anywhere* or *Specific domains*). "Hide from Vimeo" / unlisted works; the private hash is handled automatically.
-
-**Not wired yet:** downloads (Vimeo's download links need the `video_files` scope and a paid plan tier), comments, approvals, and notifications. Those still come from the sample data.
-
-## What is real and what is not
-
-Login, roles, and account management are real and backed by the database. The greeting and the Account page show the signed-in person, and the films come from Vimeo once it is connected (see above).
-
-**Everything else the portal displays is still hardcoded**: projects, stages, review comments, approvals, messages, files, documents (all the sample "Meridian" campaign). It looks live and it is not: nothing saves, uploads go nowhere, and a refresh resets it. Treat the portal as a real login in front of a prototype until increments 2 and 3 land, and **don't give clients logins before then**, because every client would see the same sample project.
-
-On `localhost` or a `file://` preview with no backend, the page falls back to a demo identity so the design still opens. On any other host, the demo only appears when the server says so (`PORTAL_MODE=demo`); a missing or failing API keeps the sign-in screen up with an error rather than failing open.
+Chromium: set `CHROMIUM_PATH`, or run `npx playwright install chromium` once (Claude Code's cloud containers already have it). Seeded accounts: `alexis@gotit2work.com` (staff), `dana@harbor.test`, `rob@moto.test`, all with the password `portal-test-pass`.
 
 ## Writing
 
-All client-facing copy follows [docs/WRITING.md](docs/WRITING.md): plain words, honest promises, and a demo that says it's a demo. Check new copy against its checklist before shipping.
+Every word a client sees follows [docs/WRITING.md](docs/WRITING.md): plain words, buttons named for what they do, no promise that isn't always true, a demo that says it's a demo, and a confirmation before anything hard to undo.

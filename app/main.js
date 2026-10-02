@@ -1,0 +1,262 @@
+// The portal app: decides what to show (sign-in, first-run setup, new password, demo, or the portal), routes
+// between screens without page reloads, and draws the navigation: a floating side capsule on desktop, a bottom
+// bar on phones.
+import { html, AppCtx, useState, useEffect, useMemo, useCallback, useRef, api, Icon, Link, Modal, Avatar, plural } from "./ui.js";
+import { Gate } from "./gate.js";
+import { Home, Project } from "./home.js";
+import { Review } from "./review.js";
+import { Films } from "./films.js";
+import { Files } from "./files.js";
+import { Messages } from "./messages.js";
+import { Account } from "./account.js";
+import { Studio } from "./studio.js";
+
+const R = window.React;
+
+/** Splits /review/<project>/<cut>/<n> into ["review", project, cut, n] (relative to the base). */
+function routeOf(path, base) {
+  const p = base && path.startsWith(base) ? path.slice(base.length) : path;
+  return p.split("/").filter(Boolean).map(decodeURIComponent);
+}
+
+function App() {
+  const [st, setSt] = useState({ phase: "boot" });
+  const [path, setPath] = useState(location.pathname);
+  const [toasts, setToasts] = useState([]);
+  const [help, setHelp] = useState(false);
+  const [more, setMore] = useState(false);
+
+  const toast = useCallback((text, opts = {}) => {
+    const id = Math.random().toString(36).slice(2);
+    setToasts((t) => t.concat([{ id, text, err: !!opts.err }]));
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), opts.err ? 7000 : 4500);
+  }, []);
+
+  const go = useCallback((to, { replace } = {}) => {
+    const full = (st.base || "") + (to === "/" && st.base ? "" : to);
+    if (replace) history.replaceState(null, "", full || "/"); else history.pushState(null, "", full || "/");
+    setPath(location.pathname);
+    window.scrollTo(0, 0);
+    setMore(false);
+  }, [st.base]);
+
+  useEffect(() => {
+    const onPop = () => setPath(location.pathname);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  const loadDemo = useCallback(async (base) => {
+    const data = await api("/api/portal?demo=1");
+    setSt({ phase: "app", demo: true, base, data, session: null });
+  }, []);
+
+  const loadPortal = useCallback(async (session) => {
+    const data = await api("/api/portal");
+    setSt({ phase: "app", demo: false, base: "", data, session });
+  }, []);
+
+  const boot = useCallback(async () => {
+    const p = location.pathname;
+    const wantsDemo = p === "/demo" || p.startsWith("/demo/");
+    const wantsSignIn = p === "/signin" || new URLSearchParams(location.search).has("signin");
+    let s;
+    try { s = await api("/api/session"); } catch (e) { s = { error: e.message }; }
+    try {
+      if (wantsDemo) return await loadDemo("/demo");
+      if (s.user) {
+        if (wantsSignIn) history.replaceState(null, "", "/");
+        if (s.user.mustChangePassword) return setSt({ phase: "gate", gate: "password", session: s });
+        return await loadPortal(s);
+      }
+      if (s.demoAtRoot && !wantsSignIn) return await loadDemo("");
+      if (s.error) return setSt({ phase: "gate", gate: "login", session: s, problem: s.error });
+      if (s.db === false) return setSt({ phase: "gate", gate: "login", session: s, problem: "The portal is still being set up. Try again soon, or see the demo." });
+      if (s.setup) return setSt({ phase: "gate", gate: "setup", session: s });
+      return setSt({ phase: "gate", gate: "login", session: s });
+    } catch (e) {
+      setSt({ phase: "gate", gate: "login", session: s, problem: e.message });
+    }
+  }, []);
+
+  useEffect(() => { boot(); }, []);
+
+  /** Re-reads the portal after an action, so every screen shows what the server now holds. */
+  const reload = useCallback(async () => {
+    if (st.demo) return;
+    try {
+      const data = await api("/api/portal");
+      setSt((x) => ({ ...x, data }));
+    } catch (e) {
+      if (e.status === 401) { toast("You were signed out. Sign in again to continue.", { err: true }); setSt({ phase: "gate", gate: "login", session: {} }); }
+      else toast(e.message, { err: true });
+    }
+  }, [st.demo]);
+
+  const setData = useCallback((fn) => setSt((x) => ({ ...x, data: fn(x.data) })), []);
+
+  /** In the demo nothing is saved or sent; the toast says so plainly. */
+  const say = useCallback((real, demo) => toast(st.demo ? "Demo only: " + demo : real), [st.demo, toast]);
+
+  const signedIn = useCallback(async (user) => {
+    if (user.mustChangePassword) return setSt({ phase: "gate", gate: "password", session: { user } });
+    try { await loadPortal({ user }); } catch (e) { toast(e.message, { err: true }); }
+  }, []);
+
+  const signOut = useCallback(async () => {
+    if (st.demo) { toast("This is the demo. There’s nothing to sign out of. Sign in at the top of the page."); return; }
+    await api("/api/session", { method: "POST", body: { action: "logout" } }).catch(() => {});
+    history.replaceState(null, "", "/");
+    setPath("/");
+    setSt({ phase: "gate", gate: "login", session: {} });
+  }, [st.demo]);
+
+  if (st.phase === "boot") return html`<div class="boot" role="status" aria-label="Loading the portal"><img src="/assets/Nobleman_Mark_White.png" alt="" /><div class="bar"><i></i></div><div class="eyebrow">Private screening room</div></div>`;
+  if (st.phase === "gate") {
+    return html`<${Gate} mode=${st.gate} session=${st.session} problem=${st.problem}
+      onSignedIn=${signedIn} onSetupDone=${signedIn}
+      onPasswordDone=${(user) => loadPortal({ user }).catch((e) => toast(e.message, { err: true }))}
+      onSignOut=${signOut} toast=${toast} />
+      <${Toasts} items=${toasts} />`;
+  }
+
+  const ctx = { ...st, user: st.data.user, go, toast, say, reload, setData, signOut, openHelp: () => setHelp(true), path };
+  return html`<${AppCtx.Provider} value=${ctx}>
+    <${Shell} route=${routeOf(path, st.base)} more=${more} setMore=${setMore} />
+    ${help ? html`<${Help} onClose=${() => setHelp(false)} />` : null}
+    <${Toasts} items=${toasts} />
+  <//>`;
+}
+
+function Toasts({ items }) {
+  return html`<div class="toasts" role="status" aria-live="polite">${items.map((t) => html`<div key=${t.id} class=${"toast" + (t.err ? " err" : "")}>${t.text}</div>`)}</div>`;
+}
+
+/** Which screens this person has, with their badges, from what their projects allow. */
+function navFor(data) {
+  const ps = data.projects || [];
+  const admin = data.user.role === "admin";
+  const any = (k) => admin || ps.some((p) => p.caps[k]);
+  const awaiting = ps.reduce((n, p) => n + (p.caps.review ? p.cuts.filter((c) => !c.versions[c.versions.length - 1].decision).length : 0), 0);
+  const unread = ps.reduce((n, p) => n + (p.messages ? p.messages.unread : 0), 0);
+  const items = [{ key: "", label: "Home", icon: "anchor", tip: "Your projects and your next step" }];
+  if (any("review")) items.push({ key: "review", label: "Review", icon: "play", badge: admin ? 0 : awaiting, tip: "Watch versions and leave notes" });
+  items.push({ key: "films", label: "Films", icon: "growth", tip: "Finished films to watch and download" });
+  if (any("files") || any("upload")) items.push({ key: "files", label: "Files", icon: "send", tip: "Documents, and files you send us" });
+  if (any("messages")) items.push({ key: "messages", label: "Messages", icon: "bottle", badge: unread, tip: "Talk to Nobleman" });
+  if (admin) items.push({ key: "studio", label: "Studio", icon: "key", tip: "Clients, people, projects, and what each can do" });
+  return items;
+}
+
+function Shell({ route, more, setMore }) {
+  const app = R.useContext(AppCtx);
+  const { data, demo, user } = app;
+  const items = useMemo(() => navFor(data), [data]);
+  const top = route[0] || "";
+  const activeIdx = Math.max(0, items.findIndex((i) => i.key === (top === "projects" ? "" : top)));
+  const isNavTop = items.some((i) => i.key === top) || top === "projects";
+
+  let screen;
+  switch (top) {
+    case "": screen = html`<${Home} />`; break;
+    case "projects": screen = html`<${Project} id=${route[1]} />`; break;
+    case "review": screen = html`<${Review} pid=${route[1]} cut=${route[2]} n=${route[3]} />`; break;
+    case "films": screen = html`<${Films} pid=${route[1]} vid=${route[2]} />`; break;
+    case "files": screen = html`<${Files} pid=${route[1]} />`; break;
+    case "messages": screen = html`<${Messages} pid=${route[1]} />`; break;
+    case "account": screen = html`<${Account} />`; break;
+    case "studio": screen = user.role === "admin" ? html`<${Studio} tab=${route[1]} id=${route[2]} />` : html`<${NotFound} />`; break;
+    default: screen = html`<${NotFound} />`;
+  }
+
+  const mobileItems = items.length > 5 ? items.slice(0, 4) : items;
+  const overflow = items.length > 5 ? items.slice(4) : [];
+
+  return html`<div class="shell">
+    <nav class="rail" aria-label="Main">
+      <${Link} to="/" cls="rail-logo" label="Portal home"><img src="/assets/Nobleman_Mark_White.png" alt="" /><//>
+      <div class="rail-sep"></div>
+      <div class="rail-items">
+        <div class="rail-glow" aria-hidden="true" style=${{ transform: `translateY(calc(${activeIdx} * (var(--rh) + 4px)))`, opacity: isNavTop ? 1 : 0 }}></div>
+        ${items.map((it, i) => html`<${Link} key=${it.key} to=${"/" + it.key} cls="rail-item" current=${isNavTop && i === activeIdx}>
+          <${Icon} name=${it.icon} size=${26} />
+          <span class="lbl">${it.label}</span>
+          ${it.badge ? html`<span class="badge" aria-label=${plural(it.badge, "new item")}>${it.badge}</span>` : null}
+          <span class="rail-tip" aria-hidden="true">${it.tip}</span>
+        <//>`)}
+      </div>
+      <div class="rail-sep"></div>
+      <div class="rail-foot">
+        <button class="rail-round" onClick=${app.openHelp} aria-label="Help: how this portal works">?<span class="rail-tip" aria-hidden="true">How this portal works</span></button>
+        <${Link} to="/account" cls="rail-round" current=${top === "account"} label=${"Your account: " + user.name}>
+          <${Avatar} name=${user.name} size=${40} />
+          <span class="rail-tip" aria-hidden="true">${user.name} · Account</span>
+        <//>
+      </div>
+    </nav>
+
+    <div class="topbar">
+      ${demo
+        ? html`<button class="demo-chip" onClick=${app.openHelp}>Demo</button>`
+        : html`<button class="round" onClick=${app.openHelp} aria-label="Help: how this portal works">?</button>`}
+      <${Link} to="/" cls="brand" label="Portal home"><img src="/assets/Nobleman_Logo_White.png" alt="Nobleman Productions" /><//>
+      <${Link} to="/account" cls="round" label=${"Your account: " + user.name}><${Avatar} name=${user.name} size=${36} /><//>
+    </div>
+
+    ${demo ? html`<${DemoRibbon} />` : null}
+
+    <main id="main">${screen}</main>
+
+    <nav class="bottombar" aria-label="Main">
+      ${mobileItems.map((it) => html`<${Link} key=${it.key} to=${"/" + it.key} cls="tab" current=${isNavTop && it.key === (items[activeIdx] || {}).key}>
+        <${Icon} name=${it.icon} size=${26} /><span class="lbl">${it.label}</span>
+        ${it.badge ? html`<span class="badge">${it.badge}</span>` : null}
+      <//>`)}
+      ${overflow.length ? html`<button class="tab" aria-expanded=${more} onClick=${() => setMore(!more)} aria-current=${overflow.some((o) => o.key === top) ? "page" : undefined}>
+        <${Icon} name="grid" size=${26} /><span class="lbl">More</span></button>` : null}
+    </nav>
+    ${more ? html`<${Modal} title="More" onClose=${() => setMore(false)}>
+      <div class="list">${overflow.map((it) => html`<${Link} key=${it.key} to=${"/" + it.key} cls="li" onClick=${() => setMore(false)}>
+        <${Icon} name=${it.icon} size=${28} /><div class="grow"><div class="name">${it.label}</div><div class="meta">${it.tip}</div></div><span aria-hidden="true">→</span><//>`)}
+      </div>
+    <//>` : null}
+  </div>`;
+}
+
+function DemoRibbon() {
+  const app = R.useContext(AppCtx);
+  return html`<div style=${{ position: "fixed", top: "18px", right: "22px", zIndex: 55 }} class="rail-only-desktop">
+    <div class="row" style=${{ gap: "8px" }}>
+      <button class="demo-chip" onClick=${app.openHelp} title="Nothing here is saved or sent. Click for what that means.">Demo · sample project</button>
+      <a class="btn primary sm" href="/signin">Client sign-in</a>
+    </div>
+  </div>`;
+}
+
+function NotFound() {
+  return html`<div class="page"><div class="empty">
+    <h3>That page isn’t here.</h3>
+    <p>The link may be old or mistyped. Everything in the portal starts from Home.</p>
+    <${Link} to="/" cls="btn primary">Go to Home<//>
+  </div></div>`;
+}
+
+const HELP = [
+  { icon: "anchor", t: "Home", d: "Starts with your next step: the one thing that needs you now. Below it, each project and how far along it is." },
+  { icon: "play", t: "Review", d: "Watch each version of a film. Pause anywhere and leave a note pinned to that moment. When it’s right, approve it; if not, ask for changes." },
+  { icon: "growth", t: "Films", d: "Your finished films. Watch them here and, where it’s switched on, download them, get caption files, or copy a link to share." },
+  { icon: "send", t: "Files", d: "Documents from Nobleman, like quotes and schedules, and anything you send us: logos, footage, references." },
+  { icon: "bottle", t: "Messages", d: "Write to Jean and Justin about a project. Your conversation stays with the project." },
+];
+
+function Help({ onClose }) {
+  const app = R.useContext(AppCtx);
+  return html`<${Modal} title="How your portal works" onClose=${onClose} wide>
+    ${app.demo ? html`<div class="alert"><b>This is a demo.</b> The client, projects, and files are made up. Click anything you like: nothing here is saved or sent.</div>` : null}
+    <div class="list">${HELP.map((h) => html`<div class="li" key=${h.t}><${Icon} name=${h.icon} size=${30} /><div class="grow"><div class="name">${h.t}</div><div class="meta" style=${{ lineHeight: 1.55 }}>${h.d}</div></div></div>`)}</div>
+    <p class="muted small" style=${{ margin: 0, lineHeight: 1.6 }}>Some parts only appear when Nobleman switches them on for your project. Stuck? Use Messages, or email <a href="mailto:alexis@gotit2work.com">alexis@gotit2work.com</a>. How we handle your information: <a href="https://noblemanproductions.gotit2work.com/privacy#portal">Privacy</a>.</p>
+    <div><button class="btn primary" onClick=${onClose}>Got it</button></div>
+  <//>`;
+}
+
+window.ReactDOM.createRoot(document.getElementById("root")).render(html`<${App} />`);

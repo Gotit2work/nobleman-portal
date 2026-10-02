@@ -1,45 +1,43 @@
 # Nobleman client portal — project notes
 
-Client portal for Nobleman Productions at `portal.noblemanproductions.gotit2work.com`. Operated by Alexis / GotIT2Work. The marketing site is `Gotit2work/nobleman-website`; its `docs/DEPLOYMENT.md` is the runbook for both.
+Client portal for Nobleman Productions at `portal.noblemanproductions.gotit2work.com`. Operated by Alexis / GotIT2Work. The marketing site is `Gotit2work/nobleman-website`; its `docs/DEPLOYMENT.md` is the runbook for both. README.md explains the product, Vimeo, capabilities, env vars, and the go-live steps.
 
 ## Ownership and infrastructure
 
-- Vercel project `nobleman-portal` (`prj_3HnVWrxGKofXm6EUvEPF1Jg2xCR8`), created 2026-09-30 in team `gotit2-work`: framework Other, Node 22.x, Vercel Authentication on previews only (production is public), custom domain attached and ownership-verified. Env: `PORTAL_MODE=demo` (Production, Preview, Development). No database, `SESSION_SECRET`, or Vimeo token yet. Linked to GitHub (`Gotit2work/nobleman-portal`, made public so Hobby can deploy it); pushes to `main` deploy to production. DNS: GoDaddy CNAME `portal.noblemanproductions` → `cname.vercel-dns.com`, certificate issued.
-- **Alexis owns `gotit2work.com`.** DNS is at GoDaddy (`ns17/ns18.domaincontrol.com`). The apex points at Lovable (`185.158.133.1`) and email is Microsoft 365. Touch neither; this project only needs a CNAME for `portal.noblemanproductions`.
-- Vercel: account `amangual1`, team `Gotit2Work` (slug `gotit2-work`, id `team_b7Eucmxp9X2SzzAHXZPA92Qh`). On Hobby by the owner's choice while the portal is a demo; commercial use requires Pro.
-- Database: Neon Postgres through Vercel Storage (`DATABASE_URL`; `POSTGRES_URL` also accepted). The schema is `schema.sql` and is idempotent; re-run the whole file after changes.
+- Vercel project `nobleman-portal` (`prj_3HnVWrxGKofXm6EUvEPF1Jg2xCR8`), team `gotit2-work` (`team_b7Eucmxp9X2SzzAHXZPA92Qh`), framework Other, Node 22.x, Vercel Authentication on previews only. Linked to GitHub `Gotit2work/nobleman-portal` (public so Hobby can deploy it); pushes to `main` deploy to production. DNS: GoDaddy CNAME `portal.noblemanproductions` → `cname.vercel-dns.com`.
+- **Alexis owns `gotit2work.com`** (DNS at GoDaddy). The apex points at Lovable (`185.158.133.1`) and email is Microsoft 365. Touch neither.
+- On Hobby by the owner's choice; commercial use requires Pro before clients rely on it. Hobby allows 12 functions; the portal uses 5. Add actions to an existing route rather than a new file.
+- Vimeo is Jean's account (`jeangotay`, **Plus**): no API download links (Standard+), so films fall back to "Download on Vimeo".
+- Env today: only `PORTAL_MODE=demo`. Go-live adds `DATABASE_URL`, `SESSION_SECRET`, `BOOTSTRAP_SECRET`, `VIMEO_ACCESS_TOKEN`, `BLOB_READ_WRITE_TOKEN`, optionally `RESEND_API_KEY` + `PORTAL_EMAIL_FROM` (README, "Going live").
 
-## State of the product
+## Architecture
 
-- Live today in **demo mode** (`PORTAL_MODE=demo`): public sample portal, no database attached yet.
-- Real: sign-in, sessions, roles (admin/client), account management API, sign-in throttling, and the Vimeo layer (`api/_vimeo.js`, `api/videos.js`). Films are real once `VIMEO_ACCESS_TOKEN` plus a folder id are set; titles with "V<n>" are review cuts, the rest are Library deliverables.
-- Prototype: projects, stages, comments, approvals, files, and messages are hardcoded sample data ("Meridian"). No admin screens; accounts are created via curl (README).
-- Next increments: projects read from the database (the Vimeo folder is already a column), then comments and approvals, file storage (Vercel Blob), messages and notifications, and Vimeo download links.
+- No build step. `index.html` loads vendored React, then `app/main.js` as an ES module. Components are written with `htm` (`html\`<${Comp} prop=${x} />\``), not JSX. One file per area: `gate.js` (sign-in, setup, new password), `home.js`, `review.js`, `films.js`, `files.js`, `messages.js`, `account.js`, `studio.js`; shared pieces in `ui.js`.
+- Routing is `history.pushState` through `go()` in `main.js`; use `<${Link} to=…>` for internal links. `vercel.json` rewrites every dot-less path outside `api/ app/ assets/ media/ vendor/` to `/index` (not `/index.html`: with `cleanUrls` the page is served at `/index`, and a rewrite to `/index.html` is a 404 on Vercel even though the local test server accepts it). Static files win over the rewrite. Check deep links such as `/review/x` on the preview.
+- `app/` is served `max-age=0, must-revalidate`, so module changes reach people on their next load. `assets/` and `media/` cache 7 days: bump `?v=` in `index.html` for `np.css`/`np.js`, and give a changed image a new name.
+- The API is five functions. Shared code lives in `api/_*.js` (underscore files aren't functions). `_build.js` assembles everything a person sees in one `GET /api/portal`; screens re-read it with `reload()` after an action.
+- Schema: `api/_schema.js` holds idempotent statements and `SCHEMA_VERSION`. `ready()` in `_db.js` applies them when the stored version is behind. To change the schema, **append** statements and bump the version; never edit old ones.
 
-## Security invariants — keep these when extending the API
+## Security invariants — keep these
 
-- Every route that needs a user calls `requireUser` / `requireAdmin` from `api/_auth.js`. They re-read the account from the database on every request (revocation is immediate) and refuse cross-origin POST/DELETE. Don't trust JWT claims on their own.
-- Scope client data by the `cid` returned from `requireUser`, never by an id sent from the browser.
-- Parse bodies with `readBody`, validate ids with `isUuid`, and keep multi-row writes in a single SQL statement (CTE) so a failure leaves nothing half-written.
-- Login compares unknown emails against a real 60-character bcrypt hash; a malformed hash returns instantly and leaks which emails exist.
-- Demo is either explicit (`PORTAL_MODE=demo`, answered by the server in `/api/me`) or localhost/`file://`. Never fall back to it because an API call failed.
-- `/api/videos` must only request folders tied to the viewer: their client's projects, an admin's chosen project, or `VIMEO_DEMO_FOLDER_ID` in demo mode. Keep the Vimeo token server-side.
-- The render object in `index.html` is one big literal. A duplicated key silently wins (that is how Sign out was broken), so search for a name before adding one.
-- `support.js` is a generated runtime shared with the website; don't edit it. Never put a stylesheet link or synchronous script inside `<helmet>` (it blocks `DOMContentLoaded`, which is when the page boots).
-- The browser parses the raw template before the runtime renders it, so a bound `src="{{ x }}"` makes it request the literal `/{{ x }}` (a 404 on every load). Bind URLs as `sc-camel-src="{{ x }}"`: the runtime turns it into the React `src` prop and the browser ignores it. The same applies to `poster`, `srcset`, and iframe `src`.
-- `animation:viewIn` ends on `transform:none` and overrides an inline `transform`. Don't centre an animated element with `translateX(-50%)`; use `left:0;right:0;margin:0 auto;width:max-content` (as the toast does).
+- Every route starts with `requireUser` / `requireAdmin` (`api/_auth.js`). They re-read the person and check the session version on every request. Never trust ids or roles from the browser.
+- Reach projects only through `projectFor(user, id)`: it scopes clients to their own company's non-archived projects and attaches `caps`. Check the capability on the server for every action (`p.caps.x`); hiding it in the page is not enough.
+- `must_change_password` blocks every route except the password action. Password change, reset, and role/company change bump `session_version`.
+- POST handlers call `rejectCrossOrigin` (via `requireUser`) and `readBody`; validate ids with `isUuid`; keep multi-row writes in one statement.
+- The Vimeo token and the Blob read-write token stay server-side. Browsers get a tus upload link for one video, or a client token for one Blob pathname. Blob downloads are signed links that expire in ten minutes.
+- Only ask Vimeo for folders linked to the viewer's projects. Client uploads must stay `view: nobody`; staff uploads are `unlisted` so they embed (`createUpload`).
+- Demo is explicit (`PORTAL_MODE=demo`, or the `/demo` path). Never fall back to it because an API call failed.
 
-## Clarity conventions — keep these when changing the UI
+## Conventions — keep these when changing the UI
 
-- Every word a client sees follows `docs/WRITING.md` (from the Murphy's Laws poster): plain words, buttons that name the action, no promise that isn't always true, no feature described that doesn't exist, confirmation before anything hard to undo.
-- The privacy notice for the portal is on the website (`noblemanproductions.gotit2work.com/privacy#portal`, linked from sign-in, Help, and Account). It lists the `np_session` cookie, the `np-review-time` and `np-portal-seen` storage keys, and every field the database keeps. Adding a cookie, storage key, third-party service, or stored field means updating the website's `privacy.html` in step.
-- Actions that would contact someone or move a file use `this.say(real, demo)`, never a bare `toast`: in demo mode (`state.preview`) it says plainly that nothing was sent ("Demo only: …").
-- Home always leads with **Your next step** (`next` in `renderVals`); keep it to one clear action.
-- Every screen has a one-line purpose sentence under its title and a way back. The **Help** panel (`helpSteps`) explains the four main screens; add a step if you add a screen.
-- Approving a version asks first (`confirming`). Keep a confirmation on anything hard to undo.
-- Look matches the website: `assets/np.css` + `assets/np.js` (copied from the website; bump `?v=`), headlines are Cormorant Garamond, and the mobile bar uses the website's maritime icons in `media/icons/` (anchor = Home, camera = Projects, porthole play = Review, pennant = Library, paper boat = Files; Account is the user's initials).
-- A button that is `display:flex` with a `gap` spaces every text node apart, so give it one bound label (`{{ watchLatest }}`), not text plus a binding.
+- Every word a client sees follows `docs/WRITING.md`: plain words, buttons named for the action, no promise that isn't always true, confirmation before anything hard to undo (`Confirm`; typed name for deletes).
+- Demo actions go through `say(real, demo)`, which shows "Demo only: …". Never let the demo call the API's write actions.
+- Home leads with **Your next step** (`nextStep` in `home.js`): one clear action.
+- Desktop navigation is the `.rail` capsule (960 px and wider); phones get `.bottombar`. A new top-level screen needs an entry in `navFor` (main.js), an icon from `media/icons/`, a Help line (`HELP`), and a check in `tests/e2e.test.mjs`.
+- Capabilities are defined once in `api/_caps.js` (key, label, detail, default, `needs`). Studio renders the switches from it. A new capability needs a server check and a test.
+- Privacy: the notice is on the website (`/privacy#portal`). Adding a cookie, storage key, provider, or stored field means updating the website's `privacy.html` (and its date) in the same change. Today the portal sets one cookie (`np_session`) and no browser storage.
+- Never bind `src` to something the browser could request before it's ready; thumbnails fall back to `/media/screening-poster.jpg` with `onError`.
 
 ## Verifying changes
 
-No test suite yet. What worked: point `@neondatabase/serverless` at a shim backed by PGlite (real Postgres in WASM, `npm i @electric-sql/pglite`) that loads `schema.sql`, run the `api/*.js` handlers behind a small local server, and script the lifecycle with fetch: bootstrap, login, admin create and delete, revocation, cross-origin 403, throttle 429. For Vimeo, stub `api.vimeo.com` responses in the local server (folder id → video objects) and check per-viewer folder isolation. For the player, serve Vimeo's real `player.js` with a stand-in iframe speaking its postMessage protocol (`{event:"ready"}`, `{method:"addEventListener"}` → `{event:"playing"}`). Drive the UI with Playwright and the preinstalled Chromium (`/opt/pw-browsers`).
+`cd tests && npm test` (README, "Testing") starts three local servers with PGlite and fake Vimeo/Blob/Resend, then runs 102 API checks and 43 browser checks on desktop and phone. `npm run shots` captures every screen (desktop 1440, phone 390) into `tests/.work/shots`. Look at the screenshots after any visual change; fonts from Google may be missing in a sandbox. Before shipping, `npx vercel build` with a hand-written `.vercel/project.json` (`{"projectId":"x","orgId":"y","settings":{"framework":null}}`) and read `.vercel/output/config.json`.

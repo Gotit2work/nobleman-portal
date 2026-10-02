@@ -1,0 +1,31 @@
+{
+  "token": "test-token",
+  "scope": "public private edit upload video_files stats",
+  "me": { "uri": "/users/100", "name": "Jean Gotay", "link": "https://vimeo.com/jeangotay", "account": "plus",
+          "upload_quota": { "space": { "free": 200000000000, "max": 250000000000, "used": 50000000000 }, "periodic": { "free": 5000000000, "reset_date": "2026-10-06T00:00:00Z" } } },
+  "folders": {
+    "222": { "name": "Harbor Summit", "videos": [
+      { "uri": "/videos/5003", "name": "Harbor Spot V3", "duration": 261, "width": 3840, "height": 2160, "created_time": "2026-09-28T10:00:00Z", "link": "https://vimeo.com/5003/aaa3", "player_embed_url": "https://player.vimeo.com/video/5003?h=aaa3", "pictures": { "sizes": [ { "width": 1280, "link": "https://i.vimeocdn.com/video/5003_1280.jpg" } ] }, "privacy": { "view": "disable" }, "stats": { "plays": 12 }, "status": "available" },
+      { "uri": "/videos/5004", "name": "Cutdown 15s V1", "duration": 15, "width": 1080, "height": 1920, "created_time": "2026-09-27T10:00:00Z", "link": "https://vimeo.com/5004/aaa4", "player_embed_url": "https://player.vimeo.com/video/5004?h=aaa4", "pictures": { "sizes": [ { "width": 720, "link": "https://i.vimeocdn.com/video/5004_720.jpg" } ] }, "privacy": { "view": "disable" }, "status": "available" },
+      { "uri": "/videos/5002", "name": "Harbor Spot V2", "duration": 258, "width": 3840, "height": 2160, "created_time": "2026-09-21T10:00:00Z", "link": "https://vimeo.com/5002/aaa2", "player_embed_url": "https://player.vimeo.com/video/5002?h=aaa2", "pictures": { "sizes": [ { "width": 1280, "link": "https://i.vimeocdn.com/video/5002_1280.jpg" } ] }, "privacy": { "view": "disable" }, "status": "available" },
+      { "uri": "/videos/5001", "name": "Harbor Spot V1", "duration": 252, "width": 3840, "height": 2160, "created_time": "2026-09-12T10:00:00Z", "link": "https://vimeo.com/5001/aaa1", "player_embed_url": "https://player.vimeo.com/video/5001?h=aaa1", "pictures": { "sizes": [ { "width": 1280, "link": "https://i.vimeocdn.com/video/5001_1280.jpg" } ] }, "privacy": { "view": "disable" }, "status": "available" },
+      { "uri": "/videos/5101", "name": "Harbor Summit Recap", "description": "The three-minute recap of the summit.", "duration": 184, "width": 3840, "height": 2160, "created_time": "2026-09-25T10:00:00Z", "link": "https://vimeo.com/5101/bbb1", "player_embed_url": "https://player.vimeo.com/video/5101?h=bbb1", "pictures": { "sizes": [ { "width": 1920, "link": "https://i.vimeocdn.com/video/5101_1920.jpg" } ] }, "privacy": { "view": "unlisted", "download": true }, "stats": { "plays": 487 }, "status": "available" },
+      { "uri": "/videos/5103", "name": "Vertical Teaser", "duration": 30, "width": 1080, "height": 1920, "created_time": "2026-09-24T10:00:00Z", "link": "https://vimeo.com/5103/bbb3", "player_embed_url": "https://player.vimeo.com/video/5103?h=bbb3", "pictures": { "sizes": [ { "width": 720, "link": "https://i.vimeocdn.com/video/5103_720.jpg" } ] }, "privacy": { "view": "disable", "download": true }, "stats": { "plays": 1210 }, "status": "available" },
+      { "uri": "/videos/5104", "name": "Keynote Full", "duration": 0, "width": 0, "height": 0, "created_time": "2026-09-29T10:00:00Z", "link": "https://vimeo.com/5104", "player_embed_url": "https://player.vimeo.com/video/5104", "pictures": { "sizes": [] }, "privacy": { "view": "disable" }, "status": "transcoding" }
+    ] },
+    "333": { "name": "Desert Shoot", "videos": [
+      { "uri": "/videos/6001", "name": "Desert Film V1", "duration": 200, "width": 1920, "height": 1080, "created_time": "2026-09-20T10:00:00Z", "link": "https://vimeo.com/6001/ccc1", "player_embed_url": "https://player.vimeo.com/video/6001?h=ccc1", "pictures": { "sizes": [ { "width": 1280, "link": "https://i.vimeocdn.com/video/6001_1280.jpg" } ] }, "privacy": { "view": "disable" }, "status": "available" },
+      { "uri": "/videos/6101", "name": "Desert Trailer", "duration": 60, "width": 1920, "height": 1080, "created_time": "2026-09-18T10:00:00Z", "link": "https://vimeo.com/6101/ccc2", "player_embed_url": "https://player.vimeo.com/video/6101?h=ccc2", "pictures": { "sizes": [ { "width": 1280, "link": "https://i.vimeocdn.com/video/6101_1280.jpg" } ] }, "privacy": { "view": "unlisted", "download": false }, "stats": { "plays": 9 }, "status": "available" }
+    ] },
+    "444": { "name": "Unused folder", "videos": [] }
+  },
+  "downloads": {
+    "5101": [
+      { "quality": "source", "rendition": "source", "public_name": "Original", "width": 3840, "height": 2160, "size": 3800000000, "size_short": "3.54 GB", "type": "source", "link": "https://player.vimeo.com/download/5101-source" },
+      { "quality": "hd", "rendition": "1080p", "public_name": "HD 1080p", "width": 1920, "height": 1080, "size": 420000000, "size_short": "400.5 MB", "type": "video/mp4", "link": "https://player.vimeo.com/download/5101-1080" },
+      { "quality": "sd", "rendition": "540p", "public_name": "SD 540p", "width": 960, "height": 540, "size": 90000000, "size_short": "85.8 MB", "type": "video/mp4", "link": "https://player.vimeo.com/download/5101-540" }
+    ]
+  },
+  "texttracks": { "5101": [ { "name": "English (CC)", "language": "en", "type": "captions", "active": true, "link": "https://captions.vimeocdn.com/5101-en.vtt" } ] },
+  "chapters": { "5101": [ { "title": "Arrivals", "timecode": 0 }, { "title": "Keynote", "timecode": 48 }, { "title": "Panels", "timecode": 112 } ] }
+}

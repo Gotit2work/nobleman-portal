@@ -19,22 +19,34 @@ h1{letter-spacing:-0.022em}
 .np-serif .np-rec-i::after{content:"";position:absolute;left:.171em;top:.369em;width:.1em;height:.1em;margin:-.05em 0 0 -.05em;border-radius:50%;background:#e5322d;box-shadow:0 0 .06em rgba(229,50,45,.9),0 0 .24em rgba(229,50,45,.5);animation:npRec 1.2s steps(1) infinite}
 @keyframes npRec{0%,49%{opacity:1}50%,100%{opacity:.15}}
 
+/* Murphy's Law lines: the dry one-liner that follows the plain one (docs/WRITING.md, "Voice"). */
+.np-law{margin:0;display:flex;flex-direction:column;gap:8px;padding-left:16px;border-left:2px solid #e5322d;max-width:660px}
+.np-law-k{font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.55}
+.np-law-q{font-family:var(--np-serif);font-style:italic;font-weight:400;font-size:clamp(23px,2.1vw,29px);line-height:1.22;text-wrap:balance}
+.np-law-a{font-size:15px;line-height:1.55;opacity:.75;text-wrap:pretty}
+.np-law-s{font-family:var(--np-serif);font-style:italic;font-weight:400;font-size:20px;line-height:1.28;padding-left:12px;border-left:2px solid #e5322d}
+
+/* Deep-link targets (/services#questions) land clear of the fixed header. */
+section[id]{scroll-margin-top:64px}
+
 /* Scroll progress hairline (created by np.js). */
 .np-progress{position:fixed;left:0;top:0;right:0;height:2px;background:linear-gradient(90deg,#e5322d,#ff7a6b);transform:scaleX(0);transform-origin:0 50%;z-index:70;pointer-events:none}
 
 /* Scroll reveals. Fades use filter:opacity() so an element's own inline opacity survives; the transition is
    !important because several cards carry an inline transition for their theme colour (kept in the list).
+   Only elements np.js has registered ([data-np]) are ever hidden, so anything it misses simply shows, unanimated:
+   a reveal can't strand content invisible.
    Never hide a revealing element with clip-path: IntersectionObserver measures the clipped area, so a clipped
    element can look off-screen and never reveal. The "title" wipe uses a mask driven by --np-m instead. */
 @property --np-m{syntax:'<percentage>';inherits:false;initial-value:112%}
-.np-motion [data-reveal]{filter:opacity(0) blur(0px);transition:filter 1s var(--np-ease),transform 1.35s var(--np-ease),--np-m 1.5s var(--np-ease),background-color .9s ease!important;transition-delay:var(--np-d,0ms)!important}
-.np-motion [data-reveal=""]{transform:translate3d(0,64px,0);filter:opacity(0) blur(10px)}
-.np-motion [data-reveal="card"]{transform:perspective(1400px) translate3d(0,170px,0) rotateX(20deg) scale(.9);transform-origin:50% 0}
-.np-motion [data-reveal="left"]{transform:translate3d(-12vw,0,0) rotate(-2deg)}
-.np-motion [data-reveal="right"]{transform:translate3d(12vw,0,0) rotate(2deg)}
-.np-motion [data-reveal="title"]{--np-m:0%;transform:translate3d(0,.35em,0);-webkit-mask-image:linear-gradient(to top,#000 calc(var(--np-m) - 14%),transparent var(--np-m));mask-image:linear-gradient(to top,#000 calc(var(--np-m) - 14%),transparent var(--np-m))}
-.np-motion [data-reveal="zoom"]{transform:scale(.88);filter:opacity(0) blur(8px)}
-.np-motion [data-reveal][data-in]{filter:none;transform:none;--np-m:114%}
+.np-motion [data-np][data-reveal]{filter:opacity(0) blur(0px);transition:filter 1s var(--np-ease),transform 1.35s var(--np-ease),--np-m 1.5s var(--np-ease),background-color .9s ease!important;transition-delay:var(--np-d,0ms)!important}
+.np-motion [data-np][data-reveal=""]{transform:translate3d(0,64px,0);filter:opacity(0) blur(10px)}
+.np-motion [data-np][data-reveal="card"]{transform:perspective(1400px) translate3d(0,170px,0) rotateX(20deg) scale(.9);transform-origin:50% 0}
+.np-motion [data-np][data-reveal="left"]{transform:translate3d(-12vw,0,0) rotate(-2deg)}
+.np-motion [data-np][data-reveal="right"]{transform:translate3d(12vw,0,0) rotate(2deg)}
+.np-motion [data-np][data-reveal="title"]{--np-m:0%;transform:translate3d(0,.35em,0);-webkit-mask-image:linear-gradient(to top,#000 calc(var(--np-m) - 14%),transparent var(--np-m));mask-image:linear-gradient(to top,#000 calc(var(--np-m) - 14%),transparent var(--np-m))}
+.np-motion [data-np][data-reveal="zoom"]{transform:scale(.88);filter:opacity(0) blur(8px)}
+.np-motion [data-np][data-reveal][data-in]{filter:none;transform:none;--np-m:114%}
 
 /* Landing: letterbox bars open, the poster settles, lines rise out of a mask. [data-intro="n"] sets the order.
    Held until the display font is ready (np.js adds .np-fonts, at most ~1 s) so text never swaps mid-motion. */

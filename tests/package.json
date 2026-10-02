@@ -1,0 +1,18 @@
+{
+  "name": "nobleman-portal-tests",
+  "private": true,
+  "type": "module",
+  "description": "Local test harness for the portal. Not deployed (see .vercelignore).",
+  "scripts": {
+    "start": "./run.sh",
+    "stop": "./run.sh stop",
+    "test:api": "./run.sh && node api.test.mjs",
+    "test:e2e": "./run.sh && node e2e.test.mjs",
+    "test": "./run.sh && node api.test.mjs && ./run.sh && node e2e.test.mjs && ./run.sh stop",
+    "shots": "./run.sh && node shots.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "playwright-core": "1.63.0"
+  }
+}
