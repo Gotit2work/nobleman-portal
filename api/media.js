@@ -1,19 +1,24 @@
 import { sql, ready, dbConfigured } from "./_db.js";
 import { TROUBLE, readBody, requireUser, projectFor, isUuid, text } from "./_auth.js";
-import { vimeoConfigured, folderVideos, forgetFolder, videoDownloads, textTracks, chapters, createUpload, account } from "./_vimeo.js";
+import { sourceOf, findVideo, forgetSource } from "./_sources.js";
 import { notify, originOf } from "./_notify.js";
+import { audit } from "./_audit.js";
+import { getSettings } from "./_settings.js";
+import { isStaff, can } from "./_roles.js";
+import { later } from "./_later.js";
+import { syncProject } from "./_notion.js";
 
 /**
- * GET  /api/media?project=<id>&video=<vimeo id>   downloads, captions, and chapters for one film or version,
- *                                                 as far as the project allows (_caps.js)
- * POST /api/media {action:"uploadStart"}          projectId, name, size, type: a Vimeo upload link for one video
- * POST /api/media {action:"uploadDone"}           uploadId
- * POST /api/media {action:"uploadCancel"}         uploadId
- *
- * Videos only ever come from the project's own Vimeo folder. Download and caption links are signed by Vimeo
- * and expire, so they are fetched when someone asks, never stored.
+ * GET  /api/media?project=<id>&video=<id>          downloads, captions, and chapters for one film or version,
+ *                                                  as far as the project and the person's role allow
+ * GET  /api/media?project=<id>&video=<id>&play=1   a fresh address to play a video whose source signs them
+ *                                                  (Frame.io); they expire, so they're fetched at play time
+ * POST /api/media {action:"uploadStart"}           projectId, name, size, type: an upload link for one video,
+ *                                                  where the project's source takes uploads (Vimeo)
+ * POST /api/media {action:"uploadDone"}            uploadId
+ * POST /api/media {action:"uploadCancel"}          uploadId
  */
-const MAX_VIDEO = 50 * 1024 ** 3; // 50 GB, well above any single file clients send
+const MAX_VIDEO = 50 * 1024 ** 3; // 50 GB
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "private, no-store");
@@ -21,9 +26,8 @@ export default async function handler(req, res) {
   try { await ready(); } catch (err) { console.error("db not ready", err); return res.status(500).json({ error: TROUBLE }); }
   const u = await requireUser(req, res);
   if (!u) return;
-  if (!vimeoConfigured()) return res.status(503).json({ error: "Vimeo isn’t connected yet." });
   try {
-    if (req.method === "GET") return await details(req, res, u);
+    if (req.method === "GET") return (req.query && req.query.play) ? await play(req, res, u) : await details(req, res, u);
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
     const b = readBody(req, res);
     if (!b) return;
@@ -32,67 +36,77 @@ export default async function handler(req, res) {
     if (b.action === "uploadCancel") return await uploadEnd(req, res, u, b, false);
     return res.status(400).json({ error: "Unknown action." });
   } catch (err) {
-    console.error("media failed", err);
-    if (err.status === 401) return res.status(502).json({ error: "Vimeo refused the portal’s access. Ask Nobleman to check the Vimeo connection." });
-    return res.status(502).json({ error: "Vimeo isn’t answering right now. Try again in a minute." });
+    console.error("media failed", err.message);
+    if (err.status === 401 || err.status === 403) return res.status(502).json({ error: isStaff(u) ? `The video source refused the portal’s access: ${err.message}` : "The video host refused the request. Ask the studio to check the connection." });
+    return res.status(502).json({ error: isStaff(u) ? `The video source isn’t answering: ${err.message}` : "The video host isn’t answering right now. Try again in a minute." });
   }
 }
 
-async function details(req, res, u) {
+async function load(req, res, u) {
   const q = req.query || {};
   const p = await projectFor(u, String(q.project || ""));
-  if (!p) return res.status(404).json({ error: "That project isn’t available to you." });
-  const id = String(q.video || "");
-  if (!/^\d+$/.test(id) || !p.vimeo_folder_id) return res.status(404).json({ error: "That film isn’t in this project." });
-  const video = (await folderVideos(p.vimeo_folder_id)).find((v) => v.id === id);
-  if (!video) return res.status(404).json({ error: "That film isn’t in this project." });
+  if (!p) { res.status(404).json({ error: "That project isn’t available to you." }); return null; }
+  const v = await findVideo(p, String(q.video || ""), { staff: isStaff(u) });
+  if (!v) { res.status(404).json({ error: "That film isn’t in this project." }); return null; }
+  if (v.version != null && !p.caps.review) { res.status(403).json({ error: "Review isn’t switched on for this project." }); return null; }
+  const src = await sourceOf(p);
+  return { p, v, src };
+}
 
+async function play(req, res, u) {
+  const x = await load(req, res, u);
+  if (!x) return;
+  const pb = x.v.playback || {};
+  if (pb.url) return res.status(200).json({ url: pb.url });
+  if (!x.src || !x.src.provider.play) return res.status(409).json({ error: "This video plays in its own player." });
+  return res.status(200).json(await x.src.provider.play(x.src.conn, x.v));
+}
+
+async function details(req, res, u) {
+  const x = await load(req, res, u);
+  if (!x) return;
+  const { p, v, src } = x;
+  const staff = isStaff(u);
   const out = { downloads: null, captions: null, chapters: null };
-  const jobs = [];
+  if (!src) return res.status(200).json(out);
+  const features = src.provider.meta.features || {};
   // Downloads are for finished films. Versions under review are previews, not deliverables.
-  if (p.caps.download && video.version == null) {
-    jobs.push(videoDownloads(id).then((d) => {
-      const links = d.links.filter((l) => !l.source || p.caps.download_source).map(({ link, label, sizeLabel, size, source, width, height }) => ({ link, label, sizeLabel, size, source, width, height }));
-      const onVimeo = !links.length && d.onVimeo && video.shareable ? d.onVimeo : null;
-      out.downloads = {
-        links,
-        onVimeo,
-        reason: links.length || onVimeo ? null : u.role === "admin"
-          ? "Vimeo returned no download links. Download links through the API need a Vimeo Standard plan or above and the token’s video_files scope; or allow downloads on this film in Vimeo and make it unlisted to offer “Download on Vimeo”."
-          : "Downloads for this film aren’t ready yet. Ask Nobleman and they’ll send it.",
-      };
-    }).catch((err) => {
-      console.error("downloads failed", id, err.message);
-      out.downloads = { links: [], onVimeo: null, reason: u.role === "admin" ? `Vimeo refused the download request (${err.status || "error"}). Check the token’s video_files scope.` : "Downloads aren’t available right now. Ask Nobleman." };
-    }));
+  const wantDownloads = p.caps.download && v.version == null;
+  const d = await src.provider.details(src.conn, v, { downloads: wantDownloads && features.downloads, captions: p.caps.captions && (features.captions || features.chapters) });
+  if (wantDownloads) {
+    const dl = d.downloads || { links: [], onSite: null, why: `${src.provider.meta.name} doesn’t offer downloads through the portal.` };
+    const links = (dl.links || []).filter((l) => !l.source || p.caps.download_source).map(({ link, label, sizeLabel, size, source, width, height }) => ({ link, label, sizeLabel, size, source, width, height }));
+    out.downloads = {
+      links,
+      onSite: !links.length && dl.onSite ? dl.onSite : null,
+      siteName: dl.siteName || src.provider.meta.name,
+      reason: links.length || dl.onSite ? null : staff ? dl.why || "No downloads are available." : "Downloads for this film aren’t ready yet. Ask the studio and they’ll send it.",
+    };
   }
   if (p.caps.captions) {
-    jobs.push(textTracks(id).then((t) => { out.captions = t; }).catch(() => { out.captions = []; }));
-    jobs.push(chapters(id).then((c) => { out.chapters = c; }).catch(() => { out.chapters = []; }));
+    out.captions = d.captions || [];
+    out.chapters = d.chapters || [];
   }
-  await Promise.all(jobs);
   return res.status(200).json(out);
 }
 
 async function uploadStart(req, res, u, b) {
   const p = await projectFor(u, b.projectId);
   if (!p) return res.status(404).json({ error: "That project isn’t available to you." });
-  if (!p.caps.upload) return res.status(403).json({ error: "Uploads aren’t switched on for this project. Ask Nobleman if you need to send something." });
-  if (!p.vimeo_folder_id) return res.status(409).json({ error: "This project has no Vimeo folder yet, so videos can’t be sent here. Ask Nobleman to link one." });
+  const s = await getSettings();
+  if (isStaff(u) ? !can(u, "projects.videos", s) : !p.caps.upload) return res.status(403).json({ error: isStaff(u) ? "Your role doesn’t allow adding videos." : "Uploads aren’t switched on for you on this project. Ask the studio if you need to send something." });
+  const src = await sourceOf(p);
+  if (!src || !src.provider.createUpload) return res.status(409).json({ error: "This project’s videos don’t come from a folder the portal can upload to. Send the video under Files instead, or add it at the source." });
   const name = text(b.name, 200);
   const size = Number(b.size) || 0;
   if (!name || size <= 0) return res.status(400).json({ error: "That file is empty." });
-  if (size > MAX_VIDEO) return res.status(413).json({ error: "That file is larger than 50 GB. Ask Nobleman for another way to send it." });
-  if (!/^video\//.test(String(b.type || ""))) return res.status(400).json({ error: "Only video files go to Vimeo. Other files go to Files." });
-  try {
-    const a = await account();
-    if (a.upload.free != null && size > a.upload.free) {
-      return res.status(507).json({ error: "Nobleman’s Vimeo account doesn’t have room for this file right now. Ask Nobleman, or send it another way." });
-    }
-  } catch { /* quota unknown: let Vimeo decide */ }
-  const prefix = u.role === "client" ? `From ${p.client_name}: ` : "";
-  const up = await createUpload({ name: prefix + name, size, folderId: p.vimeo_folder_id, description: `Sent through the client portal by ${u.name}.`, fromClient: u.role === "client" });
-  if (!up.uploadLink || up.approach !== "tus") return res.status(502).json({ error: "Vimeo didn’t accept the upload. Try again in a minute." });
+  if (size > MAX_VIDEO) return res.status(413).json({ error: "That file is larger than 50 GB. Ask the studio for another way to send it." });
+  if (!/^video\//.test(String(b.type || ""))) return res.status(400).json({ error: "Only video files go to the video folder. Other files go to Files." });
+  const room = src.provider.roomLeft ? await src.provider.roomLeft(src.conn) : null;
+  if (room != null && size > room) return res.status(507).json({ error: "The studio’s video account doesn’t have room for this file right now. Ask the studio, or send it another way." });
+  const prefix = isStaff(u) ? "" : `From ${p.client_name}: `;
+  const up = await src.provider.createUpload(src.conn, src.ref, { name: prefix + name, size, description: `Sent through the client portal by ${u.name}.`, fromClient: !isStaff(u) });
+  if (!up.uploadLink || up.approach !== "tus") return res.status(502).json({ error: "The video host didn’t accept the upload. Try again in a minute." });
   const [row] = await sql`
     insert into video_uploads (project_id, vimeo_id, name, size, uploaded_by, uploader_name, uploader_role)
     values (${p.id}, ${up.id}, ${name}, ${size}, ${u.id}, ${u.name}, ${u.role}) returning id`;
@@ -104,22 +118,28 @@ async function uploadEnd(req, res, u, b, done) {
   const row = (await sql`select * from video_uploads where id = ${b.uploadId}`)[0];
   if (!row) return res.status(404).json({ error: "That upload was removed." });
   const p = await projectFor(u, row.project_id);
-  if (!p || (row.uploaded_by !== u.id && u.role !== "admin")) return res.status(404).json({ error: "That upload isn’t yours." });
-  if (done) {
-    await sql`update video_uploads set status = 'done' where id = ${row.id}`;
-    await sql`update projects set updated_at = now() where id = ${p.id}`;
-    forgetFolder(p.vimeo_folder_id);
-    if (u.role === "client") {
-      await notify({ audience: "staff", project: p, actor: u, origin: originOf(req),
-        subject: `${u.name} sent a video for ${p.title}`, lines: [`${u.name} (${p.client_name}) sent “${row.name}”. It’s in the project’s Vimeo folder.`] });
-    } else {
-      // Staff added a version or a finished film: tell the client once Vimeo has it ready to play.
-      await notify({ audience: "client", project: p, actor: u, origin: originOf(req),
-        subject: `New on ${p.title}: ${row.name}`, lines: [`Nobleman added “${row.name}” to ${p.title}. You can watch it in the portal as soon as Vimeo finishes processing it.`] });
-    }
-  } else {
-    // The empty video stays in Vimeo marked as an unfinished upload; staff can delete it there.
+  if (!p || (row.uploaded_by !== u.id && !isStaff(u))) return res.status(404).json({ error: "That upload isn’t yours." });
+  if (!done) {
+    // The empty video stays at the source marked as an unfinished upload; staff can delete it there.
     await sql`delete from video_uploads where id = ${row.id}`;
+    return res.status(200).json({ ok: true });
+  }
+  await sql`update video_uploads set status = 'done' where id = ${row.id}`;
+  await sql`update projects set updated_at = now() where id = ${p.id}`;
+  await forgetSource(p);
+  const origin = originOf(req);
+  if (!isStaff(u)) {
+    await audit(req, u, "upload", `Sent a video: ${row.name}`, { projectId: p.id, clientId: p.client_id });
+    await later(() => notify({ audience: "staff", project: p, actor: u, origin, path: `/files/${p.id}`, button: "See it in Files",
+      subject: `${u.name} sent a video for ${p.title}`, lines: [`${u.name} (${p.client_name}) sent “${row.name}”. It’s in the project’s video folder.`] }), "notify");
+  } else {
+    await audit(req, u, "video.add", `Added ${row.name}`, { projectId: p.id, clientId: p.client_id });
+    // A new version or film: tell the client. It plays once the host finishes processing it.
+    await later(async () => {
+      await notify({ audience: "client", project: p, actor: u, origin, path: `/review/${p.id}`, button: "Watch it",
+        subject: `New on ${p.title}: ${row.name}`, lines: [`${row.name} was added to ${p.title}. You can watch it in the portal as soon as the video host finishes processing it.`] });
+      await syncProject(p.id);
+    }, "after upload");
   }
   return res.status(200).json({ ok: true });
 }

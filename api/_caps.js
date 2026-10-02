@@ -1,20 +1,22 @@
-// What a client may do on a project. Admins switch these per project in Studio → Projects; the API enforces
-// them on every request (the page only hides what is off). Admins themselves can always do everything.
+// What a client may do on a project. Staff switch these per project in Studio → Projects; the API enforces
+// them on every request (the page only hides what is off). Each person's role narrows them further
+// (_roles.js: a viewer can't leave notes even where Review is on). Staff can always do everything.
 //
-// Adding one: add it here (key, label, plain-words detail, default), enforce it in the route that does the
-// thing, and the Studio toggle appears on its own.
+// Adding one is the one change that needs code: add it here (key, label, plain-words detail, default),
+// enforce it in the route that does the thing, and the Studio switch appears on its own.
 
 export const CAPABILITIES = [
   { key: "review", label: "Review versions", detail: "Watch each version and leave notes pinned to a moment in the film.", default: true },
   { key: "approve", label: "Approve versions", detail: "Approve a version, or ask for changes. Needs Review versions.", default: true, needs: "review" },
-  { key: "download", label: "Download finished films", detail: "Download finished films in the sizes Vimeo has ready.", default: true },
+  { key: "history", label: "Earlier versions", detail: "See earlier versions next to the newest one. Off: only the newest version shows, so there’s never a choice to make.", default: false, needs: "review" },
+  { key: "download", label: "Download finished films", detail: "Download finished films in the sizes the video host has ready.", default: true },
   { key: "download_source", label: "Download original files", detail: "Also offer the original, full-quality file. Very large. Needs Download finished films.", default: false, needs: "download" },
   { key: "captions", label: "Captions and chapters", detail: "Download caption files and jump between chapters.", default: true },
-  { key: "share", label: "Share links", detail: "Copy a private link to a finished film, to pass to colleagues.", default: false },
-  { key: "stats", label: "Play counts", detail: "See how many times each finished film has been played on Vimeo or through a shared link. Plays in this portal aren’t counted.", default: false },
-  { key: "files", label: "Files from Nobleman", detail: "See and download documents you add: quotes, schedules, call sheets.", default: true },
-  { key: "upload", label: "Uploads", detail: "Send files and footage to Nobleman. Videos go into this project's Vimeo folder.", default: false },
-  { key: "messages", label: "Messages", detail: "Message Nobleman about this project.", default: true },
+  { key: "share", label: "Share links", detail: "Create a branded link to a finished film for colleagues. Links can expire and be turned off.", default: false },
+  { key: "stats", label: "Play counts", detail: "See how many times each finished film has been played on its video host and through share links. Plays in this portal aren’t counted.", default: false },
+  { key: "files", label: "Files from the studio", detail: "See and download documents you add: quotes, schedules, call sheets.", default: true },
+  { key: "upload", label: "Uploads", detail: "Send files and footage to the studio. With a Vimeo source, videos go into the project’s folder.", default: false },
+  { key: "messages", label: "Messages", detail: "Message the studio about this project.", default: true },
 ];
 
 const KEYS = new Set(CAPABILITIES.map((c) => c.key));
@@ -28,9 +30,6 @@ export function capsOf(stored) {
   return out;
 }
 
-/** Everything on: what an admin gets on every project. */
-export const ALL_CAPS = Object.fromEntries(CAPABILITIES.map((c) => [c.key, true]));
-
 /** Keeps only known keys with boolean values, for saving. */
 export function cleanCaps(input) {
   const out = {};
@@ -39,6 +38,6 @@ export function cleanCaps(input) {
   return out;
 }
 
+// Stages now live in settings (Studio → Settings → Stages; _settings.js). These are only the demo's.
 export const STAGES = ["Planning", "Filming", "Editing", "Your review", "Final polish", "Delivered"];
-// Progress shown for each stage when the project's own percentage hasn't been set.
 export const STAGE_PCT = [8, 25, 50, 70, 88, 100];

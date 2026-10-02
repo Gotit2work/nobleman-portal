@@ -35,12 +35,13 @@ for (const [tag, vp, mobile] of [["d", { width: 1440, height: 900 }, false], ["m
   const anon = await ctxFor(vp, mobile);
   await shoot(anon, "/", tag + "-signin", 1500);
   await shoot(anon, "/demo", tag + "-demo-home", 1500);
+  await shoot(anon, "/link/not-a-real-link-0000000000000000000000", tag + "-link-bad", 1500);
   await anon.close();
   const dana = await ctxFor(vp, mobile); await login(dana, "dana@harbor.test");
   for (const [path, name] of [["/", "home"], ["/projects/cccccccc-0000-4000-8000-000000000001", "project"], ["/review", "review"], ["/films", "films"], ["/films/cccccccc-0000-4000-8000-000000000001/5101", "film"], ["/files", "files"], ["/messages", "messages"], ["/account", "account"]]) await shoot(dana, path, `${tag}-client-${name}`);
   await dana.close();
   const admin = await ctxFor(vp, mobile); await login(admin, "alexis@gotit2work.com");
-  for (const [path, name] of [["/", "home"], ["/studio", "studio-projects"], ["/studio/projects/cccccccc-0000-4000-8000-000000000001", "studio-project"], ["/studio/people", "studio-people"], ["/studio/clients", "studio-clients"], ["/studio/vimeo", "studio-vimeo"]]) await shoot(admin, path, `${tag}-admin-${name}`);
+  for (const [path, name] of [["/", "home"], ["/studio", "studio-projects"], ["/studio/projects/cccccccc-0000-4000-8000-000000000001", "studio-project"], ["/studio/people", "studio-people"], ["/studio/people/roles", "studio-roles"], ["/studio/clients", "studio-clients"], ["/studio/connections", "studio-connections"], ["/studio/settings", "studio-settings"], ["/studio/activity", "studio-activity"]]) await shoot(admin, path, `${tag}-admin-${name}`);
   await admin.close();
 }
 await browser.close();

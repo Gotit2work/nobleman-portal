@@ -4,11 +4,13 @@
 //   /__tus/<id>                 Vimeo's tus upload endpoint
 //   /__blob/...                 Vercel Blob API (point VERCEL_BLOB_API_URL here)
 //   /__mail                     emails "sent" through Resend (when RESEND_API_KEY is set)
+//   Frame.io + Adobe sign-in, YouTube, Wistia, Notion, oEmbed: lib/fakes.mjs (GET /__fake/state shows their state)
 // Usage: node dev.mjs <portal copy> <port>   (tests/run.sh starts three of these)
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import * as fakes from "./fakes.mjs";
 
 const root = path.resolve(process.argv[2]);
 const port = Number(process.argv[3] || 4400);
@@ -104,10 +106,19 @@ async function fakeBlob(req, res, url, raw) {
 // ---------- fake Resend ----------
 const mail = [];
 
-globalThis.fetch = async (input, init) => {
+globalThis.fetch = async (input, init = {}) => {
   const u = new URL(typeof input === "string" ? input : input.url || String(input));
   if (V && u.host === "api.vimeo.com") return fakeVimeo(u, init);
-  if (u.host === "api.resend.com") { mail.push(JSON.parse(init.body)); return json({ id: "mail_" + mail.length }); }
+  if (u.host === "api.resend.com") {
+    if (u.pathname === "/domains") return init.headers && /re_test/.test(init.headers.Authorization || "") ? json({ data: [{ name: "test.example", status: "verified" }] }) : json({ message: "API key is invalid" }, 401);
+    mail.push(JSON.parse(init.body)); return json({ id: "mail_" + mail.length });
+  }
+  if (u.host === "ims-na1.adobelogin.com") return fakes.adobe(u, init);
+  if (u.host === "api.frame.io") return fakes.frameio(u, init);
+  if (u.host === "www.googleapis.com" && u.pathname.startsWith("/youtube/")) return fakes.youtube(u, init);
+  if (u.host === "api.wistia.com") return fakes.wistia(u, init);
+  if (u.host === "api.notion.com") return fakes.notion(u, init);
+  if ((u.host === "www.youtube.com" && u.pathname === "/oembed") || (u.host === "vimeo.com" && u.pathname === "/api/oembed.json")) return fakes.oembed(u);
   return realFetch(input, init);
 };
 
@@ -125,6 +136,7 @@ http.createServer(async (req, res) => {
 
   if (p.startsWith("/__blob")) return fakeBlob(req, res, url, raw);
   if (p === "/__mail") { res.writeHead(200, { "content-type": "application/json" }); return res.end(JSON.stringify(mail)); }
+  if (p === "/__fake/state") { res.writeHead(200, { "content-type": "application/json" }); return res.end(JSON.stringify(fakes.snapshot())); }
   if (p === "/__vimeo/state") { res.writeHead(200, { "content-type": "application/json" }); return res.end(JSON.stringify(V.folders)); }
   if (p === "/__vimeo/finish") { // mark every finished upload as transcoded
     for (const f of Object.values(V.folders)) for (const v of f.videos) if (v.status === "uploading" && tus.get(v.uri.split("/").pop())?.offset > 0) v.status = "available";

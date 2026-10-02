@@ -120,10 +120,16 @@ const SHORT_STAGE = { "Your review": "Review", "Final polish": "Polish" };
 
 /** The six-step progress strip. `short` uses one-word labels so it fits in a card. */
 export function Stages({ stage, names, short }) {
-  return html`<div class="stages" role="img" aria-label=${"Stage " + (stage + 1) + " of 6: " + names[stage]}>
-    ${names.map((n, i) => html`<div key=${n} class=${"s" + (i < stage ? " done" : i === stage ? " now" : "")}><i></i><span>${short ? SHORT_STAGE[n] || n : n}</span></div>`)}
-    <p class="stages-now" aria-hidden="true">Step ${stage + 1} of 6 · <b>${names[stage]}</b></p>
+  return html`<div class="stages" role="img" aria-label=${"Stage " + (stage + 1) + " of " + names.length + ": " + names[stage]} style=${{ gridTemplateColumns: `repeat(${names.length}, 1fr)` }}>
+    ${names.map((n, i) => html`<div key=${n + i} class=${"s" + (i < stage ? " done" : i === stage ? " now" : "")}><i></i><span>${short ? SHORT_STAGE[n] || n : n}</span></div>`)}
+    <p class="stages-now" aria-hidden="true">Step ${stage + 1} of ${names.length} · <b>${names[stage]}</b></p>
   </div>`;
+}
+
+/** "Fri, Oct 9" from "2026-10-09". */
+export function fmtDay(d) {
+  if (!d) return "";
+  return new Date(d + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 }
 
 /** A dialog. Escape and the × close it; focus moves into it and back out. */
@@ -172,53 +178,142 @@ export async function copy(text, toast, what = "Link") {
   catch { window.prompt("Copy this:", text); }
 }
 
-// ---------- Vimeo player ----------
-function vimeoReady() {
-  return new Promise((resolve) => {
-    if (window.Vimeo && window.Vimeo.Player) return resolve(true);
-    let n = 0;
-    const t = setInterval(() => { if ((window.Vimeo && window.Vimeo.Player) || ++n > 100) { clearInterval(t); resolve(!!(window.Vimeo && window.Vimeo.Player)); } }, 100);
-  });
+/** May this staff member do `perm` (their role's permissions, from the server)? Clients never can. */
+export const can = (user, perm) => !!(user && user.role === "admin" && user.perms && user.perms[perm]);
+export const isStaff = (user) => !!(user && user.role === "admin");
+
+/** Starts a file download in the browser from text (caption files some sources hand over as text). */
+export function saveText(text, filename) {
+  const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
+// ---------- the player ----------
+// One player for every source (see api/_video.js, "playback"):
+//   vimeo    Vimeo's embed with its Player API          youtube  YouTube's privacy-enhanced embed with its API
+//   file     an ordinary <video> (Frame.io, Wistia,     iframe   another site's player (Google Drive, Loom):
+//            direct links); signed addresses are                 plays, but notes can't know the moment
+//            fetched fresh when the player opens
+// apiRef.current gets { time(), seek(t), pause(), play(), timed } so Review can pin notes to the moment.
+
+const scripts = {};
+function loadScript(src, ready) {
+  if (ready()) return Promise.resolve(true);
+  if (!scripts[src]) {
+    scripts[src] = new Promise((resolve) => {
+      if (!document.querySelector(`script[src="${src}"]`)) { // index.html already loads Vimeo's
+        const s = document.createElement("script");
+        s.src = src; s.async = true;
+        s.onerror = () => resolve(false);
+        document.head.appendChild(s);
+      }
+      let n = 0;
+      const t = setInterval(() => { if (ready() || ++n > 150) { clearInterval(t); resolve(ready()); } }, 100);
+    });
+  }
+  return scripts[src];
+}
+const vimeoReady = () => loadScript("https://player.vimeo.com/api/player.js", () => !!(window.Vimeo && window.Vimeo.Player));
+const ytReady = () => loadScript("https://www.youtube.com/iframe_api", () => !!(window.YT && window.YT.Player));
+
 /**
- * Vimeo's embed player for one video. `apiRef.current` gets { seek(t), pause(), play(), time() } so the review
- * screen can pin notes to the moment being watched and jump back to them. Tracking is off (dnt=1).
+ * Plays one video. `source` says where a signed file address comes from: { project, video } (portal) or
+ * { share } (a public share link). `onPlay` fires once, the first time it plays. `mark` is a corner label
+ * ("Preview · Version 3") shown over versions under review.
  */
-export function Player({ video, onTime, apiRef, vertical, start = 0 }) {
+export function Player({ video, onTime, apiRef, vertical, start = 0, source, onPlay, mark }) {
   const box = useRef(null);
+  const pb = (video && video.playback) || {};
+  const key = video ? `${video.id}:${pb.kind}:${pb.id || pb.url || ""}` : "";
   useEffect(() => {
     if (!video || !box.current) return;
-    const id = video.playId || video.id;
-    const q = new URLSearchParams({ ...(video.hash ? { h: video.hash } : {}), title: 0, byline: 0, portrait: 0, dnt: 1, playsinline: 1, pip: 1 });
-    const f = document.createElement("iframe");
-    f.src = `https://player.vimeo.com/video/${encodeURIComponent(id)}?${q}${start ? "#t=" + Math.floor(start) + "s" : ""}`;
-    f.title = video.title || "Film";
-    f.allow = "autoplay; fullscreen; picture-in-picture; encrypted-media";
-    f.setAttribute("allowfullscreen", "");
     box.current.textContent = "";
-    box.current.appendChild(f);
-    let player = null, last = 0, alive = true;
+    let alive = true, played = false, last = 0;
     const local = { t: 0 };
-    const handle = {
-      time: () => local.t,
-      seek: (t) => { if (player) player.setCurrentTime(t).then(() => player.play()).catch(() => {}); },
-      pause: () => { if (player) player.pause().catch(() => {}); },
-      play: () => { if (player) player.play().catch(() => {}); },
-    };
+    const tick = (t) => { local.t = t; if (onTime && Math.abs(t - last) >= 0.25) { last = t; onTime(t); } };
+    const playedOnce = () => { if (!played) { played = true; if (onPlay) onPlay(); } };
+    const handle = { time: () => local.t, seek() {}, pause() {}, play() {}, timed: pb.kind !== "iframe" };
     if (apiRef) apiRef.current = handle;
-    vimeoReady().then((ok) => {
-      if (!ok || !alive) return;
-      try {
-        player = new window.Vimeo.Player(f);
-        player.on("timeupdate", (e) => {
-          local.t = e.seconds;
-          if (onTime && Math.abs(e.seconds - last) >= 0.25) { last = e.seconds; onTime(e.seconds); }
+    const frame = (src) => {
+      const f = document.createElement("iframe");
+      f.src = src; f.title = video.title || "Film";
+      f.allow = "autoplay; fullscreen; picture-in-picture; encrypted-media";
+      f.setAttribute("allowfullscreen", ""); f.referrerPolicy = "strict-origin-when-cross-origin";
+      box.current.appendChild(f);
+      return f;
+    };
+
+    if (pb.kind === "vimeo") {
+      const q = new URLSearchParams({ ...(pb.hash ? { h: pb.hash } : {}), title: 0, byline: 0, portrait: 0, dnt: 1, playsinline: 1, pip: 1 });
+      const f = frame(`https://player.vimeo.com/video/${encodeURIComponent(pb.id)}?${q}${start ? "#t=" + Math.floor(start) + "s" : ""}`);
+      vimeoReady().then((ok) => {
+        if (!ok || !alive) return;
+        try {
+          const pl = new window.Vimeo.Player(f);
+          handle.seek = (t) => pl.setCurrentTime(t).then(() => pl.play()).catch(() => {});
+          handle.pause = () => pl.pause().catch(() => {});
+          handle.play = () => pl.play().catch(() => {});
+          pl.on("timeupdate", (e) => tick(e.seconds));
+          pl.on("seeked", (e) => { local.t = e.seconds; if (onTime) onTime(e.seconds); });
+          pl.on("play", playedOnce);
+        } catch { /* the film still plays; notes just start at 0:00 */ }
+      });
+    } else if (pb.kind === "youtube") {
+      const holder = document.createElement("div");
+      box.current.appendChild(holder);
+      let poll = null;
+      ytReady().then((ok) => {
+        if (!ok || !alive) { if (alive) frame(`https://www.youtube-nocookie.com/embed/${pb.id}?rel=0&playsinline=1`); return; }
+        const pl = new window.YT.Player(holder, {
+          host: "https://www.youtube-nocookie.com", videoId: pb.id,
+          playerVars: { rel: 0, playsinline: 1, modestbranding: 1, start: Math.floor(start) || 0 },
+          events: {
+            onStateChange: (e) => {
+              clearInterval(poll);
+              if (e.data === 1) { playedOnce(); poll = setInterval(() => tick(pl.getCurrentTime()), 250); }
+            },
+          },
         });
-        player.on("seeked", (e) => { local.t = e.seconds; if (onTime) onTime(e.seconds); });
-      } catch { /* the film still plays; notes just start at 0:00 */ }
-    });
-    return () => { alive = false; if (apiRef && apiRef.current === handle) apiRef.current = null; };
-  }, [video && (video.playId || video.id)]);
+        handle.seek = (t) => { try { pl.seekTo(t, true); pl.playVideo(); } catch {} };
+        handle.pause = () => { try { pl.pauseVideo(); } catch {} };
+        handle.play = () => { try { pl.playVideo(); } catch {} };
+      });
+      handle.stop = () => clearInterval(poll);
+    } else if (pb.kind === "file") {
+      const v = document.createElement("video");
+      v.controls = true; v.playsInline = true; v.preload = "metadata";
+      if (video.thumbnail) v.poster = video.thumbnail;
+      v.addEventListener("timeupdate", () => tick(v.currentTime));
+      v.addEventListener("seeked", () => { local.t = v.currentTime; if (onTime) onTime(v.currentTime); });
+      v.addEventListener("play", playedOnce);
+      box.current.appendChild(v);
+      handle.seek = (t) => { v.currentTime = t; v.play().catch(() => {}); };
+      handle.pause = () => v.pause();
+      handle.play = () => v.play().catch(() => {});
+      // Signed addresses expire: fetch a fresh one now, and once more if it has expired by the time it plays.
+      let tries = 0;
+      const fresh = () => {
+        if (pb.url) return Promise.resolve(pb.url);
+        const q = source && source.share ? `/api/share?token=${encodeURIComponent(source.share)}&play=1`
+          : `/api/media?project=${encodeURIComponent(source.project)}&video=${encodeURIComponent(video.id)}&play=1`;
+        return api(q).then((d) => d.url);
+      };
+      const load = () => fresh().then((url) => { if (alive) { v.src = url; if (start) v.currentTime = start; } }).catch((e) => {
+        if (alive && box.current) { const p = document.createElement("p"); p.className = "player-msg"; p.textContent = e.message; box.current.appendChild(p); }
+      });
+      v.addEventListener("error", () => { if (!pb.url && tries++ < 1) load(); });
+      load();
+    } else {
+      frame(pb.url || "about:blank");
+    }
+    if (mark) {
+      const m = document.createElement("span");
+      m.className = "player-mark"; m.setAttribute("aria-hidden", "true"); m.textContent = mark;
+      box.current.appendChild(m);
+    }
+    return () => { alive = false; if (handle.stop) handle.stop(); if (apiRef && apiRef.current === handle) apiRef.current = null; };
+  }, [key]);
   return html`<div class=${"player" + (vertical ? " v" : "")} ref=${box}></div>`;
 }
