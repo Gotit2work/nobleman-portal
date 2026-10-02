@@ -15,7 +15,7 @@ export function nextStep(data) {
   if (!ps.length) {
     return admin
       ? { title: "Add your first project.", text: "Create a client, choose where its videos come from, and set what they can do. They see it the moment they log in.", btn: "Open Studio", to: "/studio/projects" }
-      : { title: "Your project is being set up.", text: "The studio is getting it ready. It appears here as soon as it’s set up; you don’t need to do anything yet." };
+      : { calm: true, title: "Your project is being set up.", text: "The studio is getting it ready. It appears here as soon as it’s set up; you don’t need to do anything yet." };
   }
   if (admin) {
     for (const p of ps) for (const c of p.cuts) {
@@ -26,7 +26,7 @@ export function nextStep(data) {
     if (unread) return { title: `New message from ${unread.clientName}.`, text: `About ${unread.title}.`, btn: "Read it", to: `/messages/${unread.id}` };
     const notes = ps.find((p) => p.cuts.some((c) => newest(c).comments.open));
     if (notes) return { title: `${notes.clientName} left notes on ${notes.title}.`, text: "Open the version to see each note at its moment in the film.", btn: "See the notes", to: `/review/${notes.id}` };
-    return { title: "Nothing needs you right now.", text: "Clients’ notes, decisions, and messages show up here first.", btn: "Open Studio", to: "/studio/projects" };
+    return { calm: true, title: "Nothing needs you right now.", text: "Clients’ notes, decisions, and messages show up here first.", btn: "Open Studio", to: "/studio/projects" };
   }
   for (const p of ps) if (p.caps.review) for (const c of p.cuts) {
     const v = newest(c);
@@ -45,8 +45,8 @@ export function nextStep(data) {
     if (f && Date.now() - Date.parse(f.created) < 21 * 86400e3) return { title: `${f.title} is ready.`, text: "Your finished film is in Films.", btn: "Watch it", to: `/films/${p.id}/${f.id}` };
   }
   const p = ps[0];
-  if (p.next.what || p.next.date) return { title: `Next: ${p.next.what || p.stageName}`, text: p.next.date ? `${p.next.label || "Expected"}: ${p.next.date}.` : "", btn: "See the project", to: `/projects/${p.id}` };
-  return { title: "Nothing needs you right now.", text: "The next thing that needs you will show up here.", btn: p.caps.messages ? "Message the studio" : null, to: `/messages/${p.id}` };
+  if (p.next.what || p.next.date) return { calm: true, title: `Next: ${p.next.what || p.stageName}`, text: p.next.date ? `${p.next.label || "Expected"}: ${p.next.date}.` : "", btn: "See the project", to: `/projects/${p.id}` };
+  return { calm: true, title: "Nothing needs you right now.", text: "The next thing that needs you will show up here.", btn: p.caps.messages ? "Message the studio" : null, to: `/messages/${p.id}` };
 }
 
 /** The client confirms the next milestone. */
@@ -63,9 +63,9 @@ function ConfirmButton({ projectId, label = "Confirm" }) {
 }
 
 function NextCard({ step }) {
-  return html`<section class="next" aria-label="Your next step" data-reveal="">
+  return html`<section class="next" aria-label="Your next step">
     <div>
-      <span class="eyebrow"><span>Your next step</span><span class="dot"></span></span>
+      <span class="eyebrow"><span>Your next step</span>${step.calm ? null : html`<span class="dot" aria-hidden="true"></span>`}</span>
       <div class="title">${step.title}</div>
       ${step.text ? html`<p>${step.text}</p>` : null}
     </div>
@@ -80,9 +80,9 @@ function Welcome({ w }) {
     setData((d) => ({ ...d, welcome: null }));
     if (!demo) api("/api/session", { method: "POST", body: { action: "profile", welcomed: true } }).catch(() => {});
   };
-  return html`<section class="welcome" data-reveal="">
+  return html`<section class="welcome">
     <div class="stack" style=${{ gap: "8px" }}>
-      <span class="eyebrow"><span>Welcome</span><span class="dot"></span></span>
+      <span class="eyebrow">Welcome</span>
       <div class="title">${w.title}</div>
       <p>${w.text}</p>
     </div>
@@ -189,7 +189,7 @@ export function Home() {
   const brand = data.brand || {};
   return html`<div class="page">
     <${Head} eyebrow=${admin ? `Studio · ${brand.studio || "Nobleman Productions"}` : html`${user.clientLogo ? html`<img class="client-logo" src=${user.clientLogo} alt="" />` : null}${user.clientName || "Client portal"}`} title=${`${greeting()}, ${firstName(user.name)}.`}>
-      ${admin ? "Here’s what’s happening across your clients." : demo ? "Here’s where your production stands. (A sample project: click anything.)" : "Here’s where your production stands."}
+      <span class="hide-phone">${admin ? "Here’s what’s happening across your clients." : demo ? "Here’s where your production stands. (A sample project: click anything.)" : "Here’s where your production stands."}</span>
     <//>
     ${!admin && data.welcome ? html`<${Welcome} w=${data.welcome} />` : null}
     <${NextCard} step=${step} />
@@ -197,9 +197,9 @@ export function Home() {
     ${data.projects.length ? html`<section class="section">
       <div class="sh"><span class="eyebrow"><span>${admin ? "Active projects" : data.projects.length > 1 ? "Your projects" : "Your project"}</span></span>
         ${admin ? html`<${Link} to="/studio/projects" cls="btn ghost sm">Manage in Studio<//>` : null}</div>
-      <div class=${data.projects.length > 1 ? "grid c2" : "solo"}>${data.projects.map((p) => html`<div data-reveal="card" key=${p.id}><${ProjectCard} p=${p} admin=${admin} /></div>`)}</div>
+      <div class=${data.projects.length > 1 ? "grid c2" : "solo"}>${data.projects.map((p) => html`<div key=${p.id}><${ProjectCard} p=${p} admin=${admin} /></div>`)}</div>
     </section>` : null}
-    <section class="section">
+    <section class="section latest">
       <div class="sh"><span class="eyebrow"><span>${admin ? "What clients and the team did lately" : "Latest"}</span></span>
         ${admin && user.perms && user.perms["audit.view"] ? html`<${Link} to="/studio/activity" cls="btn ghost sm">Full activity log<//>` : null}</div>
       <${Activity} items=${data.activity} limit=${admin ? 12 : 8} />
@@ -244,7 +244,7 @@ export function Project({ id }) {
     ${p.videosError ? html`<div class="alert" style=${{ marginBottom: "20px" }}>${p.videosError}</div>` : null}
     ${admin && !p.source ? html`<div class="alert info" style=${{ marginBottom: "20px" }}>This project has no video source yet, so it has no versions or films. <${Link} to=${"/studio/projects/" + p.id} cls="link">Choose one in Studio<//>.</div>` : null}
     ${!admin && p.reviewDue && awaiting(p) ? html`<div class="alert info" style=${{ marginBottom: "20px" }}>The studio planned your review by <b>${fmtDay(p.reviewDue)}</b>, to keep the schedule on track.</div>` : null}
-    <div class="grid c4">${tiles.map((t) => html`<div data-reveal="card" key=${t.t}><${Link} to=${t.to} cls="tile"><${Icon} name=${t.icon} size=${30} /><b>${t.t}</b><span>${t.d}</span><//></div>`)}</div>
+    <div class="grid c4">${tiles.map((t) => html`<div key=${t.t}><${Link} to=${t.to} cls="tile"><${Icon} name=${t.icon} size=${30} /><b>${t.t}</b><span>${t.d}</span><//></div>`)}</div>
     <section class="section">
       <div class="sh"><span class="eyebrow"><span>Latest on this project</span></span></div>
       <${Activity} items=${data.activity.filter((a) => a.projectId === p.id)} />

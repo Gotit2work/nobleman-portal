@@ -20,6 +20,8 @@ export const DEFAULTS = {
     kicker: "Murphy’s Law, review edition",
     quote: "The one frame nobody checked is the one everyone sees.",
     answer: "So every version comes here first, for you to check before it’s final.",
+    image: "/media/login-camera.jpg", // one of the portal's photos, or "upload:brand/login-<id>.jpg" (LOGIN_UPLOAD)
+    focus: "right",                    // which side of the photo stays in view: left | center | right
   },
   welcome: {
     title: "Welcome to your screening room.",
@@ -94,3 +96,9 @@ export const forgetSettings = () => { cache = null; };
 /** Stage names and the progress shown for each, from settings. */
 export const stageNames = (s) => s.stages.map((x) => x.name);
 export const stagePct = (s, i) => (s.stages[i] ? s.stages[i].pct : 0);
+
+// The login screen's photo (Studio → Settings → Login screen): one of the portal's own in media/, or one staff
+// uploaded to file storage, served by GET /api/session?loginImage=<id>.
+export const LOGIN_MEDIA = /^\/media\/[\w-]+\.jpg$/;
+export const LOGIN_UPLOAD = /^upload:(brand\/login-([0-9a-f-]{36})\.jpg)$/;
+export const MAX_LOGIN_IMAGE = 8 * 1024 ** 2;

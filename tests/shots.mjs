@@ -21,7 +21,7 @@ async function shoot(c, path, name, wait = 1200, act) {
   p.on("console", (m) => { if (m.type() === "error") errs.push(name + ": console " + m.text()); });
   await p.goto(B + path, { waitUntil: "domcontentloaded" }); await p.waitForTimeout(wait);
   if (act) await act(p);
-  // Scroll the whole page once, as a person would, so scroll-triggered reveals fire before the capture.
+  // Scroll the whole page once, as a person would, so anything loaded on scroll is in before the capture.
   await p.evaluate(async () => { const h = document.documentElement.scrollHeight; for (let y = 0; y <= h; y += 300) { window.scrollTo(0, y); await new Promise((r) => setTimeout(r, 60)); } window.scrollTo(0, 0); });
   await p.waitForTimeout(900);
   await p.screenshot({ path: `${OUT}/${name}.png`, fullPage: true });
@@ -48,7 +48,7 @@ for (const [tag, vp, mobile] of [["d", { width: 1440, height: 900 }, false], ["m
   for (const [path, name] of [["/", "home"], ["/projects/cccccccc-0000-4000-8000-000000000001", "project"], ["/review", "review"], ["/films", "films"], ["/films/cccccccc-0000-4000-8000-000000000001/5101", "film"], ["/files", "files"], ["/messages", "messages"], ["/account", "account"]]) await shoot(dana, path, `${tag}-client-${name}`);
   await dana.close();
   const admin = await ctxFor(vp, mobile); await login(admin, "alexis@gotit2work.com");
-  for (const [path, name] of [["/", "home"], ["/studio", "studio-projects"], ["/studio/projects/cccccccc-0000-4000-8000-000000000001", "studio-project"], ["/studio/people", "studio-people"], ["/studio/people/roles", "studio-roles"], ["/studio/clients", "studio-clients"], ["/studio/connections", "studio-connections"], ["/studio/settings", "studio-settings"], ["/studio/activity", "studio-activity"]]) await shoot(admin, path, `${tag}-admin-${name}`);
+  for (const [path, name] of [["/", "home"], ["/studio", "studio-projects"], ["/studio/projects/cccccccc-0000-4000-8000-000000000001", "studio-project"], ["/studio/people", "studio-people"], ["/studio/people/roles", "studio-roles"], ["/studio/clients", "studio-clients"], ["/studio/connections", "studio-connections"], ["/studio/settings", "studio-settings"], ["/studio/settings/signin", "studio-settings-login"], ["/studio/settings/security", "studio-settings-security"], ["/studio/activity", "studio-activity"]]) await shoot(admin, path, `${tag}-admin-${name}`);
   await admin.close();
 }
 await browser.close();

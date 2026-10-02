@@ -243,13 +243,12 @@ function Shell({ route, more, setMore }) {
       </div>
     </nav>
 
-    <div class="topbar">
-      ${demo
-        ? html`<button class="demo-chip" onClick=${app.openHelp}>Demo</button>`
-        : html`<button class="round" onClick=${app.openHelp} aria-label="Help: how this portal works">?</button>`}
+    <header class="topbar">
       <${Link} to="/" cls="brand" label="Portal home"><img src="/assets/Nobleman_Logo_White.png" alt="Nobleman Productions" /><//>
-      <${Link} to="/account" cls="round" label=${"Your account: " + user.name}><${Avatar} name=${user.name} size=${36} /><//>
-    </div>
+      ${demo ? html`<button class="demo-chip" onClick=${app.openHelp}>Demo</button>` : null}
+      <button class="round" onClick=${app.openHelp} aria-label="Help: how this portal works">?</button>
+      <${Link} to="/account" cls="round" label=${"Your account: " + user.name}><${Avatar} name=${user.name} size=${30} /><//>
+    </header>
 
     ${demo ? html`<${DemoRibbon} />` : null}
 

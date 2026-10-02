@@ -4,6 +4,7 @@
 // Studio (clients, people, projects, connections, settings, roles), Notion sync, activity log, exports,
 // health, the daily job, cross-origin refusal, throttling, and emails.
 // Usage: node api.test.mjs  (servers from ./run.sh, freshly started: 4400 seeded, 4402 empty)
+import fs from "node:fs";
 import { totpCode, totpStep } from "../api/_crypto.js";
 
 const B = "http://localhost:4400", FRESH = "http://localhost:4402";
@@ -404,6 +405,32 @@ r = await admin.admin("settingsSave", { section: "signin", value: { kicker: "Mur
 check("owner changes the sign-in screen's Murphy's Law", r.s === 200);
 r = await anon.get("/api/session");
 check("the sign-in screen shows it straight away", r.d.signin.quote === "The typo you missed is in the final export.");
+check("the login photo starts as the camera at night", r.d.signin.image === "/media/login-camera.jpg" && r.d.signin.focus === "right", J(r.d.signin));
+r = await admin.admin("settingsSave", { section: "signin", value: { ...r.d.signin, image: "/media/a09.jpg", focus: "center" } });
+check("owner picks another of the studio's photos", r.s === 200 && r.d.value.image === "/media/a09.jpg" && r.d.value.focus === "center", J(r.d));
+r = await admin.admin("settingsSave", { section: "signin", value: { ...r.d.value, image: "https://elsewhere.example/x.jpg", focus: "sideways" } });
+check("a photo from another site, or a made-up side, is ignored", r.d.value.image === "/media/a09.jpg" && r.d.value.focus === "center", J(r.d));
+r = await pat.admin("loginImageStart", { size: 1000 });
+check("only people who may change settings can upload a login photo", r.s === 403);
+r = await admin.admin("loginImageStart", { size: 20 * 1024 ** 2 });
+check("a login photo over 8 MB is refused", r.s === 413);
+r = await admin.admin("loginImageStart", { size: 1000 });
+const photo = r.d;
+check("owner gets an upload link for one login photo", r.s === 201 && /^brand\/login-[0-9a-f-]{36}\.jpg$/.test(photo.pathname) && photo.token && photo.image === "upload:" + photo.pathname, J(r.d));
+r = await admin.admin("settingsSave", { section: "signin", value: { ...r.d, kicker: "Murphy’s Law, export edition", quote: "The typo you missed is in the final export.", answer: "So every version comes here first.", image: photo.image, focus: "center" } });
+check("a photo that never arrived can't be used", r.s === 409 && /didn’t finish uploading/.test(r.d.error), J(r.d));
+await fetch(B + "/__blob/?pathname=" + encodeURIComponent(photo.pathname), { method: "PUT", body: Buffer.alloc(1000, 1), headers: { "x-content-type": "image/jpeg" } });
+r = await admin.admin("settingsSave", { section: "signin", value: { kicker: "Murphy’s Law, export edition", quote: "The typo you missed is in the final export.", answer: "So every version comes here first.", image: photo.image, focus: "center" } });
+check("once it's uploaded, the photo is saved", r.s === 200 && r.d.value.image === photo.image, J(r.d));
+r = await anon.get("/api/session");
+check("the login screen gets the uploaded photo", r.d.signin.image === photo.image);
+let img = await fetch(B + "/api/session?loginImage=00000000-0000-4000-8000-000000000000");
+check("the photo address serves only the photo the settings name", img.status === 404);
+img = await fetch(B + "/api/session?loginImage=../../projects");
+check("…and nothing that isn't a photo id", img.status === 404);
+r = await admin.admin("settingsSave", { section: "signin", value: { kicker: "Murphy’s Law, export edition", quote: "The typo you missed is in the final export.", answer: "So every version comes here first.", image: "/media/login-camera.jpg", focus: "right" } });
+const blobCalls = fs.readFileSync(new URL("./.work/blob/blob.calls", import.meta.url), "utf8");
+check("replacing an uploaded photo deletes it from storage", r.s === 200 && /POST \/__blob\/delete/.test(blobCalls));
 r = await admin.admin("settingsSave", { section: "stages", value: [{ name: "Only" }] });
 check("fewer than two stages refused", r.s === 400);
 r = await admin.admin("settingsSave", { section: "stages", value: [{ name: "Plan", pct: 10 }, { name: "Shoot", pct: 30 }, { name: "Cut", pct: 60 }, { name: "Your review", pct: 80 }, { name: "Polish", pct: 90 }, { name: "Done", pct: 100 }] });

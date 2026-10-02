@@ -54,14 +54,16 @@ export function Studio({ tab = "projects", id }) {
   const { d, err } = admin;
   const tabs = TABS.filter((x) => !x.any.length || x.any.some((p) => can(user, p)));
   const t = tabs.some((x) => x.key === tab) ? tab : tab === "vimeo" && tabs.some((x) => x.key === "connections") ? "connections" : "projects";
-  return html`<div class="page wide">
+  // On a phone the tabs scroll sideways: keep the open one in view.
+  useEffect(() => { const el = document.querySelector(".studio-tabs [aria-current]"); if (el && el.scrollIntoView) el.scrollIntoView({ block: "nearest", inline: "nearest" }); }, [t]);
+  return html`<div class="page wide studio">
     <nav class="studio-tabs" aria-label="Studio sections">${tabs.map((x) => html`<${Link} key=${x.key} to=${"/studio/" + x.key} cls="tab-btn" current=${x.key === t}><${Icon} name=${x.icon} size=${18} />${x.label}<//>`)}</nav>
     ${err ? html`<div class="alert">${err}</div>` : !d ? html`<div class="boot-line"><i></i></div>`
       : t === "projects" ? (id ? html`<${ProjectEdit} id=${id} admin=${admin} key=${id} />` : html`<${Projects} admin=${admin} />`)
       : t === "clients" ? html`<${Clients} admin=${admin} />`
       : t === "people" ? html`<${People} admin=${admin} view=${id} />`
       : t === "connections" ? html`<${Connections} admin=${admin} />`
-      : t === "settings" ? html`<${Settings} admin=${admin} />`
+      : t === "settings" ? html`<${Settings} admin=${admin} section=${id} />`
       : html`<${Activity} admin=${admin} />`}
   </div>`;
 }
@@ -159,10 +161,10 @@ function Projects({ admin }) {
       <thead><tr><th>Project</th><th>Stage</th><th>Videos from</th><th>Review by</th><th>Client can</th><th></th></tr></thead>
       <tbody>${list.map((p) => html`<tr key=${p.id}>
         <td><${Link} to=${"/studio/projects/" + p.id} cls="name" label=${"Edit " + p.title}><b>${p.title}</b><//><div class="muted small">${p.clientName}${p.type ? " · " + p.type : ""}${p.notion ? " · in Notion" : ""}</div></td>
-        <td>${d.stages[p.stage]}${p.archived ? html` <span class="pill">Archived</span>` : null}</td>
-        <td class="small">${p.source ? sourceLabel(d, p) : html`<span class="pill amber">Not set</span>`}</td>
-        <td class="small">${p.reviewDue ? fmtDay(p.reviewDue) : html`<span class="faint">—</span>`}</td>
-        <td class="small muted">${capCount(p.caps)} of ${d.capabilities.length}</td>
+        <td data-label="Stage">${d.stages[p.stage]}${p.archived ? html` <span class="pill">Archived</span>` : null}</td>
+        <td class="small" data-label="Videos from">${p.source ? sourceLabel(d, p) : html`<span class="pill amber">Not set</span>`}</td>
+        <td class="small" data-label="Review by">${p.reviewDue ? fmtDay(p.reviewDue) : html`<span class="faint">—</span>`}</td>
+        <td class="small muted" data-label="Client can">${capCount(p.caps)} of ${d.capabilities.length}</td>
         <td style=${{ textAlign: "right" }}><${Link} to=${"/studio/projects/" + p.id} cls="btn ghost sm">Open<//></td>
       </tr>`)}</tbody>
     </table>
@@ -206,6 +208,10 @@ function NewProject({ admin, onClose }) {
   <//>`;
 }
 
+// A project's page in Studio, in four parts so it never becomes one long form; one Save covers them all.
+const PARTS = [["details", "Details"], ["progress", "Progress"], ["videos", "Videos"], ["access", "What they can do"]];
+const firstSentence = (t) => (String(t || "").match(/^.*?[.!?](?=\s|$)/) || [t])[0];
+
 function ProjectEdit({ id, admin }) {
   const { go, toast, reload } = useApp();
   const { d } = admin;
@@ -219,6 +225,7 @@ function ProjectEdit({ id, admin }) {
   const [err, setErr] = useState("");
   const [del, setDel] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+  const [part, setPart] = useState("details");
   if (!src) return html`<${Empty} title="That project isn’t here." action=${html`<${Link} to="/studio/projects" cls="btn primary">All projects<//>`}>It may have been deleted.<//>`;
   const base = init();
   const changed = Object.keys(f).filter((k) => JSON.stringify(f[k]) !== JSON.stringify(base[k]));
@@ -259,50 +266,44 @@ function ProjectEdit({ id, admin }) {
       ${src.archived ? "Archived: the client can’t see this project." : "Changes reach the client as soon as you save."}${src.notion ? " Kept up to date in Notion." : ""}
     <//>
 
-    <section class="card pad stack" style=${{ gap: "18px" }}>
-      <div class="h3">Details</div>
+    <div class="tabs parts" role="group" aria-label="Parts of the project" style=${{ marginBottom: "18px" }}>${PARTS.map(([k, l]) => html`<button type="button" key=${k} class="tab-btn" aria-pressed=${part === k} onClick=${() => setPart(k)}>${l}</button>`)}</div>
+
+    ${part === "details" ? html`<section class="card pad stack" style=${{ gap: "18px" }}>
       <div class="formgrid">
         <${Field} label="Project name"><input class="input" disabled=${!mayEdit} value=${f.title} onInput=${(e) => setF({ ...f, title: e.target.value })} /><//>
         <${Field} label="Kind of project"><input class="input" disabled=${!mayEdit} value=${f.type} onInput=${(e) => setF({ ...f, type: e.target.value })} placeholder="Brand film · Commercial" /><//>
       </div>
       <${Field} label="Summary (shown on the project page)"><textarea class="textarea" rows="3" disabled=${!mayEdit} value=${f.summary} onInput=${(e) => setF({ ...f, summary: e.target.value })} placeholder="One or two sentences about what you’re making."></textarea><//>
       <${ClientPicker} clients=${d.clients} value=${f} disabled=${!mayEdit} onChange=${(v) => setF({ ...f, ...v })} />
+      <${Field} label="Cover image link (optional)" hint="Empty uses the newest film’s thumbnail."><input class="input" disabled=${!mayEdit} value=${f.imageUrl} onInput=${(e) => setF({ ...f, imageUrl: e.target.value })} placeholder="https://…" /><//>
     </section>
+    ${admin.can("projects.delete") ? html`<section class="stack" style=${{ gap: "10px", marginTop: "24px" }}>
+      <div class="row">
+        <button class="btn ghost sm" disabled=${busy || dirty} onClick=${() => save({ archived: !src.archived })}>${src.archived ? "Bring it back for the client" : "Archive (hide from the client)"}</button>
+        <button class="btn danger sm" onClick=${() => setDel(true)}>Delete project…</button>
+      </div>
+      <span class="faint small">Archiving can be undone. Deleting removes its notes, decisions, messages, share links, and files for good.</span>
+    </section>` : null}` : null}
 
-    <${Progress} f=${f} setF=${setF} src=${src} d=${d} may=${mayProgress} admin=${admin} />
+    ${part === "progress" ? html`<${Progress} f=${f} setF=${setF} src=${src} d=${d} may=${mayProgress} admin=${admin} />` : null}
 
-    <section class="card pad stack section" style=${{ gap: "18px", marginTop: "16px" }}>
+    ${part === "videos" ? html`<section class="card pad stack" style=${{ gap: "16px" }}>
       <div class="h3">Video source</div>
       <${SourcePicker} d=${d} value=${f.source} disabled=${!mayEdit} onChange=${(v) => setF({ ...f, source: v })} projects=${d.projects} selfId=${id} />
-      <p class="muted small" style=${{ margin: 0, lineHeight: 1.6 }}>A video with a version number in its title (“Harbor Spot V2”) appears in Review as Version 2. The client sees only the newest version unless “Earlier versions” is on below. Any other video appears in Films as a finished film. Videos the client sends are listed under Files and never shown as films.</p>
+      <p class="muted small" style=${{ margin: 0, lineHeight: 1.55 }}>A title with a version number (“Harbor Spot V2”) goes to Review, where the client sees only the newest. Everything else goes to Films.</p>
     </section>
+    ${src.source && !sourceChanged ? html`<${Videos} p=${src} admin=${admin} />` : null}` : null}
 
-    ${src.source && !sourceChanged ? html`<${Videos} p=${src} admin=${admin} />` : null}
-
-    <section class="card pad stack section" style=${{ gap: "18px", marginTop: "16px" }}>
-      <div class="stack" style=${{ gap: "6px" }}><div class="h3">What ${src.clientName} can do</div>
-        <span class="muted small" style=${{ lineHeight: 1.55 }}>Switched off means hidden from the client and refused by the portal. Each person’s role narrows it further: only decision makers approve, and viewers only watch (Studio → People → Roles).</span></div>
-      <div class="capgrid">${d.capabilities.map((c) => {
+    ${part === "access" ? html`<section class="card pad stack" style=${{ gap: "16px" }}>
+      <div class="stack" style=${{ gap: "4px" }}><div class="h3">What ${src.clientName} can do</div>
+        <span class="muted small">Off means hidden from the client. Roles narrow it further (People → Roles).</span></div>
+      <div class="setrows">${d.capabilities.map((c) => {
         const blocked = c.needs && !f.caps[c.needs];
-        return html`<div class="cap" key=${c.key}>
+        return html`<div class="setopt" key=${c.key}>
+          <div><b>${c.label}</b><span>${firstSentence(c.detail)}</span></div>
           <${Toggle} checked=${!!f.caps[c.key] && !blocked} disabled=${blocked || !mayEdit} onChange=${(v) => setCap(c.key, v)} label=${c.label} />
-          <div><b>${c.label}</b><span>${c.detail}</span></div>
         </div>`;
       })}</div>
-    </section>
-
-    <section class="card pad stack section" style=${{ gap: "14px", marginTop: "16px" }}>
-      <div class="h3">Cover image</div>
-      <${Field} label="Image link (optional)" hint="Leave empty to use the newest film’s thumbnail. Paste an https link to choose your own."><input class="input" disabled=${!mayEdit} value=${f.imageUrl} onInput=${(e) => setF({ ...f, imageUrl: e.target.value })} placeholder="https://…" /><//>
-    </section>
-
-    ${admin.can("projects.delete") ? html`<section class="section stack" style=${{ gap: "12px", marginTop: "28px" }}>
-      <div class="h3">Archive or delete</div>
-      <div class="row">
-        <button class="btn ghost" disabled=${busy || dirty} onClick=${() => save({ archived: !src.archived })}>${src.archived ? "Bring it back for the client" : "Archive (hide from the client)"}</button>
-        <button class="btn danger" onClick=${() => setDel(true)}>Delete project…</button>
-      </div>
-      <span class="muted small">Archiving keeps everything and can be undone. Deleting removes its notes, decisions, messages, share links, and files for good. Videos stay where they are.</span>
     </section>` : null}
 
     ${err ? html`<div class="alert" role="alert" style=${{ marginTop: "16px" }}>${err}</div>` : null}
@@ -323,7 +324,7 @@ function Progress({ f, setF, src, d, may, admin }) {
   const { run, busy } = useRun(admin);
   const n = f.next;
   const setN = (k, v) => setF({ ...f, next: { ...n, [k]: v } });
-  return html`<section class="card pad stack section" style=${{ gap: "18px", marginTop: "16px" }}>
+  return html`<section class="card pad stack section" style=${{ gap: "18px", marginTop: 0 }}>
     <div class="h3">Progress</div>
     <div class="seg" role="group" aria-label="Stage">${d.stages.map((s, i) => html`<button type="button" key=${s} disabled=${!may} aria-pressed=${f.stage === i} onClick=${() => setF({ ...f, stage: i })}>${i + 1}. ${s}</button>`)}</div>
     <div class="formgrid">

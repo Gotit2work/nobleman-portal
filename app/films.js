@@ -25,7 +25,7 @@ export function Films({ pid, vid }) {
       <//>`
     : groups.map((p) => html`<section class=${groups.length > 1 ? "section" : ""} key=${p.id}>
         ${groups.length > 1 || admin ? html`<div class="sh"><span class="eyebrow"><span>${admin ? p.clientName + " · " : ""}${p.title}</span></span><span class="muted small">${plural(p.films.length, "film")}</span></div>` : null}
-        <div class="grid c3">${p.films.map((f) => html`<div data-reveal="card" key=${f.id}><${Link} to=${`/films/${p.id}/${f.id}`} cls="fcard" label=${"Watch " + f.title}>
+        <div class="grid c3">${p.films.map((f) => html`<div key=${f.id}><${Link} to=${`/films/${p.id}/${f.id}`} cls="fcard" label=${"Watch " + f.title}>
           <div class=${"img" + (f.vertical ? " v" : "")}><img src=${f.thumbnail || POSTER} alt="" loading="lazy" onError=${(e) => { e.target.onerror = null; e.target.src = POSTER; }} /><span class="play" aria-hidden="true"></span>${f.durationLabel ? html`<span class="tag">${f.durationLabel}</span>` : null}</div>
           <span class="t">${f.title}</span>
           <span class="muted small">${[f.resolution, f.created ? "Delivered " + fmtDate(f.created) : "", typeof f.plays === "number" ? plural(f.plays, "play") : ""].filter(Boolean).join(" · ")}</span>

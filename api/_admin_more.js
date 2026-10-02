@@ -1,9 +1,12 @@
 // Studio, continued (api/admin.js routes here): connections, Notion, settings and roles, the activity log,
 // data export, and system health. Staff only; each action checks the person's role.
+import { randomUUID } from "node:crypto";
+import { head, del } from "@vercel/blob";
+import { generateClientTokenFromReadWriteToken } from "@vercel/blob/client";
 import { sql } from "./_db.js";
 import { isUuid, text, longText } from "./_auth.js";
 import { cleanCaps } from "./_caps.js";
-import { getSettings, saveSection, patchSection, DEFAULTS } from "./_settings.js";
+import { getSettings, saveSection, patchSection, DEFAULTS, LOGIN_MEDIA, LOGIN_UPLOAD, MAX_LOGIN_IMAGE } from "./_settings.js";
 import { ROLE_DEFAULTS, STAFF_PERMS, CLIENT_PERMS, can, isStaff } from "./_roles.js";
 import { listConnections, getConnection, createConnection, updateConnection, deleteConnection, forgetConnections } from "./_connections.js";
 import { PROVIDERS, VIDEO } from "./_providers/index.js";
@@ -145,7 +148,11 @@ const CLEAN = {
     for (const k of ["website", "privacy", "portal"]) if (v[k] && !httpsOk(v[k])) throw bad("Web addresses must start with https://.");
     return { studio, support: text(v.support, 120) || cur.support, website: text(v.website, 300), privacy: text(v.privacy, 300), portal: text(v.portal, 300).replace(/\/+$/, "") || cur.portal, replies: text(v.replies, 200) };
   },
-  signin: (v) => ({ kicker: text(v.kicker, 80), quote: text(v.quote, 200), answer: text(v.answer, 200) }),
+  signin: (v, cur) => ({
+    kicker: text(v.kicker, 80), quote: text(v.quote, 200), answer: text(v.answer, 200),
+    image: LOGIN_MEDIA.test(String(v.image)) || LOGIN_UPLOAD.test(String(v.image)) ? String(v.image) : (cur && cur.image) || DEFAULTS.signin.image,
+    focus: ["left", "center", "right"].includes(v.focus) ? v.focus : (cur && cur.focus) || DEFAULTS.signin.focus,
+  }),
   welcome: (v) => ({ title: text(v.title, 120), text: longText(v.text, 600) }),
   announcement: (v) => ({ text: text(v.text, 300), tone: v.tone === "warning" ? "warning" : "info" }),
   stages(v) {
@@ -166,6 +173,12 @@ const CLEAN = {
 };
 const bad = (msg) => Object.assign(new Error(msg), { status: 400 });
 
+/** A replaced login photo that staff uploaded is deleted from file storage; the portal's own photos stay. */
+async function dropLoginImage(image) {
+  const m = LOGIN_UPLOAD.exec(String(image || ""));
+  if (m && process.env.BLOB_READ_WRITE_TOKEN) await del(m[1]).catch((err) => console.error("login photo delete failed", err.message));
+}
+
 // ---------- POST ----------
 export const MORE_ACTIONS = {
   async settingsSave(req, res, u, b, s, deny) {
@@ -176,9 +189,30 @@ export const MORE_ACTIONS = {
     if (section === "security" && value.staffTwoStep && !s.security.staffTwoStep && !u.totp_enabled) {
       return res.status(400).json({ error: "Turn on two-step verification for yourself first (your account page), so requiring it can’t lock you out." });
     }
+    const was = s[section] && s[section].image;
+    if (section === "signin" && value.image !== was && LOGIN_UPLOAD.test(value.image)) {
+      const meta = await head(LOGIN_UPLOAD.exec(value.image)[1]).catch(() => null);
+      if (!meta) return res.status(409).json({ error: "The photo didn’t finish uploading. Try it again." });
+    }
     await saveSection(section, value);
+    if (section === "signin" && value.image !== was) await dropLoginImage(was);
     await audit(req, u, "settings", `Changed settings: ${section}`);
     return res.status(200).json({ ok: true, value });
+  },
+
+  /** An upload link for a new login photo: one JPEG (the browser resizes it first), used once Login screen is saved. */
+  async loginImageStart(req, res, u, b, s, deny) {
+    if (deny("settings.manage")) return;
+    if (!process.env.BLOB_READ_WRITE_TOKEN) return res.status(503).json({ error: "Uploading a photo needs file storage (Vercel → Storage → Blob). Until then, choose one of the photos here." });
+    const size = Number(b.size) || 0;
+    if (size <= 0) return res.status(400).json({ error: "That photo is empty." });
+    if (size > MAX_LOGIN_IMAGE) return res.status(413).json({ error: "That photo is too large. Try a smaller one." });
+    const pathname = `brand/login-${randomUUID()}.jpg`;
+    const token = await generateClientTokenFromReadWriteToken({
+      pathname, maximumSizeInBytes: MAX_LOGIN_IMAGE, allowedContentTypes: ["image/jpeg"],
+      validUntil: Date.now() + 15 * 60 * 1000, addRandomSuffix: false, allowOverwrite: false,
+    });
+    return res.status(201).json({ pathname, token, image: "upload:" + pathname });
   },
 
   async settingsReset(req, res, u, b, s, deny) {
@@ -186,6 +220,7 @@ export const MORE_ACTIONS = {
     const section = String(b.section || "");
     if (!CLEAN[section] && section !== "roles") return res.status(400).json({ error: "Unknown settings section." });
     await saveSection(section, DEFAULTS[section]);
+    if (section === "signin") await dropLoginImage(s.signin && s.signin.image);
     await audit(req, u, "settings", `Reset settings to defaults: ${section}`);
     return res.status(200).json({ ok: true });
   },

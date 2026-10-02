@@ -1,11 +1,12 @@
 import bcrypt from "bcryptjs";
+import { issueSignedToken, presignUrl } from "@vercel/blob";
 import { sql, ready, dbConfigured } from "./_db.js";
 import {
   DEMO_MODE, TROUBLE, MIN_PASSWORD, readBody, rejectCrossOrigin, currentUser, requireUser, publicUser, text,
   signSession, setSessionCookie, clearSessionCookie, signTicket, readTicket, needsTwoStepSetup,
 } from "./_auth.js";
 import { sameText, seal, open, totpSecret, totpUri, verifyTotp, recoveryCodes, hashToken } from "./_crypto.js";
-import { getSettings, DEFAULTS } from "./_settings.js";
+import { getSettings, DEFAULTS, LOGIN_UPLOAD } from "./_settings.js";
 import { emailReady, originOf } from "./_notify.js";
 import { createLink, redeemLink, emailLink, emailSignup, throttled, recordAttempt, clearAttempts } from "./_links.js";
 import { audit, clientIp } from "./_audit.js";
@@ -16,6 +17,7 @@ import { randomToken } from "./_crypto.js";
 
 /**
  * GET  /api/session                        who is logged in, plus what the login screen shows
+ * GET  /api/session?loginImage=<id>         the login photo staff uploaded (Studio → Settings → Login screen)
  * POST /api/session {action:"login"}       email, password → logged in, or { twoStep, ticket }
  * POST /api/session {action:"twoStep"}     ticket, code (or a recovery code) → logged in
  * POST /api/session {action:"requestLink"} email, purpose ("signin" | "reset"), next → emails a one-time link
@@ -37,7 +39,7 @@ const safeNext = (n) => (typeof n === "string" && /^\/(?!\/)[\w\-./%?=&]*$/.test
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "private, no-store");
-  if (req.method === "GET") return status(req, res);
+  if (req.method === "GET") return req.query && req.query.loginImage ? loginImage(req, res) : status(req, res);
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
   if (rejectCrossOrigin(req, res)) return;
   const b = readBody(req, res);
@@ -74,6 +76,33 @@ async function screen() {
   const s = await getSettings().catch(() => null);
   // Sign-up needs email (the address is confirmed by a link), so it only shows when email works.
   return s ? { brand: s.brand, signin: s.signin, signinLinks: !!s.security.signinLinks, signup: s.security.signup !== "off" && (await emailReady()) } : DEFAULT_SCREEN;
+}
+
+/**
+ * The login photo staff uploaded. It's in private file storage, so it passes through here; only the photo the
+ * settings name is served, never another file. Its address carries its id, so Vercel's CDN keeps a copy for a day.
+ */
+async function loginImage(req, res) {
+  const id = String(req.query.loginImage || "");
+  if (!/^[0-9a-f-]{36}$/.test(id) || !dbConfigured() || !process.env.BLOB_READ_WRITE_TOKEN) return res.status(404).end();
+  try {
+    await ready();
+    const s = await getSettings();
+    const m = LOGIN_UPLOAD.exec(String(s.signin.image || ""));
+    if (!m || m[2] !== id) return res.status(404).end();
+    const validUntil = Date.now() + 60 * 1000;
+    const signed = await issueSignedToken({ pathname: m[1], operations: ["get"], validUntil });
+    const { presignedUrl } = await presignUrl(signed, { operation: "get", pathname: m[1], access: "private", validUntil });
+    const r = await fetch(presignedUrl);
+    if (!r.ok) return res.status(404).end();
+    res.setHeader("Content-Type", "image/jpeg");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.setHeader("Vercel-CDN-Cache-Control", "max-age=86400");
+    return res.status(200).end(Buffer.from(await r.arrayBuffer()));
+  } catch (err) {
+    console.error("login photo failed", err.message);
+    return res.status(404).end();
+  }
 }
 
 async function status(req, res) {

@@ -19,7 +19,7 @@ export function Watch({ token }) {
       ${st.phase === "ok" ? html`
         <${Player} video=${st.film} vertical=${st.film.vertical} source=${{ share: token }} />
         <div class="stack" style=${{ gap: "10px", marginTop: "26px" }}>
-          <span class="eyebrow"><span>${studio}</span><span class="dot"></span></span>
+          <span class="eyebrow">${studio}</span>
           <h1 class="h1">${st.film.title}</h1>
           <span class="muted">${[st.film.durationLabel, st.film.resolution].filter(Boolean).join(" · ")}</span>
           ${st.film.description ? html`<p style=${{ margin: "8px 0 0", lineHeight: 1.65, maxWidth: "760px", whiteSpace: "pre-wrap" }}>${st.film.description}</p>` : null}
