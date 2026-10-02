@@ -7,7 +7,7 @@ const POSTER = "/media/screening-poster.jpg";
 const newest = (c) => c.versions[c.versions.length - 1];
 const dueText = (p) => (p.reviewDue ? ` Please review by ${fmtDay(p.reviewDue)}.` : "");
 
-/** The one thing that needs this person now. Clients: review → confirm → messages → new film → milestone. Staff: client actions. */
+/** The one thing that needs this person now. Clients: review → pay → confirm → messages → new film → milestone. Staff: client actions. */
 export function nextStep(data) {
   const admin = isStaff(data.user);
   const ps = data.projects;
