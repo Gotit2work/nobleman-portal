@@ -43,7 +43,7 @@ Client portal for Nobleman Productions at `portal.noblemanproductions.gotit2work
 
 - One door for everyone: the login never says "client". Say "log in" / "log out" / "login link" and "two-step verification" (Adobe's own "Sign in with Adobe" stays).
 - Keep screens simple: at most one or two buttons per row (rarer actions go in the shared `More` menu in `ui.js`), one status flag per project card, plain text over capsules, and setup steps or rare forms folded away until asked for. The browser tests check People rows, video rows, project cards, and the Account password form.
-- `docs/manual/` (manual.html → Nobleman-Portal-Manual.pdf via `node docs/manual/build.mjs`) describes every feature, button name, and default. When a change alters one, update the page and rebuild the PDF in the same change.
+- `docs/manual/` (manual.html → Nobleman-Portal-Manual.pdf via `node docs/manual/build.mjs`) describes every feature, button name, and default. When a change alters one, update the page and rebuild the PDF in the same change. Keep its fonts fixed-weight (no variable fonts) and its colors solid outside the flattened photos: `build.mjs` refuses Type3 fonts and transparency masks, which make Acrobat slow and glitchy.
 - Every word a client sees follows `docs/WRITING.md`: plain words, buttons named for the action, no promise that isn't always true, confirmation before anything hard to undo (`Confirm`; typed name for deletes). Say "the studio", not a person's name; the name lives in settings (`brand`).
 - Demo actions go through `say(real, demo)`, which shows "Demo only: …". Never let the demo call the API's write actions.
 - Home leads with **Your next step** (`nextStep` in `home.js`): one clear action.

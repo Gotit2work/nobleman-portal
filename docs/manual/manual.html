@@ -13,7 +13,7 @@
   --paper: #fafaf8; --ink: #0b2a31; --mute: #4b5f65; --faint: #7f9094; --line: #d6dfe0; --tint: #eef3f3;
   --red: #e5322d; --green: #2f8f6c; --amber: #b7791f;
   --serif: 'Cormorant Garamond', Georgia, serif; --sans: Inter, 'Helvetica Neue', Arial, sans-serif;
-  --mono: ui-monospace, Menlo, 'DejaVu Sans Mono', monospace;
+  --mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
 }
 @page { size: 8.5in 11in; margin: 0; }
 * { box-sizing: border-box; }
@@ -33,6 +33,7 @@ body { font-family: var(--sans); color: var(--ink); font-size: 9.4pt; line-heigh
 
 /* chapter band: a photo strip across the top of a chapter's first page */
 .cband { position: absolute; top: 0; left: 0; right: 0; height: 3.05in; background: var(--sea) center / cover no-repeat; color: var(--foam); }
+.flat::after { display: none !important; }
 .cband::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(3,30,37,.92) 0%, rgba(3,30,37,.72) 45%, rgba(3,30,37,.2) 100%), linear-gradient(180deg, rgba(3,30,37,.1), rgba(3,30,37,.55)); }
 .cband .in { position: absolute; z-index: 1; left: .75in; right: 2.4in; bottom: .38in; display: flex; flex-direction: column; gap: 6px; }
 .cband .num { font-variant-numeric: lining-nums; font-family: var(--serif); font-size: 13pt; letter-spacing: .02em; color: rgba(244,244,242,.75); }
@@ -53,7 +54,7 @@ p { margin: 0; text-wrap: pretty; }
 .small { font-size: 8.4pt; }
 b, strong { font-weight: 600; }
 .ui { font-weight: 600; color: var(--deck); white-space: nowrap; }
-code, .mono { font-family: var(--mono); font-size: 8pt; background: var(--tint); padding: 0 3px; border-radius: 3px; overflow-wrap: anywhere; }
+code, .mono { font-family: var(--mono); font-weight: 400; font-style: normal; font-size: 8pt; background: var(--tint); padding: 0 3px; border-radius: 3px; overflow-wrap: anywhere; }
 ul, ol { margin: 0; padding-left: 15px; display: flex; flex-direction: column; gap: 3px; }
 li::marker { color: var(--faint); }
 .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 22px; align-items: start; }
@@ -110,7 +111,7 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
 .check li::before { content: ""; position: absolute; left: 0; top: 3px; width: 8px; height: 8px; border: .75pt solid var(--ink); border-radius: 2px; }
 .card { border: .5pt solid var(--line); border-radius: 8px; padding: 9px 11px; display: flex; flex-direction: column; gap: 4px; break-inside: avoid; }
 .card h3 { margin: 0; display: flex; align-items: center; gap: 7px; }
-.ic { width: 16px; height: 16px; flex: none; filter: brightness(0); opacity: .78; }
+.ic { width: 20px; height: 20px; padding: 3px; flex: none; background: var(--deck); border-radius: 5px; }
 
 /* contents */
 .toc { display: flex; flex-direction: column; }
@@ -171,7 +172,7 @@ table.small { font-size: 7.9pt; }
 <section class="page" data-title="Contents">
   <div class="body">
     <span class="eyebrow">Contents</span>
-    <h2>What’s in <em>this manual</em></h2>
+    <h2 role="heading" aria-level="1">What’s in <em>this manual</em></h2>
     <div class="toc">
       <a href="#start"><i>→</i><span><b>Start here</b><span class="d">The three things to know, and the portal’s addresses.</span></span><span class="pn" data-toc="start"></span></a>
       <a href="#ch1"><i>01</i><span><b>The portal at a glance</b><span class="d">What it is, how a project moves, and the words this manual uses.</span></span><span class="pn" data-toc="ch1"></span></a>
@@ -195,7 +196,7 @@ table.small { font-size: 7.9pt; }
 <section class="page" data-title="Start here">
   <div class="body" id="start">
     <span class="eyebrow">Start here</span>
-    <h2>Three things <em>to know</em></h2>
+    <h2 role="heading" aria-level="1">Three things <em>to know</em></h2>
     <p class="lede">Nobody reads a manual first, and the portal is built for that: every screen says what it’s for and what to do next. These three cards are all most people ever need.</p>
     <div class="quick">
       <div class="card"><h3>If you’re a client</h3>
@@ -666,7 +667,7 @@ table.small { font-size: 7.9pt; }
       <div class="stack">
         <h3>Three things you’ll repeat</h3>
         <p><b>Add a variable:</b> Vercel → nobleman-portal → Settings → Environment Variables → Add New. Tick Production and Preview, turn on <b>Sensitive</b>, Save.</p>
-        <p><b>Redeploy:</b> Deployments → the newest Production one → ⋯ → Redeploy. Wait for Ready.</p>
+        <p><b>Redeploy:</b> Deployments → the newest Production one → … → Redeploy. Wait for Ready.</p>
         <p><b>Check:</b> open <code>…/api/session</code>. It answers in plain text; each step says what to look for.</p>
       </div>
     </div>
@@ -758,7 +759,7 @@ table.small { font-size: 7.9pt; }
         <h3>Rolling back</h3>
         <ul>
           <li><b>The sample at the front door again:</b> add <code>PORTAL_MODE</code> = <code>demo</code> and redeploy. Nothing in the database is touched; delete it again to return.</li>
-          <li><b>A bad deployment:</b> Deployments → the previous good one → ⋯ → <b>Promote to Production</b>. The database only ever gains tables and columns, so an earlier version runs safely.</li>
+          <li><b>A bad deployment:</b> Deployments → the previous good one → … → <b>Promote to Production</b>. The database only ever gains tables and columns, so an earlier version runs safely.</li>
           <li><b>Payments:</b> remove the Stripe connection. Pay disappears at once; payment records stay; nothing is refunded or canceled in Stripe.</li>
         </ul>
       </div>
@@ -802,7 +803,7 @@ table.small { font-size: 7.9pt; }
         <ul class="check">
           <li>Jean and Justin agree to retire the current site (on Lovable); rollback brings it back in minutes.</li>
           <li>Access to the GoDaddy account with noblemanproductions.com, and to Vercel.</li>
-          <li>📸 A screenshot of that domain’s DNS table, before any change.</li>
+          <li>A screenshot of that domain’s DNS table, before any change.</li>
         </ul>
         <div class="warn"><b>Never touch</b> the <code>MX</code> records (the studio’s Gmail), the <code>google-site-verification</code> TXT, or anything named <code>send</code> or <code>_domainkey</code>.</div>
       </div>
@@ -997,7 +998,7 @@ table.small { font-size: 7.9pt; }
 <section class="page" data-title="The Nobleman document format">
   <div class="body" id="apxA">
     <span class="eyebrow">Appendix A</span>
-    <h2>The Nobleman <em>document format</em></h2>
+    <h2 role="heading" aria-level="1">The Nobleman <em>document format</em></h2>
     <p class="lede">The studio’s documents (manuals, proposals, call sheets, delivery notes) share the website’s look, so a client recognizes Nobleman on every page. This manual is built to it.</p>
     <div class="cols">
       <div class="stack">
