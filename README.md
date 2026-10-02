@@ -149,7 +149,7 @@ The data layer is plain Postgres. To move: create the Supabase project; copy the
 
 ```bash
 npm ci && (cd tests && npm ci)
-cd tests && npm test        # 102 API checks, then 43 browser checks (desktop and phone)
+cd tests && npm test        # 102 API checks, then 44 browser checks (desktop and phone)
 npm run shots               # screenshots of every screen in tests/.work/shots
 ```
 

@@ -200,6 +200,15 @@ const dana = await newPage();
   await page.context().close();
 }
 
+// ---------- 7. A dropped connection while loading ----------
+{
+  const page = await newPage();
+  await page.route("**/app/films.js", (r) => r.abort());
+  await page.goto(DEMO + "/");
+  check("if a portal file doesn't arrive, the page says so and offers a reload", await waitText(page, /didn’t finish loading/) && await visible(page.getByRole("button", { name: "Reload the page" })));
+  await page.context().close();
+}
+
 check("no JavaScript errors on any page", pageErrors.length === 0, pageErrors.join(" | "));
 await browser.close();
 console.log(`\n${pass} passed, ${fail} failed`);
