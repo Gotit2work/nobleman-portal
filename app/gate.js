@@ -90,29 +90,38 @@ function Steps({ at, labels }) {
 const SIGNUP_STEPS = ["Your details", "Confirm your email", "You’re in"];
 
 /** Creating an account: name, work email, company. Nothing exists until they confirm the email. */
-function SignUp({ session, onLogin }) {
+function SignUp({ session, onLogin, preview }) {
   const [f, setF] = useState({ name: "", email: "", company: "", note: "" });
   const [noteOpen, setNoteOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [sent, setSent] = useState(false);
   const [again, setAgain] = useState(0);
+  const [next, setNext] = useState(false);
   useEffect(() => { if (!again) return; const t = setTimeout(() => setAgain(again - 1), 1000); return () => clearTimeout(t); }, [again]);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const submit = async (e) => {
     if (e) e.preventDefault();
     setBusy(true); setErr("");
-    try { await post({ action: "signup", ...f }); setSent(true); setAgain(30); }
+    // Before go-live there's nothing to create: show the steps, and say plainly that nothing was sent.
+    try { if (!preview) await post({ action: "signup", ...f }); setSent(true); setAgain(preview ? 0 : 30); }
     catch (x) { setErr(x.message); }
     setBusy(false);
   };
+  if (sent && next) return html`<div class="stack" style=${{ gap: "18px" }}>
+    <div class="alert info small">Preview only: the portal isn’t live yet, so this is what ${f.name.split(" ")[0] || "they"} would see after confirming.</div>
+    <h3 class="h3" style=${{ margin: 0 }}>You’re on the list, ${f.name.split(" ")[0] || "there"}.</h3>
+    <${Waiting} name=${f.name} studio=${(session.brand && session.brand.studio) || "the studio"} />
+  </div>`;
   if (sent) return html`<div class="stack signup" style=${{ gap: "18px" }}>
+    ${preview ? html`<div class="alert info small">Preview only: the portal isn’t live yet, so no email was sent and nothing was saved.</div>` : null}
     <${Steps} at=${1} labels=${SIGNUP_STEPS} />
     <div class="bottle" aria-hidden="true"><${Icon} name="bottle" size=${44} /></div>
     <p style=${{ margin: 0, lineHeight: 1.6 }}>We sent a link to <b>${f.email}</b>. Open it on any device to confirm it’s you. It works for an hour.</p>
     <p class="muted small" style=${{ margin: 0, lineHeight: 1.6 }}>Not there? It can take a minute; check spam too.</p>
     <div class="row">
-      <button type="button" class="btn ghost sm" disabled=${busy || again > 0} onClick=${() => submit()}>${again > 0 ? `Send it again (${again})` : "Send it again"}</button>
+      ${preview ? html`<button type="button" class="btn primary sm" onClick=${() => setNext(true)}>See the next step</button>`
+        : html`<button type="button" class="btn ghost sm" disabled=${busy || again > 0} onClick=${() => submit()}>${again > 0 ? `Send it again (${again})` : "Send it again"}</button>`}
       <button type="button" class="link small" onClick=${() => { setSent(false); setErr(""); }}>Use a different email</button>
     </div>
     ${err ? html`<div class="alert" role="alert">${err}</div>` : null}
@@ -197,7 +206,9 @@ function CodeForm({ ticket, next, onSignedIn, onRestart }) {
 
 function Login({ session, onSignedIn, problem, start }) {
   const s = session || {};
-  const signupOn = !!s.signup;
+  // Before go-live (no database), sign-up still shows its steps as a preview, so the studio can try it.
+  const preview = s.db === false;
+  const signupOn = !!s.signup || preview;
   const next = new URLSearchParams(location.search).get("next") || (location.pathname !== "/" && location.pathname !== "/signin" ? location.pathname : "");
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
@@ -230,7 +241,7 @@ function Login({ session, onSignedIn, problem, start }) {
       </div>` : null}
       <h2 class="h2">${mode === "code" ? "One more step" : mode === "reset" ? "Choose a new password" : mode === "signup" ? "Create your account" : "Log in"}</h2>
     </div>
-    ${mode === "signup" ? html`<${SignUp} session=${s} onLogin=${() => tab("password")} />`
+    ${mode === "signup" ? html`<${SignUp} session=${s} preview=${preview} onLogin=${() => tab("password")} />`
       : mode === "code" ? html`<${CodeForm} ticket=${ticket} next=${next} onSignedIn=${onSignedIn} onRestart=${back} />`
       : mode === "signin-link" || mode === "reset" ? html`<${LinkForm} purpose=${mode === "reset" ? "reset" : "signin"} email=${email} setEmail=${setEmail} next=${next} onBack=${back} />`
       : html`<form onSubmit=${submit} noValidate>

@@ -48,7 +48,7 @@ Three short steps, from the **Create an account** tab (or `/signup`):
 2. **Confirm your email:** the portal emails a link that works once, for an hour. Nothing is created until it's used, so a typo or someone else's address goes nowhere.
 3. **You're in:** if the email's domain is listed on a client (Studio → Clients → their email domain, for example `harborlabs.com`), they join that client straight away with the role set in Settings (Reviewer unless you change it), choose a password, and land in their company's projects; the studio and the client's decision makers are told. Otherwise they see "You're on the list", and the studio gets an email and a **Someone is asking to join** step on Home. In Studio → People → **Asking to join**, choose their company (a new one is suggested from what they typed) and role and press **Let them in**: they're emailed a link to choose a password. Or **Decline**, with an optional polite email.
 
-Someone who already has an account and tries to sign up gets a way in by email instead; the screen gives the same answer either way, so nobody can learn which addresses have accounts. Free email services (Gmail, Outlook, iCloud…) can't be listed as a client's domain. Studio → Settings → Security chooses **who can create an account** (anyone, with the studio letting them in; or only people the studio invites), turns joining by domain on or off, and sets the role they join with. Sign-up needs email: without it the tab doesn't appear. Unconfirmed requests are deleted after a day, handled ones after 30 days.
+Someone who already has an account and tries to sign up gets a way in by email instead; the screen gives the same answer either way, so nobody can learn which addresses have accounts. Free email services (Gmail, Outlook, iCloud…) can't be listed as a client's domain. Studio → Settings → Security chooses **who can create an account** (anyone, with the studio letting them in; or only people the studio invites), turns joining by domain on or off, and sets the role they join with. Sign-up needs email: without it the tab doesn't appear. Before go-live (no database yet) the tab shows the steps as a labelled preview, and nothing is sent or saved. Unconfirmed requests are deleted after a day, handled ones after 30 days.
 
 ## Roles
 
@@ -257,7 +257,7 @@ The data layer is plain Postgres. To move: create the Supabase project; copy the
 
 ```bash
 npm ci && (cd tests && npm ci)
-cd tests && npm test        # 253 API checks, then 108 browser checks (desktop and phone)
+cd tests && npm test        # 253 API checks, then 110 browser checks (desktop and phone)
 npm run shots               # screenshots of every screen in tests/.work/shots
 ```
 

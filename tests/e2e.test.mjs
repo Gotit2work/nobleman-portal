@@ -433,6 +433,26 @@ const PHONE = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch:
   await page.context().close();
 }
 
+// ---------- 11. Before go-live: sign-up shows its steps as a preview ----------
+{
+  const page = await newPage();
+  await page.route("**/api/session", async (r) => {
+    if (r.request().method() !== "GET") return r.continue();
+    const real = await (await fetch(B + "/api/session")).json();
+    return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ demoAtRoot: false, brand: real.brand, signin: real.signin, signinLinks: false, signup: false, user: null, db: false, setup: false }) });
+  });
+  await page.goto(B + "/signup");
+  await page.locator('input[name="name"]').fill("Pre View");
+  await page.locator('input[name="email"]').fill("pre@view.test");
+  await page.locator('input[name="company"]').fill("Preview Co");
+  const before = (await mails()).length;
+  await page.getByRole("button", { name: "Create my account" }).click();
+  check("before go-live, sign-up previews its steps and says nothing was sent", await waitText(page, "Preview only: the portal isn’t live yet") && (await mails()).length === before);
+  await page.getByRole("button", { name: "See the next step" }).click();
+  check("…and can show what comes after confirming", await waitText(page, "You’re on the list, Pre."));
+  await page.context().close();
+}
+
 check("no JavaScript errors on any page", pageErrors.length === 0, pageErrors.join(" | "));
 await browser.close();
 console.log(`\n${pass} passed, ${fail} failed`);
