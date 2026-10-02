@@ -8,7 +8,8 @@
 //     file per weight in fonts/ (fonts.css says how they were made);
 //   - something would need a transparency mask (a see-through gradient or a CSS filter).
 // Photos with a gradient over them (the cover and each chapter band) are flattened into one image first, so the
-// PDF has no transparency to work out. If qpdf is installed, the PDF is also saved for fast opening ("Fast Web View").
+// PDF has no transparency to work out. If qpdf is installed, the PDF is also saved for fast opening ("Fast Web View"),
+// but only when qpdf checks that copy clean.
 import path from "node:path";
 import fs from "node:fs";
 import { execFileSync } from "node:child_process";
@@ -77,11 +78,20 @@ try {
         "Nothing was written.",
       ].filter(Boolean));
     } else {
-      let fast = "";
+      // Fast opening ("Fast Web View") adds an index Acrobat reads first. A wrong index makes Acrobat slow and
+      // glitchy, so the indexed copy is kept only when qpdf checks it clean; otherwise Chrome's own file stays.
+      let fast;
+      const tmp = out + ".fast.pdf";
       try {
-        execFileSync("qpdf", ["--linearize", "--object-streams=generate", "--replace-input", out], { stdio: "ignore" });
-        fast = ", saved for fast opening";
-      } catch { fast = " (install qpdf to also save it for fast opening)"; }
+        execFileSync("qpdf", ["--linearize", "--object-streams=generate", out, tmp], { stdio: "ignore" });
+        execFileSync("qpdf", ["--check", tmp], { stdio: "ignore" });            // exits non-zero on any warning
+        execFileSync("qpdf", ["--check-linearization", tmp], { stdio: "ignore" });
+        fs.renameSync(tmp, out);
+        fast = ", saved for fast opening (checked by qpdf)";
+      } catch (err) {
+        fs.rmSync(tmp, { force: true });
+        fast = err.code === "ENOENT" ? " (install qpdf to also save it for fast opening)" : " (qpdf found a problem with the fast-opening copy, so it was left out)";
+      }
       const n = await page.$$eval(".page", (p) => p.length);
       console.log(`${path.relative(process.cwd(), out)}: ${n} pages, ${(fs.statSync(out).size / 1048576).toFixed(1)} MB, real fonts, no transparency${fast}.`);
     }
