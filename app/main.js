@@ -1,7 +1,7 @@
 // The portal app: decides what to show (sign-in, first-run setup, new password, demo, or the portal), routes
 // between screens without page reloads, and draws the navigation: a floating side capsule on desktop, a bottom
 // bar on phones.
-import { html, AppCtx, useState, useEffect, useMemo, useCallback, useRef, api, Icon, Link, Modal, Avatar, plural } from "./ui.js";
+import { html, AppCtx, useState, useEffect, useMemo, useCallback, useRef, api, Icon, Link, Modal, Avatar, plural, isStaff } from "./ui.js";
 import { Gate } from "./gate.js";
 import { Home, Project } from "./home.js";
 import { Review } from "./review.js";
@@ -10,6 +10,7 @@ import { Files } from "./files.js";
 import { Messages } from "./messages.js";
 import { Account } from "./account.js";
 import { Studio } from "./studio.js";
+import { Watch } from "./watch.js";
 
 const R = window.React;
 
@@ -51,22 +52,29 @@ function App() {
     setSt({ phase: "app", demo: true, base, data, session: null });
   }, []);
 
-  const loadPortal = useCallback(async (session) => {
+  const loadPortal = useCallback(async (session, next) => {
     const data = await api("/api/portal");
+    // Land on the page they wanted, or stay where they are; never on a used one-time link or /signin.
+    const target = next && /^\/(?!\/)/.test(next) ? next : /^\/(link|signin)(\/|$)/.test(location.pathname) ? "/" : location.pathname;
+    if (target !== location.pathname) history.replaceState(null, "", target);
+    setPath(target);
     setSt({ phase: "app", demo: false, base: "", data, session });
   }, []);
 
   const boot = useCallback(async () => {
     const p = location.pathname;
+    if (p.startsWith("/watch/")) return setSt({ phase: "watch" });
     const wantsDemo = p === "/demo" || p.startsWith("/demo/");
     const wantsSignIn = p === "/signin" || new URLSearchParams(location.search).has("signin");
     let s;
     try { s = await api("/api/session"); } catch (e) { s = { error: e.message }; }
     try {
       if (wantsDemo) return await loadDemo("/demo");
+      if (p.startsWith("/link/")) return setSt({ phase: "gate", gate: "link", session: s });
       if (s.user) {
         if (wantsSignIn) history.replaceState(null, "", "/");
         if (s.user.mustChangePassword) return setSt({ phase: "gate", gate: "password", session: s });
+        if (s.needsTwoStep) return setSt({ phase: "gate", gate: "twostep", session: s });
         return await loadPortal(s);
       }
       if (s.demoAtRoot && !wantsSignIn) return await loadDemo("");
@@ -98,10 +106,16 @@ function App() {
   /** In the demo nothing is saved or sent; the toast says so plainly. */
   const say = useCallback((real, demo) => toast(st.demo ? "Demo only: " + demo : real), [st.demo, toast]);
 
-  const signedIn = useCallback(async (user) => {
-    if (user.mustChangePassword) return setSt({ phase: "gate", gate: "password", session: { user } });
-    try { await loadPortal({ user }); } catch (e) { toast(e.message, { err: true }); }
-  }, []);
+  /** After any way of signing in: a password to choose, two-step to set up, or straight to the page they wanted. */
+  const signedIn = useCallback(async (user, next) => {
+    const session = { ...(st.session || {}), user };
+    if (user.mustChangePassword) return setSt({ phase: "gate", gate: "password", session, next });
+    try {
+      const fresh = await api("/api/session");
+      if (fresh.needsTwoStep) return setSt({ phase: "gate", gate: "twostep", session: fresh, next });
+      await loadPortal(fresh, next);
+    } catch (e) { toast(e.message, { err: true }); }
+  }, [st.session]);
 
   const signOut = useCallback(async () => {
     if (st.demo) { toast("This is the demo. There’s nothing to sign out of. Sign in at the top of the page."); return; }
@@ -112,10 +126,13 @@ function App() {
   }, [st.demo]);
 
   if (st.phase === "boot") return html`<div class="boot" role="status" aria-label="Loading the portal"><img src="/assets/Nobleman_Mark_White.png" alt="" /><div class="bar"><i></i></div><div class="eyebrow">Private screening room</div></div>`;
+  if (st.phase === "watch") return html`<${Watch} token=${location.pathname.split("/")[2] || ""} /><${Toasts} items=${toasts} />`;
   if (st.phase === "gate") {
     return html`<${Gate} mode=${st.gate} session=${st.session} problem=${st.problem}
       onSignedIn=${signedIn} onSetupDone=${signedIn}
-      onPasswordDone=${(user) => loadPortal({ user }).catch((e) => toast(e.message, { err: true }))}
+      onPasswordNeeded=${(user, next) => setSt({ phase: "gate", gate: "password", session: { ...(st.session || {}), user }, next })}
+      onPasswordDone=${(user) => signedIn(user, st.next)}
+      onTwoStepDone=${() => signedIn(st.session.user, st.next)}
       onSignOut=${signOut} toast=${toast} />
       <${Toasts} items=${toasts} />`;
   }
@@ -135,7 +152,7 @@ function Toasts({ items }) {
 /** Which screens this person has, with their badges, from what their projects allow. */
 function navFor(data) {
   const ps = data.projects || [];
-  const admin = data.user.role === "admin";
+  const admin = isStaff(data.user);
   const any = (k) => admin || ps.some((p) => p.caps[k]);
   const awaiting = ps.reduce((n, p) => n + (p.caps.review ? p.cuts.filter((c) => !c.versions[c.versions.length - 1].decision).length : 0), 0);
   const unread = ps.reduce((n, p) => n + (p.messages ? p.messages.unread : 0), 0);
@@ -143,8 +160,8 @@ function navFor(data) {
   if (any("review")) items.push({ key: "review", label: "Review", icon: "play", badge: admin ? 0 : awaiting, tip: "Watch versions and leave notes" });
   items.push({ key: "films", label: "Films", icon: "growth", tip: "Finished films to watch and download" });
   if (any("files") || any("upload")) items.push({ key: "files", label: "Files", icon: "send", tip: "Documents, and files you send us" });
-  if (any("messages")) items.push({ key: "messages", label: "Messages", icon: "bottle", badge: unread, tip: "Talk to Nobleman" });
-  if (admin) items.push({ key: "studio", label: "Studio", icon: "key", tip: "Clients, people, projects, and what each can do" });
+  if (any("messages")) items.push({ key: "messages", label: "Messages", icon: "bottle", badge: unread, tip: "Talk to the studio" });
+  if (admin) items.push({ key: "studio", label: "Studio", icon: "key", tip: "Projects, clients, people, connections, settings" });
   return items;
 }
 
@@ -165,7 +182,7 @@ function Shell({ route, more, setMore }) {
     case "files": screen = html`<${Files} pid=${route[1]} />`; break;
     case "messages": screen = html`<${Messages} pid=${route[1]} />`; break;
     case "account": screen = html`<${Account} />`; break;
-    case "studio": screen = user.role === "admin" ? html`<${Studio} tab=${route[1]} id=${route[2]} />` : html`<${NotFound} />`; break;
+    case "studio": screen = isStaff(user) ? html`<${Studio} tab=${route[1]} id=${route[2]} />` : html`<${NotFound} />`; break;
     default: screen = html`<${NotFound} />`;
   }
 
@@ -205,6 +222,7 @@ function Shell({ route, more, setMore }) {
 
     ${demo ? html`<${DemoRibbon} />` : null}
 
+    ${data.announcement ? html`<div class=${"announce " + (data.announcement.tone === "warning" ? "warn" : "")} role="status">${data.announcement.text}</div>` : null}
     <main id="main">${screen}</main>
 
     <nav class="bottombar" aria-label="Main">
@@ -243,18 +261,27 @@ function NotFound() {
 
 const HELP = [
   { icon: "anchor", t: "Home", d: "Starts with your next step: the one thing that needs you now. Below it, each project and how far along it is." },
-  { icon: "play", t: "Review", d: "Watch each version of a film. Pause anywhere and leave a note pinned to that moment. When it’s right, approve it; if not, ask for changes." },
-  { icon: "growth", t: "Films", d: "Your finished films. Watch them here and, where it’s switched on, download them, get caption files, or copy a link to share." },
-  { icon: "send", t: "Files", d: "Documents from Nobleman, like quotes and schedules, and anything you send us: logos, footage, references." },
-  { icon: "bottle", t: "Messages", d: "Write to Jean and Justin about a project. Your conversation stays with the project." },
+  { icon: "play", t: "Review", d: "Watch the newest version of each film. Pause anywhere and leave a note pinned to that moment. When it’s right, approve it; if not, ask for changes." },
+  { icon: "growth", t: "Films", d: "Your finished films. Watch them here and, where it’s switched on, download them, get caption files, or create a link to share." },
+  { icon: "send", t: "Files", d: "Documents from the studio, like quotes and schedules, and anything you send: logos, footage, references." },
+  { icon: "bottle", t: "Messages", d: "Write to the studio about a project. Your conversation stays with the project." },
+];
+const STAFF_HELP = [
+  { icon: "anchor", t: "Home", d: "What needs you: versions waiting on clients, change requests, unread messages, and what clients did lately." },
+  { icon: "key", t: "Studio", d: "Projects and their video sources, clients, people and roles, connections (Vimeo, Frame.io, YouTube, Wistia, Notion, email), settings, and the activity log." },
+  { icon: "play", t: "Review and Films", d: "See every version, reply to notes, and check what the client sees. Clients see only the newest version unless Earlier versions is on." },
 ];
 
 function Help({ onClose }) {
   const app = R.useContext(AppCtx);
-  return html`<${Modal} title="How your portal works" onClose=${onClose} wide>
+  const brand = app.data.brand || {};
+  const staff = isStaff(app.user);
+  const support = brand.support || "alexis@gotit2work.com";
+  return html`<${Modal} title=${staff ? "How the portal works" : "How your portal works"} onClose=${onClose} wide>
     ${app.demo ? html`<div class="alert"><b>This is a demo.</b> The client, projects, and files are made up. Click anything you like: nothing here is saved or sent.</div>` : null}
-    <div class="list">${HELP.map((h) => html`<div class="li" key=${h.t}><${Icon} name=${h.icon} size=${30} /><div class="grow"><div class="name">${h.t}</div><div class="meta" style=${{ lineHeight: 1.55 }}>${h.d}</div></div></div>`)}</div>
-    <p class="muted small" style=${{ margin: 0, lineHeight: 1.6 }}>Some parts only appear when Nobleman switches them on for your project. Stuck? Use Messages, or email <a href="mailto:alexis@gotit2work.com">alexis@gotit2work.com</a>. How we handle your information: <a href="https://noblemanproductions.gotit2work.com/privacy#portal">Privacy</a>.</p>
+    <div class="list">${(staff ? STAFF_HELP : HELP).map((h) => html`<div class="li" key=${h.t}><${Icon} name=${h.icon} size=${30} /><div class="grow"><div class="name">${h.t}</div><div class="meta" style=${{ lineHeight: 1.55 }}>${h.d}</div></div></div>`)}</div>
+    ${!staff && app.user.roleLabel ? html`<p class="muted small" style=${{ margin: 0, lineHeight: 1.6 }}>You’re a <b>${app.user.roleLabel}</b> for ${app.user.clientName || "your company"}.${app.user.access === "reviewer" ? " Your notes reach the studio and your company’s decision makers, who approve each version." : app.user.access === "viewer" ? " You can watch and download; your colleagues leave notes and approve." : ""}</p>` : null}
+    <p class="muted small" style=${{ margin: 0, lineHeight: 1.6 }}>Some parts only appear when the studio switches them on for your project. Stuck? Use Messages, or email <a href=${"mailto:" + support}>${support}</a>. How we handle your information: <a href=${brand.privacy || "https://noblemanproductions.gotit2work.com/privacy#portal"}>Privacy</a>.</p>
     <div><button class="btn primary" onClick=${onClose}>Got it</button></div>
   <//>`;
 }

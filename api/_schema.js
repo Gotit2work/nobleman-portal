@@ -4,7 +4,7 @@
 //
 // To read it as one SQL file: node -e "import('./api/_schema.js').then(m => console.log(m.STATEMENTS.join(';\n\n') + ';'))"
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export const STATEMENTS = [
   `create table if not exists settings (
@@ -157,4 +157,127 @@ export const STATEMENTS = [
     created_at    timestamptz not null default now()
   )`,
   `create index if not exists video_uploads_project_idx on video_uploads(project_id, created_at)`,
+
+  // ---------- v4: roles, settings, connections, activity log, email links, share links, two-step sign-in ----------
+
+  // What someone may do within their kind of account (role stays 'admin' for staff, 'client' for clients).
+  // Staff: owner | manager | editor. Clients: approver | reviewer | viewer. _roles.js says what each allows.
+  `alter table users add column if not exists access text`,
+  `update users set access = case when role = 'admin' then 'owner' else 'approver' end where access is null`,
+  // Two-step sign-in (an authenticator app code). The secret is encrypted (_crypto.js); recovery codes are
+  // stored as SHA-256 hashes; totp_last_step stops a code being used twice.
+  `alter table users add column if not exists totp_secret text`,
+  `alter table users add column if not exists totp_enabled boolean not null default false`,
+  `alter table users add column if not exists totp_last_step bigint not null default 0`,
+  `alter table users add column if not exists recovery_codes jsonb not null default '[]'::jsonb`,
+  // When a client closed the welcome card, so it shows once.
+  `alter table users add column if not exists welcomed_at timestamptz`,
+
+  `alter table clients add column if not exists logo_url text`,
+  `alter table clients add column if not exists notes text`,
+
+  // Where a project's videos come from: a connection (connections.id, or 'env-vimeo' for the token in Vercel's
+  // settings) and the folder, project, or playlist inside it. Replaces vimeo_folder_id.
+  `alter table projects add column if not exists source_conn text`,
+  `alter table projects add column if not exists source_ref text`,
+  `update projects set source_conn = 'env-vimeo', source_ref = vimeo_folder_id where vimeo_folder_id is not null and source_ref is null`,
+  `alter table projects add column if not exists review_due date`,
+  `alter table projects add column if not exists reminded_at timestamptz`,
+  `alter table projects add column if not exists notion_page_id text`,
+
+  // Accounts the portal talks to: video sources (Vimeo, Frame.io, YouTube, Wistia), Notion, email. `secret`
+  // holds the credentials, encrypted; `config` holds what isn't secret (account name, chosen database).
+  `create table if not exists connections (
+    id          uuid primary key default gen_random_uuid(),
+    provider    text not null,
+    name        text not null,
+    secret      text,
+    config      jsonb not null default '{}'::jsonb,
+    status      text not null default 'ok',
+    last_error  text,
+    checked_at  timestamptz,
+    created_at  timestamptz not null default now(),
+    updated_at  timestamptz not null default now()
+  )`,
+
+  // Staff choices about one video in a project's source: hide it from the client, rename it, or say whether
+  // it's a version or a finished film when its title doesn't.
+  `create table if not exists video_settings (
+    project_id  uuid not null references projects(id) on delete cascade,
+    video_id    text not null,
+    hidden      boolean not null default false,
+    title       text,
+    kind        text not null default 'auto',
+    primary key (project_id, video_id)
+  )`,
+
+  // Videos added by link (the "Video links" source): a YouTube, Vimeo, or direct MP4 address.
+  `create table if not exists link_videos (
+    id          uuid primary key default gen_random_uuid(),
+    project_id  uuid not null references projects(id) on delete cascade,
+    title       text not null,
+    url         text not null,
+    description text,
+    thumbnail   text,
+    duration    int,
+    created_at  timestamptz not null default now()
+  )`,
+  `create index if not exists link_videos_project_idx on link_videos(project_id, created_at)`,
+
+  // Who did what, for Studio → Activity log. Kept about 13 months (pruned by api/cron.js).
+  `create table if not exists audit_log (
+    id          bigserial primary key,
+    at          timestamptz not null default now(),
+    actor_id    uuid,
+    actor_name  text,
+    actor_kind  text,
+    action      text not null,
+    summary     text not null,
+    project_id  uuid,
+    client_id   uuid,
+    ip          text
+  )`,
+  `create index if not exists audit_at_idx on audit_log(at desc)`,
+  `create index if not exists audit_project_idx on audit_log(project_id, at desc)`,
+
+  // One-time links sent by email or copied by staff: invite (choose a password), reset, sign-in. Only a
+  // SHA-256 hash of the token is stored.
+  `create table if not exists link_tokens (
+    id          uuid primary key default gen_random_uuid(),
+    user_id     uuid not null references users(id) on delete cascade,
+    purpose     text not null,
+    token_hash  text not null unique,
+    expires_at  timestamptz not null,
+    used_at     timestamptz,
+    created_at  timestamptz not null default now()
+  )`,
+  `create index if not exists link_tokens_user_idx on link_tokens(user_id, purpose)`,
+
+  // Branded links to one finished film (/watch/<token>), revocable, optionally expiring. The token is stored
+  // hashed for lookup and encrypted so its owner can copy the link again.
+  `create table if not exists share_links (
+    id              uuid primary key default gen_random_uuid(),
+    token_hash      text not null unique,
+    token_enc       text not null,
+    project_id      uuid not null references projects(id) on delete cascade,
+    video_id        text not null,
+    title           text not null,
+    created_by      uuid references users(id) on delete set null,
+    created_by_name text not null,
+    expires_at      timestamptz,
+    revoked_at      timestamptz,
+    views           int not null default 0,
+    last_viewed_at  timestamptz,
+    created_at      timestamptz not null default now()
+  )`,
+  `create index if not exists share_links_project_idx on share_links(project_id, created_at)`,
+
+  // Throttling now also covers emailed links and two-step codes, not only passwords.
+  `alter table login_attempts add column if not exists kind text not null default 'password'`,
+  // When someone last loaded the portal: emails wait while they're using it (they see it there anyway).
+  `alter table users add column if not exists last_seen_at timestamptz`,
+  // The next milestone can ask the client to confirm it (a filming day, a delivery date).
+  `alter table projects add column if not exists next_confirm boolean not null default false`,
+  `alter table projects add column if not exists next_confirmed_at timestamptz`,
+  `alter table projects add column if not exists next_confirmed_by text`,
 ];

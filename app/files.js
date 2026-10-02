@@ -1,7 +1,7 @@
-// Files: documents from Nobleman, and what the client sends. Videos go straight to the project's Vimeo folder
-// (resumable tus upload); everything else goes to private Vercel Blob storage. Nothing passes through the
+// Files: documents from the studio, and what the client sends. Videos go straight to the project's video source
+// when it takes uploads (Vimeo, resumable tus upload); everything else goes to private Vercel Blob storage. Nothing passes through the
 // portal's own servers.
-import { html, useApp, useState, useRef, api, Head, Empty, Link, Icon, Confirm, fmtBytes, fmtDate, ext, plural } from "./ui.js";
+import { html, useApp, useState, useRef, api, Head, Empty, Link, Icon, Confirm, fmtBytes, fmtDate, ext, plural, can, isStaff } from "./ui.js";
 
 const CHUNK = 32 * 1024 * 1024;
 const MAX_FILE = 500 * 1024 ** 2;
@@ -36,13 +36,14 @@ async function tusUpload(link, file, onProgress) {
 export function Files({ pid }) {
   const app = useApp();
   const { data, user, demo, say, toast, reload, setData } = app;
-  const admin = user.role === "admin";
+  const admin = isStaff(user);
+  const manage = can(user, "files.manage");
   const eligible = data.projects.filter((p) => p.caps.files || p.caps.upload);
   const [jobs, setJobs] = useState([]);
   const [over, setOver] = useState(false);
   const [del, setDel] = useState(null);
   const input = useRef(null);
-  if (!eligible.length) return html`<div class="page"><${Empty} icon="send" title="Files aren’t switched on.">Ask Nobleman if you need to send or receive files here.<//></div>`;
+  if (!eligible.length) return html`<div class="page"><${Empty} icon="send" title="Files aren’t switched on.">Ask the studio if you need to send or receive files here.<//></div>`;
   const p = eligible.find((x) => x.id === pid) || eligible[0];
   const docs = p.files.filter((f) => f.kind === "document");
   const mine = p.files.filter((f) => f.kind === "upload");
@@ -62,10 +63,10 @@ export function Files({ pid }) {
     }
     for (const f of files) {
       const id = Math.random().toString(36).slice(2);
-      const toVimeo = /^video\//.test(f.type) && p.vimeoLinked;
-      setJobs((js) => js.concat([{ id, name: f.name, size: f.size, pct: 0, where: toVimeo ? "Vimeo" : "files" }]));
+      const toVimeo = /^video\//.test(f.type) && p.videoUploadsToSource;
+      setJobs((js) => js.concat([{ id, name: f.name, size: f.size, pct: 0, where: toVimeo ? "the video folder" : "files" }]));
       try {
-        if (!toVimeo && f.size > MAX_FILE) throw new Error(`${f.name} is larger than 500 MB.${/^video\//.test(f.type) ? " Videos can go to Vimeo once Nobleman links a Vimeo folder to this project." : " Ask Nobleman for another way to send it."}`);
+        if (!toVimeo && f.size > MAX_FILE) throw new Error(`${f.name} is larger than 500 MB.${/^video\//.test(f.type) ? " Ask the studio for a link to send large videos." : " Ask the studio for another way to send it."}`);
         if (toVimeo) {
           const s = await api("/api/media", { method: "POST", body: { action: "uploadStart", projectId: p.id, name: f.name, size: f.size, type: f.type } });
           try { await tusUpload(s.uploadLink, f, (x) => job(id, { pct: x })); }
@@ -83,7 +84,7 @@ export function Files({ pid }) {
           await api("/api/files", { method: "POST", body: { action: "done", fileId: s.fileId } });
         }
         job(id, { pct: 1, done: true });
-        toast(admin ? `${f.name} added. ${p.clientName} can see it${p.caps.files ? "" : " once Files is switched on"}.` : `${f.name} sent to Nobleman.`);
+        toast(admin ? `${f.name} added. ${p.clientName} can see it${p.caps.files ? "" : " once Files is switched on"}.` : `${f.name} sent to the studio.`);
         setTimeout(() => setJobs((js) => js.filter((j) => j.id !== id)), 1500);
         reload();
       } catch (e) {
@@ -106,16 +107,16 @@ export function Files({ pid }) {
 
   const row = (f) => html`<div class="li" key=${f.id}>
     <span class="fileic">${ext(f.name)}</span>
-    <div class="grow"><div class="name">${f.name}</div><div class="meta">${[fmtBytes(f.size), (f.byRole === "admin" ? "From " + f.by + " · Nobleman" : "From " + f.by), fmtDate(f.at)].filter(Boolean).join(" · ")}</div></div>
+    <div class="grow"><div class="name">${f.name}</div><div class="meta">${[fmtBytes(f.size), (f.byRole === "admin" ? "From " + f.by + " · studio" : "From " + f.by), fmtDate(f.at)].filter(Boolean).join(" · ")}</div></div>
     <div class="row" style=${{ gap: "8px" }}>
       <button class="btn ghost sm" onClick=${() => download(f)}>Download</button>
-      ${f.mine || admin ? html`<button class="btn ghost sm" aria-label=${"Remove " + f.name} onClick=${() => setDel(f)}>Remove</button>` : null}
+      ${f.mine || manage ? html`<button class="btn ghost sm" aria-label=${"Remove " + f.name} onClick=${() => setDel(f)}>Remove</button>` : null}
     </div>
   </div>`;
 
   return html`<div class="page">
     <${Head} eyebrow=${p.title} title="Files">
-      ${admin ? `Documents you add here appear to ${p.clientName} under “From Nobleman”.` : p.caps.upload ? "Documents from Nobleman, and anything you send us: logos, brand guides, footage, references." : "Documents from Nobleman: quotes, schedules, and anything else they share."}
+      ${admin ? `Documents you add here appear to ${p.clientName} under “From the studio”.` : p.caps.upload ? "Documents from the studio, and anything you send: logos, brand guides, footage, references." : "Documents from the studio: quotes, schedules, and anything else they share."}
     <//>
     ${eligible.length > 1 ? html`<div class="tabs" style=${{ marginBottom: "24px" }}>${eligible.map((x) => html`<${Link} key=${x.id} to=${"/files/" + x.id} cls="tab-btn" current=${x.id === p.id}>${admin ? x.clientName + " · " : ""}${x.title}<//>`)}</div>` : null}
 
@@ -125,8 +126,8 @@ export function Files({ pid }) {
         style=${{ borderStyle: "dashed", borderColor: over ? "var(--ink)" : "var(--line-2)", background: over ? "var(--card-2)" : "var(--card)", textAlign: "center", padding: "36px 24px", marginBottom: "12px" }}>
       <div class="stack" style=${{ alignItems: "center", gap: "12px" }}>
         <${Icon} name="send" size=${40} />
-        <b style=${{ fontSize: "18px" }}>${admin ? "Add documents for " + p.clientName : "Send files to Nobleman"}</b>
-        <span class="muted small" style=${{ maxWidth: "520px", lineHeight: 1.6 }}>Drag files here, or choose them. ${p.vimeoLinked ? (admin ? "Videos go to the project’s Vimeo folder: put V1, V2… in the name to send a version to Review; without one it becomes a finished film. Other files up to 500 MB each." : "Videos up to 50 GB go straight to the project’s Vimeo folder. Other files up to 500 MB each.") : "Up to 500 MB each."}</span>
+        <b style=${{ fontSize: "18px" }}>${admin ? "Add documents for " + p.clientName : "Send files to the studio"}</b>
+        <span class="muted small" style=${{ maxWidth: "520px", lineHeight: 1.6 }}>Drag files here, or choose them. ${p.videoUploadsToSource ? (admin ? "Videos go to the project’s video folder: put V1, V2… in the name to send a version to Review; without one it becomes a finished film. Other files up to 500 MB each." : "Videos up to 50 GB go straight to the studio’s video folder. Other files up to 500 MB each.") : "Up to 500 MB each."}</span>
         <button class="btn primary" onClick=${() => input.current.click()}>Choose files</button>
         <input ref=${input} type="file" multiple hidden onChange=${(e) => { send(e.target.files); e.target.value = ""; }} />
       </div>
@@ -135,21 +136,21 @@ export function Files({ pid }) {
       <span class="fileic">${ext(j.name)}</span>
       <div class="grow"><div class="name">${j.name}</div>
         ${j.error ? html`<div class="meta" style=${{ color: "#ffb3ad" }}>${j.error}</div>`
-          : html`<div class="meta">${j.done ? "Sent" : `Sending to ${j.where || "Nobleman"}… ${Math.round(j.pct * 100)}%`} · ${fmtBytes(j.size)}</div><div class="progress"><i style=${{ width: Math.round(j.pct * 100) + "%" }}></i></div>`}
+          : html`<div class="meta">${j.done ? "Sent" : `Sending to ${j.where || "the studio"}… ${Math.round(j.pct * 100)}%`} · ${fmtBytes(j.size)}</div><div class="progress"><i style=${{ width: Math.round(j.pct * 100) + "%" }}></i></div>`}
       </div>
       ${j.error ? html`<button class="btn ghost sm" onClick=${() => setJobs((js) => js.filter((x) => x.id !== j.id))}>Dismiss</button>` : null}
     </div>`)}</div>` : null}
 
     ${p.caps.files ? html`<section class="section" style=${{ marginTop: "32px" }}>
-      <div class="sh"><span class="eyebrow"><span>From Nobleman</span></span><span class="muted small">${plural(docs.length, "file")}</span></div>
-      ${docs.length ? html`<div class="list">${docs.map(row)}</div>` : html`<p class="muted">${admin ? "Nothing added yet. Quotes, schedules, and call sheets you add show up here for the client." : "Nothing yet. Quotes, schedules, and call sheets from Nobleman will show up here."}</p>`}
+      <div class="sh"><span class="eyebrow"><span>From the studio</span></span><span class="muted small">${plural(docs.length, "file")}</span></div>
+      ${docs.length ? html`<div class="list">${docs.map(row)}</div>` : html`<p class="muted">${admin ? "Nothing added yet. Quotes, schedules, and call sheets you add show up here for the client." : "Nothing yet. Quotes, schedules, and call sheets from the studio will show up here."}</p>`}
     </section>` : null}
     ${p.caps.upload || admin ? html`<section class="section" style=${{ marginTop: "40px" }}>
       <div class="sh"><span class="eyebrow"><span>${admin ? "From " + p.clientName : "From you"}</span></span><span class="muted small">${plural(mine.length + p.videoUploads.length, "file")}</span></div>
       ${mine.length || p.videoUploads.length ? html`<div class="list">
         ${p.videoUploads.map((v) => html`<div class="li" key=${v.id}>
           <span class="fileic"><${Icon} name="play" size=${22} /></span>
-          <div class="grow"><div class="name">${v.name}</div><div class="meta">${[fmtBytes(v.size), "Video · in the project’s Vimeo folder", "From " + v.by, fmtDate(v.at)].join(" · ")}</div></div>
+          <div class="grow"><div class="name">${v.name}</div><div class="meta">${[fmtBytes(v.size), "Video · in the project’s video folder", "From " + v.by, fmtDate(v.at)].join(" · ")}</div></div>
           <span class=${"pill " + (v.status === "done" ? "green" : "amber")}>${v.status === "done" ? "Sent" : "Not finished"}</span>
         </div>`)}
         ${mine.map(row)}

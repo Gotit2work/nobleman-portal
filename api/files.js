@@ -4,6 +4,10 @@ import { generateClientTokenFromReadWriteToken } from "@vercel/blob/client";
 import { sql, ready, dbConfigured } from "./_db.js";
 import { TROUBLE, readBody, requireUser, projectFor, isUuid, text } from "./_auth.js";
 import { notify, originOf } from "./_notify.js";
+import { audit } from "./_audit.js";
+import { getSettings } from "./_settings.js";
+import { isStaff, can } from "./_roles.js";
+import { later } from "./_later.js";
 
 /**
  * Documents (from Nobleman) and uploads (from the client), kept in a *private* Vercel Blob store. Nothing in it
@@ -18,7 +22,7 @@ import { notify, originOf } from "./_notify.js";
  *
  * Needs BLOB_READ_WRITE_TOKEN, which Vercel sets when a Blob store is connected to the project.
  */
-const MAX_FILE = 500 * 1024 ** 2; // 500 MB. Bigger video goes to Vimeo instead (api/media.js).
+const MAX_FILE = 500 * 1024 ** 2; // 500 MB. Video can go to the project's video folder instead, where its source takes uploads (api/media.js).
 const LINK_MINUTES = 10;
 
 const blobConfigured = () => !!process.env.BLOB_READ_WRITE_TOKEN;
@@ -30,7 +34,7 @@ export default async function handler(req, res) {
   try { await ready(); } catch (err) { console.error("db not ready", err); return res.status(500).json({ error: TROUBLE }); }
   const u = await requireUser(req, res);
   if (!u) return;
-  if (!blobConfigured()) return res.status(503).json({ error: "File storage isn’t connected yet. Ask Nobleman." });
+  if (!blobConfigured()) return res.status(503).json({ error: "File storage isn’t connected yet. Ask the studio." });
   try {
     if (req.method === "GET") return await link(req, res, u);
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -57,12 +61,14 @@ function canSee(p, f) {
 async function start(req, res, u, b) {
   const p = await projectFor(u, b.projectId);
   if (!p) return res.status(404).json({ error: "That project isn’t available to you." });
-  if (!p.caps.upload) return res.status(403).json({ error: "Uploads aren’t switched on for this project. Ask Nobleman if you need to send something." });
+  if (isStaff(u) ? !can(u, "files.manage", await getSettings()) : !p.caps.upload) {
+    return res.status(403).json({ error: isStaff(u) ? "Your role doesn’t allow adding files." : "Uploads aren’t switched on for you on this project. Ask the studio if you need to send something." });
+  }
   const name = text(b.name, 200);
   const size = Number(b.size) || 0;
   if (!name || size <= 0) return res.status(400).json({ error: "That file is empty." });
-  if (size > MAX_FILE) return res.status(413).json({ error: "Files here can be up to 500 MB. Send videos as videos (they go to Vimeo), or ask Nobleman for another way." });
-  const kind = u.role === "admin" ? "document" : "upload";
+  if (size > MAX_FILE) return res.status(413).json({ error: "Files here can be up to 500 MB. Ask the studio for another way to send bigger files." });
+  const kind = isStaff(u) ? "document" : "upload";
   const pathname = `projects/${p.id}/${randomUUID()}/${safeName(name)}`;
   const [row] = await sql`
     insert into files (project_id, name, size, content_type, pathname, kind, status, uploaded_by, uploader_name, uploader_role)
@@ -95,11 +101,14 @@ async function done(req, res, u, b) {
   await sql`update files set status = 'ready', size = ${meta.size || r.size}, content_type = ${meta.contentType || r.content_type}
             where id = ${r.id}`;
   await sql`update projects set updated_at = now() where id = ${p.id}`;
-  await notify({
-    audience: u.role === "client" ? "staff" : "client", project: p, actor: u, origin: originOf(req),
-    subject: u.role === "client" ? `${u.name} sent a file for ${p.title}` : `New file on ${p.title}: ${r.name}`,
-    lines: [u.role === "client" ? `${u.name} (${p.client_name}) sent “${r.name}”.` : `Nobleman added “${r.name}” to ${p.title}.`],
-  });
+  await audit(req, u, isStaff(u) ? "file.add" : "upload", `${isStaff(u) ? "Added" : "Sent"} a file: ${r.name}`, { projectId: p.id, clientId: p.client_id });
+  const origin = originOf(req);
+  await later(() => notify({
+    audience: isStaff(u) ? "client" : "staff", project: p, actor: u, origin, need: isStaff(u) ? "files" : null,
+    path: `/files/${p.id}`, button: "See it in Files",
+    subject: isStaff(u) ? `New file on ${p.title}: ${r.name}` : `${u.name} sent a file for ${p.title}`,
+    lines: [isStaff(u) ? `“${r.name}” was added to ${p.title}.` : `${u.name} (${p.client_name}) sent “${r.name}”.`],
+  }), "notify");
   return res.status(200).json({ ok: true });
 }
 
@@ -116,9 +125,10 @@ async function remove(req, res, u, b) {
   const r = (await sql`select * from files where id = ${b.id}`)[0];
   const p = r && (await projectFor(u, r.project_id));
   if (!r || !p || !canSee(p, r)) return res.status(404).json({ error: "That file was already removed." });
-  if (r.uploaded_by !== u.id && u.role !== "admin") return res.status(403).json({ error: "You can only remove files you sent." });
+  if (r.uploaded_by !== u.id && !can(u, "files.manage", await getSettings())) return res.status(403).json({ error: "You can only remove files you sent." });
   await del(r.pathname).catch((err) => console.error("blob delete failed", r.pathname, err.message));
   await sql`delete from files where id = ${r.id}`;
+  await audit(req, u, "file.remove", `Removed a file: ${r.name}`, { projectId: p.id, clientId: p.client_id });
   return res.status(200).json({ ok: true });
 }
 
@@ -131,5 +141,6 @@ async function link(req, res, u) {
   const validUntil = Date.now() + LINK_MINUTES * 60 * 1000;
   const signed = await issueSignedToken({ pathname: r.pathname, operations: ["get"], validUntil });
   const { presignedUrl } = await presignUrl(signed, { operation: "get", pathname: r.pathname, access: "private", validUntil });
+  if (!isStaff(u)) await audit(req, u, "downloaded", `Downloaded ${r.name}`, { projectId: p.id, clientId: p.client_id });
   return res.status(200).json({ url: presignedUrl, name: r.name });
 }

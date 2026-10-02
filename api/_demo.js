@@ -1,21 +1,23 @@
 import { CAPABILITIES, STAGES } from "./_caps.js";
+import { DEFAULTS } from "./_settings.js";
+import { ROLE_DEFAULTS } from "./_roles.js";
 
 // The public sample portal (/demo, and / when PORTAL_MODE=demo). Same shape as buildPortal() in _build.js, so
 // the page renders it exactly like real data. Everything is made up; every film plays Nobleman's reel. Notes
 // and messages are included inline, and nothing the visitor does is saved or sent (the page says so).
 
-const REEL = { playId: "1197058424", hash: "796798a19d" };
+const REEL = { playback: { kind: "vimeo", id: "1197058424", hash: "796798a19d" } };
 const ago = (days, hours = 0) => new Date(Date.now() - (days * 24 + hours) * 3600 * 1000).toISOString();
 const ahead = (days) => new Date(Date.now() + days * 24 * 3600 * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric" });
-const allCaps = Object.fromEntries(CAPABILITIES.map((c) => [c.key, true]));
+const ahead8601 = (days) => new Date(Date.now() + days * 24 * 3600 * 1000).toISOString().slice(0, 10);
+// What a decision maker sees: everything on except earlier versions, so only the newest version shows.
+const allCaps = { ...Object.fromEntries(CAPABILITIES.map((c) => [c.key, true])), history: false, notes: true, team: true };
 
 function film(id, title, extra) {
-  return { id, ...REEL, title, description: "", duration: 0, durationLabel: "", resolution: "4K", vertical: false, created: ago(9), thumbnail: null, plays: null, link: "https://vimeo.com/1197058424/796798a19d", ...extra };
+  return { id, ...REEL, title, description: "", duration: 0, durationLabel: "", resolution: "4K", vertical: false, created: ago(9), thumbnail: null, plays: null, ...extra };
 }
 
 export function demoPortal() {
-  const v1 = film("demo-campaign-v1", "Campaign Film", { durationLabel: "4:12", duration: 252, created: ago(20), thumbnail: "media/a01.jpg", description: "First full version, with temporary music." });
-  const v2 = film("demo-campaign-v2", "Campaign Film", { durationLabel: "4:18", duration: 258, created: ago(11), thumbnail: "media/a07.jpg", description: "Your notes from Version 1 are in. New music throughout." });
   const v3 = film("demo-campaign-v3", "Campaign Film", { durationLabel: "4:21", duration: 261, created: ago(4), thumbnail: "media/a00.jpg", description: "Opening reworked around the wide shot. Color adjusted on the water scenes." });
   const s1 = film("demo-cutdown-v1", "15-Second Cutdown", { durationLabel: "0:15", duration: 15, created: ago(3), thumbnail: "media/a08.jpg", description: "The short version for social ads." });
 
@@ -26,20 +28,22 @@ export function demoPortal() {
     summary: "A four-minute brand film, a TV commercial, and short versions for social, filmed on the water off San Diego.",
     clientId: "demo-client", clientName: "Meridian",
     stage: 3, stageName: STAGES[3], pct: 72,
-    next: { label: "Next", date: ahead(4), what: "Final polish (color and sound) once Version 3 is approved" },
+    next: { label: "Next", date: ahead(4), what: "Final polish (color and sound) once Version 3 is approved", confirm: false, confirmedAt: null, confirmedBy: null },
+    reviewDue: ahead8601(2),
     cover: "media/a00.jpg",
     caps: allCaps,
-    vimeoLinked: true,
+    provider: "vimeo",
+    videoUploadsToSource: true,
+    // Versions 1 and 2 had notes and change requests; clients see only the newest (Earlier versions is off).
     cuts: [
-      { key: "campaign film", title: "Campaign Film", versions: [
-        { n: 1, video: v1, decision: { decision: "changes", note: "Hold the opening wide shot longer, and try warmer music.", by: "Jonathan Reyes", at: ago(17) }, comments: { total: 3, open: 0 } },
-        { n: 2, video: v2, decision: { decision: "changes", note: "Music works. The middle section still feels long.", by: "Jonathan Reyes", at: ago(8) }, comments: { total: 2, open: 0 } },
+      { key: "campaign film", title: "Campaign Film", total: 3, versions: [
         { n: 3, video: v3, decision: null, comments: { total: 3, open: 2 } },
       ] },
-      { key: "15-second cutdown", title: "15-Second Cutdown", versions: [
+      { key: "15-second cutdown", title: "15-Second Cutdown", total: 1, versions: [
         { n: 1, video: s1, decision: null, comments: { total: 0, open: 0 } },
       ] },
     ],
+    status: { key: "waiting", label: "Waiting on client" },
     films: [
       film("demo-hero", "Campaign Hero Film", { durationLabel: "4:21", duration: 261, created: ago(12), thumbnail: "media/a07.jpg", description: "The four-minute brand film, for the web, the launch event, and the dealer network.", plays: 1284 }),
       film("demo-30", "30-Second Commercial", { durationLabel: "0:30", duration: 30, created: ago(10), thumbnail: "media/a08.jpg", description: "The TV version, with stereo and surround sound.", plays: 642 }),
@@ -81,11 +85,14 @@ export function demoPortal() {
     summary: "Short vertical videos for Instagram, TikTok, and YouTube Shorts.",
     clientId: "demo-client", clientName: "Meridian",
     stage: 1, stageName: STAGES[1], pct: 28,
-    next: { label: "Next filming day", date: ahead(2), what: "Day 2 of 3, San Diego" },
+    next: { label: "Next filming day", date: ahead(2), what: "Day 2 of 3, San Diego. Call time 7:00 AM", confirm: true, confirmedAt: null, confirmedBy: null },
+    reviewDue: null,
     cover: "media/a03.jpg",
-    caps: { ...allCaps, approve: true },
-    vimeoLinked: true,
+    caps: allCaps,
+    provider: "vimeo",
+    videoUploadsToSource: true,
     cuts: [], films: [], videosError: null, files: [], videoUploads: [],
+    status: { key: "none", label: "Nothing in review" },
     messages: { total: 0, unread: 0, last: null },
     updated: ago(6),
     thread: [], notes: {},
@@ -93,9 +100,13 @@ export function demoPortal() {
 
   const P = [meridian, social];
   return {
-    user: { id: "demo-user", email: "jonathan@meridian.example", name: "Jonathan Reyes", title: "Marketing Director", role: "client", clientId: "demo-client", clientName: "Meridian", mustChangePassword: false, notifyEmail: true },
+    user: { id: "demo-user", email: "jonathan@meridian.example", name: "Jonathan Reyes", title: "Marketing Director", role: "client", access: "approver",
+      roleLabel: "Decision maker", perms: ROLE_DEFAULTS.approver, clientId: "demo-client", clientName: "Meridian", clientLogo: null, mustChangePassword: false, notifyEmail: true, twoStep: false },
     demo: true,
-    vimeo: { configured: true },
+    brand: DEFAULTS.brand,
+    welcome: DEFAULTS.welcome,
+    announcement: null,
+    emailEnabled: true,
     stages: STAGES,
     projects: P,
     activity: [

@@ -1,15 +1,17 @@
-// Messages: one conversation per project between the client and Nobleman.
-import { html, useApp, useState, useEffect, useRef, api, Head, Empty, Link, Avatar, fmtDate, plural } from "./ui.js";
+// Messages: one conversation per project between the client and the studio.
+import { html, useApp, useState, useEffect, useRef, api, Head, Empty, Link, Avatar, fmtDate, plural, Confirm, isStaff } from "./ui.js";
 
 export function Messages({ pid }) {
   const app = useApp();
   const { data, user, demo, say, toast, reload } = app;
-  const admin = user.role === "admin";
+  const admin = isStaff(user);
+  const support = (data.brand && data.brand.support) || "alexis@gotit2work.com";
   const ps = data.projects.filter((p) => p.caps.messages);
   const [thread, setThread] = useState(null);
   const [err, setErr] = useState("");
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const [del, setDel] = useState(null);
   const end = useRef(null);
   const p = ps.find((x) => x.id === pid) || ps.find((x) => x.messages && x.messages.unread) || ps[0];
 
@@ -22,7 +24,7 @@ export function Messages({ pid }) {
   }, [p && p.id]);
   useEffect(() => { if (end.current && thread && thread.length) end.current.scrollIntoView({ block: "end" }); }, [thread && thread.length]);
 
-  if (!ps.length) return html`<div class="page"><${Empty} icon="bottle" title="Messages aren’t switched on.">You can still reach Nobleman at <a href="mailto:alexis@gotit2work.com">alexis@gotit2work.com</a>.<//></div>`;
+  if (!ps.length) return html`<div class="page"><${Empty} icon="bottle" title="Messages aren’t switched on.">You can still reach the studio at <a href=${"mailto:" + support}>${support}</a>.<//></div>`;
 
   const send = async () => {
     const body = text.trim();
@@ -42,10 +44,19 @@ export function Messages({ pid }) {
     setBusy(false);
   };
 
-  const other = admin ? p.clientName : "Nobleman";
+  const remove = async () => {
+    setBusy(true);
+    try {
+      await api("/api/portal", { method: "POST", body: { action: "deleteMessage", id: del.id } });
+      setThread((t) => t.filter((m) => m.id !== del.id));
+      toast("Message deleted.");
+    } catch (e) { toast(e.message, { err: true }); }
+    setBusy(false); setDel(null);
+  };
+  const other = admin ? p.clientName : "the studio";
   return html`<div class="page">
     <${Head} eyebrow=${p.title} title=${admin ? `Messages with ${p.clientName}` : "Messages"}>
-      ${admin ? `Everyone at ${p.clientName} on this project sees this conversation.` : "Write to Jean and Justin about this project. They usually reply the same business day."}
+      ${admin ? `Everyone at ${p.clientName} on this project sees this conversation.` : (data.brand && data.brand.replies) || "Write to the studio about this project."}
     <//>
     ${ps.length > 1 ? html`<div class="tabs" style=${{ marginBottom: "22px" }}>${ps.map((x) => html`<${Link} key=${x.id} to=${"/messages/" + x.id} cls="tab-btn" current=${x.id === p.id}>
       ${admin ? x.clientName + " · " : ""}${x.title}${x.messages && x.messages.unread ? html`<span class="d" aria-label=${plural(x.messages.unread, "unread message")}></span>` : null}<//>`)}</div>` : null}
@@ -58,8 +69,9 @@ export function Messages({ pid }) {
             return html`<div class=${"msg" + (mine ? " mine" : "")} key=${m.id}>
               <${Avatar} name=${m.author} staff=${m.role === "admin"} />
               <div style=${{ minWidth: 0 }}>
-                <div class="who">${mine ? "You" : m.author + (m.role === "admin" ? " · Nobleman" : "")} · ${fmtDate(m.at, true)}</div>
+                <div class="who">${mine ? "You" : m.author + (m.role === "admin" ? " · studio" : "")} · ${fmtDate(m.at, true)}</div>
                 <div class="bub">${m.body}</div>
+                ${m.canRemove && !demo ? html`<button class="link small faint" style=${{ marginTop: "4px" }} onClick=${() => setDel(m)}>Delete</button>` : null}
               </div>
             </div>`;
           })}
@@ -72,5 +84,8 @@ export function Messages({ pid }) {
       <button class="btn primary" disabled=${busy || !text.trim()} onClick=${send}>Send</button>
     </div>
     <p class="faint small" style=${{ marginTop: "10px" }}>Enter sends. Shift + Enter starts a new line.</p>
+    ${del ? html`<${Confirm} title="Delete this message?" yes="Delete it" busy=${busy} onYes=${remove} onNo=${() => setDel(null)}>
+      It disappears for everyone. ${del.mine ? "Anyone already emailed about it keeps that email." : `It was written by ${del.author}.`}
+    <//>` : null}
   </div>`;
 }

@@ -1,10 +1,11 @@
 import { SignJWT, jwtVerify } from "jose";
-import { randomInt } from "node:crypto";
 import { sql, ready } from "./_db.js";
-import { capsOf, ALL_CAPS } from "./_caps.js";
+import { capsOf } from "./_caps.js";
+import { getSettings } from "./_settings.js";
+import { effectiveCaps, isStaff, can, accessOf } from "./_roles.js";
 
 const COOKIE = "np_session";
-const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+const DEFAULT_DAYS = 7;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const isUuid = (v) => typeof v === "string" && UUID_RE.test(v);
@@ -56,16 +57,53 @@ export function rejectCrossOrigin(req, res) {
   return !ok;
 }
 
+/** How long a sign-in lasts, in seconds (Studio → Settings → Security, 1 to 30 days). */
+async function maxAge() {
+  try {
+    const d = Number((await getSettings()).security.sessionDays) || DEFAULT_DAYS;
+    return Math.max(1, Math.min(30, d)) * 86400;
+  } catch { return DEFAULT_DAYS * 86400; }
+}
+
 export async function signSession(user) {
+  const age = await maxAge();
   return new SignJWT({ sub: user.id, sv: user.session_version || 1 })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime(Math.floor(Date.now() / 1000) + MAX_AGE)
+    .setExpirationTime(Math.floor(Date.now() / 1000) + age)
     .sign(secret());
 }
 
-export function setSessionCookie(res, token) {
-  res.setHeader("Set-Cookie", [`${COOKIE}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${MAX_AGE}`]);
+/** A short-lived ticket between a correct password (or link) and the two-step code. Not a session. */
+export async function signTicket(user, purpose = "two-step") {
+  return new SignJWT({ sub: user.id, sv: user.session_version || 1, pur: purpose })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(Math.floor(Date.now() / 1000) + 5 * 60)
+    .sign(secret());
+}
+
+/** The user id a ticket is for, or null when it's invalid, expired, or for another purpose. */
+export async function readTicket(token, purpose = "two-step") {
+  try {
+    const { payload } = await jwtVerify(String(token || ""), secret());
+    return payload.pur === purpose && isUuid(payload.sub) ? payload : null;
+  } catch { return null; }
+}
+
+/** Signs a short-lived value with the session key (OAuth state). */
+export async function signState(value, minutes = 10) {
+  return new SignJWT({ v: value })
+    .setProtectedHeader({ alg: "HS256" })
+    .setExpirationTime(Math.floor(Date.now() / 1000) + minutes * 60)
+    .sign(secret());
+}
+export async function readState(token) {
+  try { return (await jwtVerify(String(token || ""), secret())).payload.v; } catch { return null; }
+}
+
+export async function setSessionCookie(res, token) {
+  res.setHeader("Set-Cookie", [`${COOKIE}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${await maxAge()}`]);
 }
 
 export function clearSessionCookie(res) {
@@ -103,8 +141,8 @@ export async function currentUser(req) {
   if (!c) return null;
   await ready();
   const rows = await sql`
-    select u.id, u.email, u.name, u.title, u.role, u.client_id, u.must_change_password, u.session_version,
-           u.notify_email, c.name as client_name
+    select u.id, u.email, u.name, u.title, u.role, u.access, u.client_id, u.must_change_password, u.session_version,
+           u.notify_email, u.totp_enabled, u.welcomed_at, u.last_seen_at, c.name as client_name, c.logo_url as client_logo
     from users u left join clients c on c.id = u.client_id
     where u.id = ${c.sub} limit 1`;
   const u = rows[0];
@@ -114,10 +152,16 @@ export async function currentUser(req) {
 
 /** Public shape of a user for the page. */
 export const publicUser = (u) => ({
-  id: u.id, email: u.email, name: u.name, title: u.title || "", role: u.role,
-  clientId: u.client_id || null, clientName: u.client_name || null,
-  mustChangePassword: !!u.must_change_password, notifyEmail: u.notify_email !== false,
+  id: u.id, email: u.email, name: u.name, title: u.title || "", role: u.role, access: accessOf(u),
+  clientId: u.client_id || null, clientName: u.client_name || null, clientLogo: u.client_logo || null,
+  mustChangePassword: !!u.must_change_password, notifyEmail: u.notify_email !== false, twoStep: !!u.totp_enabled,
 });
+
+/** Staff who must use two-step sign-in (Studio → Settings → Security) but haven't turned it on yet. */
+export async function needsTwoStepSetup(u) {
+  if (!isStaff(u) || u.totp_enabled) return false;
+  try { return !!(await getSettings()).security.staffTwoStep; } catch { return false; }
+}
 
 /**
  * Guard for routes any signed-in person may call. Returns the user row or ends the response. Someone who must
@@ -142,19 +186,28 @@ export async function requireUser(req, res, opts = {}) {
     res.status(403).json({ error: "Choose a new password first.", mustChangePassword: true });
     return null;
   }
-  return u;
-}
-
-/** Guard for admin-only routes. */
-export async function requireAdmin(req, res) {
-  const u = await requireUser(req, res);
-  if (!u) return null;
-  if (u.role !== "admin") {
-    res.status(403).json({ error: "Only Nobleman staff can do that." });
+  if (!opts.allowTwoStepSetup && (await needsTwoStepSetup(u))) {
+    res.status(403).json({ error: "Turn on two-step sign-in first (your account page).", needsTwoStep: true });
     return null;
   }
   return u;
 }
+
+/** Guard for staff routes. With a permission, the person's role must allow it (_roles.js). */
+export async function requireStaff(req, res, perm) {
+  const u = await requireUser(req, res);
+  if (!u) return null;
+  if (!isStaff(u)) {
+    res.status(403).json({ error: "Only studio staff can do that." });
+    return null;
+  }
+  if (perm && !can(u, perm, await getSettings())) {
+    res.status(403).json({ error: "Your role doesn’t allow that. Ask an owner." });
+    return null;
+  }
+  return u;
+}
+export const requireAdmin = (req, res) => requireStaff(req, res);
 
 /**
  * A project this person may see, with its effective capabilities, or null. Clients only ever reach their own
@@ -167,20 +220,10 @@ export async function projectFor(user, projectId) {
     where p.id = ${projectId} limit 1`;
   const p = rows[0];
   if (!p) return null;
-  if (user.role !== "admin" && (p.client_id !== user.client_id || p.archived)) return null;
-  p.caps = user.role === "admin" ? { ...ALL_CAPS } : capsOf(p.capabilities);
+  if (!isStaff(user) && (p.client_id !== user.client_id || p.archived)) return null;
   p.clientCaps = capsOf(p.capabilities);
+  p.caps = effectiveCaps(user, p.clientCaps, await getSettings());
   return p;
-}
-
-/**
- * A temporary password an admin can read out or paste: three groups of four, no look-alike characters
- * (about 60 bits). The person must replace it the first time they sign in.
- */
-export function tempPassword() {
-  const A = "abcdefghjkmnpqrstuvwxyz23456789";
-  const g = () => Array.from({ length: 4 }, () => A[randomInt(A.length)]).join("");
-  return `${g()}-${g()}-${g()}`;
 }
 
 export const MIN_PASSWORD = 10;
