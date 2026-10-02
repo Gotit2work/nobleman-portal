@@ -7,12 +7,16 @@ import { randomToken } from "./_crypto.js";
 import { audit } from "./_audit.js";
 import { can } from "./_roles.js";
 import { getSettings } from "./_settings.js";
+import { stripeConnection, verifySignature, settle, failed, refunded, announce } from "./_payments.js";
 
 /**
  * "Sign in with Adobe" for a Frame.io connection (Studio → Connections).
  *   GET /api/connect?start=<connection>   sends the staff member to Adobe's login
  *   GET /api/connect?code=…&state=…       Adobe sends them back here; the portal stores the tokens (encrypted)
  * The redirect URI to register in the Adobe Developer Console is https://<portal>/api/connect.
+ *
+ * Also Stripe's webhook (Studio → Connections → Payments):
+ *   POST /api/connect?webhook=stripe        signed with the connection's webhook secret; marks payments paid
  */
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "private, no-store");
@@ -22,6 +26,7 @@ export default async function handler(req, res) {
     res.setHeader("Location", `/studio/connections?${id ? "connected=" + encodeURIComponent(id) + "&" : ""}${msg ? "message=" + encodeURIComponent(msg) : ""}`);
     return res.end();
   };
+  if (req.method === "POST" && q.webhook === "stripe") return stripeWebhook(req, res);
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
   if (!dbConfigured()) return back("The portal isn’t connected to its database yet.");
   await ready();
@@ -60,5 +65,45 @@ export default async function handler(req, res) {
     console.error("frame.io sign-in failed", err.message);
     await updateConnection(conn.id, { status: "error", lastError: err.message.slice(0, 300) });
     return back(`Adobe sign-in didn’t finish: ${err.message.slice(0, 200)}`);
+  }
+}
+
+/** The request body exactly as Stripe sent it: the signature covers these bytes, so a re-encoded body won't do. */
+async function rawBody(req) {
+  if (req.rawBody) return Buffer.from(req.rawBody);
+  const chunks = [];
+  try { for await (const c of req) chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)); } catch { /* already read */ }
+  return chunks.length ? Buffer.concat(chunks) : null;
+}
+
+/**
+ * Stripe tells the portal when a checkout is paid, when a bank payment clears or fails, and when a charge is
+ * refunded. Anything unsigned, or signed with another secret, is refused. Answers 200 to events it doesn't use, so
+ * Stripe doesn't retry them.
+ */
+async function stripeWebhook(req, res) {
+  if (!dbConfigured()) return res.status(503).json({ error: "No database." });
+  await ready();
+  const conn = await stripeConnection();
+  if (!conn || !conn.creds.webhookSecret) return res.status(404).json({ error: "Payments aren’t set up for webhooks here." });
+  const raw = await rawBody(req);
+  if (!raw || !verifySignature(raw, req.headers["stripe-signature"], conn.creds.webhookSecret)) {
+    console.error("stripe webhook: signature didn’t match");
+    return res.status(400).json({ error: "Signature didn’t match." });
+  }
+  let evt;
+  try { evt = JSON.parse(raw.toString("utf8")); } catch { return res.status(400).json({ error: "Not JSON." }); }
+  const obj = (evt.data && evt.data.object) || {};
+  const origin = originOf(req);
+  try {
+    let t = null;
+    if (evt.type === "checkout.session.completed" || evt.type === "checkout.session.async_payment_succeeded") t = await settle(obj);
+    else if (evt.type === "checkout.session.async_payment_failed") t = await failed(obj);
+    else if (evt.type === "charge.refunded") t = await refunded(obj);
+    if (t) await announce(t, { req, origin });
+    return res.status(200).json({ received: true, changed: t ? t.change : null });
+  } catch (err) {
+    console.error("stripe webhook failed", evt.type, err.message);
+    return res.status(500).json({ error: "Try again." });
   }
 }

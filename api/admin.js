@@ -18,6 +18,7 @@ import { syncProject, trashProjectRow } from "./_notion.js";
 import { MORE_GETS, MORE_ACTIONS } from "./_admin_more.js";
 import { cleanDomains, domainOf } from "./_signup.js";
 import { demoAdmin } from "./_demo.js";
+import { paymentsFor, stripeConnection, liveMode, currencyOf, EVENTS } from "./_payments.js";
 
 /**
  * Studio: staff only. Each action checks the person's role (_roles.js).
@@ -80,6 +81,7 @@ async function overview(req, res, u, s) {
   ]);
   const names = stageNames(s);
   const connName = new Map(conns.map((c) => [c.id, c]));
+  const [pays, stripeConn] = await Promise.all([paymentsFor(projects.map((p) => p.id)), stripeConnection()]);
   return res.status(200).json({
     me: { id: u.id, access: accessOf(u), perms: permsOf(u, s) },
     clients: clients.map((c) => ({ id: c.id, name: c.name, logo: c.logo_url || "", notes: c.notes || "", domains: Array.isArray(c.domains) ? c.domains : [], people: c.people, projects: c.projects, created: iso(c.created_at) })),
@@ -104,6 +106,7 @@ async function overview(req, res, u, s) {
         reviewDue: day(p.review_due), remindedAt: iso(p.reminded_at),
         source: p.source_conn ? { conn: p.source_conn, ref: p.source_ref || "", provider: c ? c.provider : null, connName: c ? c.name : "A removed connection" } : null,
         imageUrl: p.image_url || "", caps: capsOf(p.capabilities), archived: p.archived, notion: !!p.notion_page_id, updated: iso(p.updated_at),
+        payments: pays.get(p.id) || [],
       };
     }),
     capabilities: CAPABILITIES,
@@ -119,6 +122,8 @@ async function overview(req, res, u, s) {
     settings: can(u, "settings.manage", s) || can(u, "connections.manage", s) ? s : { stages: s.stages, caps: s.caps, notion: s.notion },
     email: await emailReady(),
     blob: !!process.env.BLOB_READ_WRITE_TOKEN,
+    // Whether clients can pay, and what Stripe's webhook needs (never the keys).
+    payments: { ready: !!stripeConn, live: liveMode(stripeConn), webhook: !!(stripeConn && stripeConn.creds.webhookSecret), currency: currencyOf(stripeConn), endpoint: originOf(req) + "/api/connect?webhook=stripe", events: EVENTS },
   });
 }
 

@@ -17,6 +17,8 @@ export const CAPABILITIES = [
   { key: "files", label: "Files from the studio", detail: "See and download documents you add: quotes, schedules, call sheets.", default: true },
   { key: "upload", label: "Uploads", detail: "Send files and footage to the studio. With a Vimeo source, videos go into the project’s folder.", default: false },
   { key: "messages", label: "Messages", detail: "Message the studio about this project.", default: true },
+  { key: "payments", label: "Payments", detail: "See and pay what the studio asks for, by card or bank on Stripe’s secure checkout. Needs Stripe in Studio → Connections.", default: true },
+  { key: "payfirst", label: "Downloads after payment", detail: "Finished films can be downloaded once everything asked for on the project is paid. Watching is never held.", default: false, needs: "payments" },
 ];
 
 const KEYS = new Set(CAPABILITIES.map((c) => c.key));

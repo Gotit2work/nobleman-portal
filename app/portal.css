@@ -596,3 +596,14 @@ span.client-logo, div.client-logo { display: inline-block; background: center / 
   /* Shorter lists on Home: the newest few; the rest are a tap away. */
   .latest .li:nth-child(n+6), .board .li:nth-child(n+5) { display: none; }
 }
+
+/* ---------- payments ---------- */
+.payrow { flex-wrap: wrap; gap: 10px 16px; }
+.payrow .amt { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media (max-width: 720px) { .payrow .grow { flex-basis: 100%; } .payrow .amt { margin-right: auto; } }
+
+/* ---------- getting started (a new portal) ---------- */
+.setup { margin-bottom: 28px; border-color: var(--line-2); }
+.setup .step .tick { width: 22px; height: 22px; flex: none; border-radius: 50%; border: 1px solid var(--line-2); display: inline-flex; align-items: center; justify-content: center; font-style: normal; font-size: 12px; font-weight: 800; }
+.setup .step.done .tick { background: var(--green); border-color: var(--green); color: var(--bg); }
+.setup .step.done .name { color: var(--mute); text-decoration: line-through; text-decoration-color: var(--line-2); }

@@ -7,6 +7,7 @@ import { getSettings } from "./_settings.js";
 import { isStaff, can } from "./_roles.js";
 import { later } from "./_later.js";
 import { syncProject } from "./_notion.js";
+import { heldForPayment } from "./_payments.js";
 
 /**
  * GET  /api/media?project=<id>&video=<id>          downloads, captions, and chapters for one film or version,
@@ -70,8 +71,13 @@ async function details(req, res, u) {
   const out = { downloads: null, captions: null, chapters: null };
   if (!src) return res.status(200).json(out);
   const features = src.provider.meta.features || {};
-  // Downloads are for finished films. Versions under review are previews, not deliverables.
-  const wantDownloads = p.caps.download && v.version == null;
+  // Downloads are for finished films. Versions under review are previews, not deliverables. With "Downloads after
+  // payment" on, they wait until nothing asked for on the project is unpaid (staff are never held).
+  let wantDownloads = p.caps.download && v.version == null;
+  if (wantDownloads && !staff && p.caps.payfirst && (await heldForPayment(p.id))) {
+    wantDownloads = false;
+    out.downloads = { links: [], onSite: null, held: true, payTo: `/payments/${p.id}`, reason: "Downloads open once everything asked for on this project is paid." };
+  }
   const d = await src.provider.details(src.conn, v, { downloads: wantDownloads && features.downloads, captions: p.caps.captions && (features.captions || features.chapters) });
   if (wantDownloads) {
     const dl = d.downloads || { links: [], onSite: null, why: `${src.provider.meta.name} doesn’t offer downloads through the portal.` };

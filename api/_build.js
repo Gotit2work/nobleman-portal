@@ -5,6 +5,9 @@ import { getSettings, stageNames, stagePct } from "./_settings.js";
 import { effectiveCaps, isStaff, permsOf, accessOf, roleLabel } from "./_roles.js";
 import { splitProject, sourceOf } from "./_sources.js";
 import { emailReady } from "./_notify.js";
+import { paymentsFor, stripeConnection } from "./_payments.js";
+import { listConnections } from "./_connections.js";
+import { PROVIDERS } from "./_providers/index.js";
 
 const iso = (d) => (d ? new Date(d).toISOString() : null);
 const day = (d) => (d ? new Date(d).toISOString().slice(0, 10) : null);
@@ -81,7 +84,7 @@ export async function buildPortal(user) {
                 where p.client_id = ${user.client_id} and p.archived = false order by p.updated_at desc`;
   const ids = projects.map((p) => p.id);
 
-  const [rd, msgCounts, files, uploads, settingsRows] = await Promise.all([
+  const [rd, msgCounts, files, uploads, settingsRows, pays, stripeConn] = await Promise.all([
     reviewData(ids),
     ids.length ? sql`select m.project_id, count(*)::int as total, max(m.created_at) as last,
                count(*) filter (where m.created_at > coalesce(r.seen_at, 'epoch') and m.author_id is distinct from ${user.id})::int as unread
@@ -92,6 +95,8 @@ export async function buildPortal(user) {
     ids.length ? sql`select id, project_id, vimeo_id, name, size, status, uploader_name, uploader_role, uploaded_by, created_at
         from video_uploads where project_id = any(${ids}) order by created_at desc limit 200` : [],
     ids.length ? sql`select project_id, video_id, hidden, title, kind from video_settings where project_id = any(${ids})` : [],
+    paymentsFor(ids),
+    stripeConnection(),
   ]);
 
   const byProject = (rows) => {
@@ -163,6 +168,8 @@ export async function buildPortal(user) {
       status: reviewStatus(cuts),
       updated: iso(p.updated_at),
     };
+    // What the studio asked to be paid on this project, newest first (_payments.js).
+    o.payments = caps.payments ? pays.get(p.id) || [] : [];
     if (staff) {
       o.clientCaps = clientCaps;
       o.source = src ? { conn: src.conn.id, provider: src.conn.provider, providerName: src.provider.meta.name, connName: src.conn.name, ref: p.source_ref } : null;
@@ -182,11 +189,29 @@ export async function buildPortal(user) {
     welcome: !staff && !user.welcomed_at ? s.welcome : null,
     announcement: s.announcement && s.announcement.text ? s.announcement : null,
     emailEnabled: await emailReady(),
+    payReady: !!stripeConn,
     stages: names,
     projects: out,
     activity: staff ? await staffActivity() : await clientActivity(user, out),
+    // Owners setting up a new portal get a checklist on Home until the essentials are done.
+    ...(staff && permsOf(user, s)["settings.manage"] ? { setup: await setupState(s) } : {}),
     // People waiting for the studio to let them in (staff who can approve them only).
     ...(staff && permsOf(user, s)["people.manage"] ? { signups: (await sql`select count(*)::int as n from signup_requests where status = 'waiting'`)[0].n } : {}),
+  };
+}
+
+/** What's set up so far, for the Getting started checklist on an owner's Home. */
+async function setupState(s) {
+  const conns = await listConnections().catch(() => []);
+  const kinds = new Set(conns.map((c) => PROVIDERS[c.provider] && PROVIDERS[c.provider].meta.kind));
+  const [n] = await sql`select (select count(*)::int from clients) as clients, (select count(*)::int from projects) as projects,
+    (select count(*)::int from users where role = 'client') as people,
+    (select count(*)::int from users where role = 'admin' and coalesce(access, 'owner') = 'owner') as owners,
+    (select count(*)::int from projects where source_conn = 'links') as linked`;
+  return {
+    video: kinds.has("video") || n.linked > 0, email: await emailReady(), storage: !!process.env.BLOB_READ_WRITE_TOKEN,
+    payments: kinds.has("payments"), notion: !!(s.notion && s.notion.dataSourceId),
+    clients: n.clients, projects: n.projects, people: n.people, owners: n.owners,
   };
 }
 

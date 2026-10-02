@@ -68,6 +68,7 @@ async function as(email, path = "/", opts) {
   await page.locator('input[name="code"]').fill("setup-code-123");
   await page.getByRole("button", { name: "Create the owner account" }).click();
   check("the right code creates the owner and opens the portal", await waitText(page, hello("Sam")));
+  check("a new, empty portal greets its owner with a Getting started checklist", await waitText(page, /Set up the portal: \d of 6 done\./) && (await page.locator(".setup .step").count()) === 9 && await visible(page.locator(".setup .step", { hasText: "Add your first client" })));
   check("staff see Studio in the side capsule", await visible(nav(page, "Studio")));
   await nav(page, "Studio").click();
   await waitText(page, "No projects yet.");
@@ -182,7 +183,7 @@ const dana = await newPage();
   await page.getByRole("row", { name: /Harbor Summit/ }).getByRole("link", { name: "Open", exact: true }).click();
   const part = (name) => page.locator(".parts").getByRole("button", { name, exact: true });
   await part("Details").waitFor();
-  check("a project opens in parts, not one long form", (await page.locator(".parts .tab-btn").count()) === 4 && await visible(page.getByLabel("Project name")) && !(await visible(page.getByRole("switch", { name: "Messages" }))));
+  check("a project opens in parts, not one long form", (await page.locator(".parts .tab-btn").count()) === 5 && await visible(page.getByLabel("Project name")) && !(await visible(page.getByRole("switch", { name: "Messages" }))));
   check("the save bar is calm until something changes", await waitText(page, "Everything is saved."));
   await part("Videos").click();
   check("the project lists its videos with what the client sees", await waitText(page, "Version 3") && await waitText(page, "Finished film"));
@@ -453,6 +454,17 @@ const PHONE = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch:
   }
   await page.goto(DEMO + "/studio/projects");
   check("reloading a Studio page in the demo keeps the studio's view", await waitText(page, "Meridian Campaign") && await visible(nav(page, "Studio")));
+  await page.goto(DEMO + "/payments/demo-meridian");
+  check("demo payments: what's due and what's paid, with a Pay button", await waitText(page, "$9,000.00 due.") && await waitText(page, "Balance (50%)") && await visible(page.getByRole("button", { name: "Pay", exact: true })) && await waitText(page, /Paid .* Jonathan Reyes/));
+  await page.getByRole("button", { name: "Pay", exact: true }).click();
+  check("…paying in the demo says what would happen", await waitText(page, /Demo only: in the real portal this opens Stripe’s secure checkout/));
+  await page.goto(DEMO + "/projects/demo-meridian");
+  check("the project page shows what's due", await waitText(page, "$9,000.00 due"));
+  await page.goto(DEMO + "/studio/projects/demo-meridian?view=studio");
+  await page.locator(".parts").getByRole("button", { name: "Payments", exact: true }).click();
+  check("demo Studio: a project's payments, with ways to ask, cancel, or mark paid", await waitText(page, "Ask for a payment") && await visible(page.getByRole("button", { name: "Mark paid…" })) && await waitText(page, "Stripe live"));
+  await page.goto(DEMO + "/studio/connections?view=studio");
+  check("demo Studio: Stripe is a connection, with its webhook address", await waitText(page, "Payments (Stripe)") && await waitText(page, "/api/connect?webhook=stripe"));
   await page.goto(DEMO + "/signin");
   check("/signin still reaches the real login in demo mode", await page.getByRole("heading", { name: "Log in" }).waitFor().then(() => true, () => false));
   await page.goto(B + "/demo");

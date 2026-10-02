@@ -33,12 +33,13 @@ export const STAFF_PERMS = [
   { key: "files.manage", label: "Add and remove files", group: "Projects" },
   { key: "notes.moderate", label: "Remove anyone’s notes and messages", group: "Projects" },
   { key: "shares.manage", label: "See and turn off share links", group: "Projects" },
+  { key: "payments.manage", label: "Ask for and record payments", detail: "Ask a client to pay, cancel a request, or mark one paid another way.", group: "Projects" },
   { key: "clients.manage", label: "Add and edit clients", group: "Clients" },
   { key: "clients.delete", label: "Delete clients", detail: "Deletes their projects and files too.", group: "Clients" },
   { key: "people.manage", label: "Manage client people", detail: "Invite, change roles, reset passwords, remove.", group: "Clients" },
   { key: "data.export", label: "Export data", group: "Clients" },
   { key: "audit.view", label: "See the activity log", group: "Studio" },
-  { key: "connections.manage", label: "Manage connections", detail: "Vimeo, Frame.io, Notion, email.", group: "Studio" },
+  { key: "connections.manage", label: "Manage connections", detail: "Vimeo, Frame.io, Notion, email, Stripe.", group: "Studio" },
   { key: "staff.manage", label: "Manage staff", owner: true, group: "Studio" },
   { key: "settings.manage", label: "Change settings and roles", owner: true, group: "Studio" },
 ];
@@ -51,6 +52,7 @@ export const CLIENT_PERMS = [
   { key: "upload", label: "Send files and footage" },
   { key: "messages", label: "Message the studio" },
   { key: "team", label: "Add and remove teammates" },
+  { key: "pay", label: "Pay the studio" },
 ];
 
 const ALL_STAFF = Object.fromEntries(STAFF_PERMS.map((p) => [p.key, true]));
@@ -59,9 +61,9 @@ export const ROLE_DEFAULTS = {
   owner: ALL_STAFF,
   manager: { ...ALL_STAFF, "clients.delete": false, "connections.manage": false, "staff.manage": false, "settings.manage": false },
   editor: Object.fromEntries(STAFF_PERMS.map((p) => [p.key, ["projects.progress", "projects.videos", "files.manage"].includes(p.key)])),
-  approver: { notes: true, approve: true, download: true, share: true, upload: true, messages: true, team: true },
-  reviewer: { notes: true, approve: false, download: true, share: false, upload: true, messages: true, team: false },
-  viewer: { notes: false, approve: false, download: true, share: false, upload: false, messages: false, team: false },
+  approver: { notes: true, approve: true, download: true, share: true, upload: true, messages: true, team: true, pay: true },
+  reviewer: { notes: true, approve: false, download: true, share: false, upload: true, messages: true, team: false, pay: false },
+  viewer: { notes: false, approve: false, download: true, share: false, upload: false, messages: false, team: false, pay: false },
 };
 
 export const isStaff = (u) => !!u && u.role === "admin";
@@ -107,7 +109,7 @@ export function can(u, perm, settings) {
  * role. Staff see and do everything a project offers. Adds `notes` (leave notes) and `team`.
  */
 export function effectiveCaps(u, projectCaps, settings) {
-  if (isStaff(u)) return { ...Object.fromEntries(Object.keys(projectCaps).map((k) => [k, true])), notes: true, team: false };
+  if (isStaff(u)) return { ...Object.fromEntries(Object.keys(projectCaps).map((k) => [k, true])), notes: true, team: false, pay: false, payfirst: false };
   const r = permsOf(u, settings);
   const c = projectCaps;
   return {
@@ -121,6 +123,7 @@ export function effectiveCaps(u, projectCaps, settings) {
     upload: !!(c.upload && r.upload),
     messages: !!(c.messages && r.messages),
     team: !!(r.team && settings.security.clientTeams),
+    pay: !!(c.payments && r.pay),
   };
 }
 

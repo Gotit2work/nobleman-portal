@@ -2,6 +2,7 @@ import { CAPABILITIES, STAGES } from "./_caps.js";
 import { DEFAULTS } from "./_settings.js";
 import { ROLE_DEFAULTS, STAFF_ROLES, CLIENT_ROLES, STAFF_PERMS, CLIENT_PERMS, rolePermissions } from "./_roles.js";
 import { providerList } from "./_providers/index.js";
+import { EVENTS } from "./_payments.js";
 
 // The public sample portal (/demo, and / when PORTAL_MODE=demo). Same shape as buildPortal() in _build.js, so
 // the page renders it exactly like real data. Everything is made up; every film plays Nobleman's reel. Notes
@@ -12,7 +13,9 @@ const ago = (days, hours = 0) => new Date(Date.now() - (days * 24 + hours) * 360
 const ahead = (days) => new Date(Date.now() + days * 24 * 3600 * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric" });
 const ahead8601 = (days) => new Date(Date.now() + days * 24 * 3600 * 1000).toISOString().slice(0, 10);
 // What a decision maker sees: everything on except earlier versions, so only the newest version shows.
-const allCaps = { ...Object.fromEntries(CAPABILITIES.map((c) => [c.key, true])), history: false, notes: true, team: true };
+const allCaps = { ...Object.fromEntries(CAPABILITIES.map((c) => [c.key, true])), history: false, payfirst: false, notes: true, team: true, pay: true };
+const usd = (cents) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
+const payment = (id, project, title, amount, extra) => ({ id, projectId: project, title, amount, currency: "usd", label: usd(amount), due: null, note: "", status: "open", method: null, paidAt: null, paidBy: null, created: ago(4), createdBy: "Jean", ...extra });
 
 function film(id, title, extra) {
   return { id, ...REEL, title, description: "", duration: 0, durationLabel: "", resolution: "4K", vertical: false, created: ago(9), thumbnail: null, plays: null, ...extra };
@@ -33,6 +36,10 @@ export function demoPortal() {
     reviewDue: ahead8601(2),
     cover: "media/a00.jpg",
     caps: allCaps,
+    payments: [
+      payment("demo-pay-2", "demo-meridian", "Balance (50%)", 900000, { due: ahead8601(8), note: "Due on delivery of the final cut." }),
+      payment("demo-pay-1", "demo-meridian", "Deposit (50%)", 900000, { status: "paid", method: "stripe", paidAt: ago(35), paidBy: "Jonathan Reyes", created: ago(38) }),
+    ],
     provider: "vimeo",
     videoUploadsToSource: true,
     // Versions 1 and 2 had notes and change requests; clients see only the newest (Earlier versions is off).
@@ -90,6 +97,7 @@ export function demoPortal() {
     reviewDue: null,
     cover: "media/a03.jpg",
     caps: allCaps,
+    payments: [payment("demo-pay-3", "demo-social", "Deposit (50%)", 360000, { status: "paid", method: "stripe", paidAt: ago(12), paidBy: "Jonathan Reyes", created: ago(14) })],
     provider: "vimeo",
     videoUploadsToSource: true,
     cuts: [], films: [], videosError: null, files: [], videoUploads: [],
@@ -108,6 +116,7 @@ export function demoPortal() {
     welcome: DEFAULTS.welcome,
     announcement: null,
     emailEnabled: true,
+    payReady: true,
     stages: STAGES,
     projects: P,
     activity: [
@@ -216,7 +225,7 @@ export function demoAdmin(q) {
     projects: portal.projects.map((p) => ({
       id: p.id, title: p.title, type: p.type, summary: p.summary, clientId: p.clientId, clientName: p.clientName, stage: p.stage, pct: p.pct, next: p.next,
       reviewDue: p.reviewDue, remindedAt: null, source: { conn: SOURCE.conn, ref: REFS[p.id], provider: "vimeo", connName: "Vimeo" },
-      imageUrl: "", caps: p.clientCaps, archived: false, notion: true, updated: p.updated,
+      imageUrl: "", caps: p.clientCaps, archived: false, notion: true, updated: p.updated, payments: p.payments || [],
     })),
     capabilities: CAPABILITIES,
     stages: STAGES,
@@ -226,7 +235,9 @@ export function demoAdmin(q) {
       { id: "env-vimeo", provider: "vimeo", name: "Vimeo", env: false, status: "ok", lastError: null, checked: ago(0, 2), config: { account: "Nobleman Productions" } },
       { id: "demo-resend", provider: "resend", name: "Email (Resend)", env: false, status: "ok", lastError: null, checked: ago(0, 2), config: { from: "Nobleman Productions <portal@nobleman.example>", account: "Nobleman Productions <portal@nobleman.example>" } },
       { id: "demo-notion", provider: "notion", name: "Notion", env: false, status: "ok", lastError: null, checked: ago(0, 2), config: { account: "Nobleman HQ" } },
+      { id: "demo-stripe", provider: "stripe", name: "Payments (Stripe)", env: false, status: "ok", lastError: null, checked: ago(0, 2), config: { account: "Nobleman Productions", currency: "usd" } },
     ],
+    payments: { ready: true, live: true, webhook: true, currency: "usd", endpoint: "https://portal.noblemanproductions.gotit2work.com/api/connect?webhook=stripe", events: EVENTS },
     settings: { ...DEFAULTS, notion: { ...DEFAULTS.notion, connectionId: "demo-notion", dataSourceId: "demo", title: "Nobleman Productions projects", lastSync: ago(0, 1) } },
     email: true,
     blob: true,

@@ -10,7 +10,7 @@ Client portal for Nobleman Productions at `portal.noblemanproductions.gotit2work
 - **Alexis owns `gotit2work.com`** (DNS at GoDaddy). The apex points at Lovable (`185.158.133.1`) and email is Microsoft 365. Touch neither.
 - On Hobby by the owner's choice; commercial use requires Pro before clients rely on it. Hobby allows 12 functions; the portal uses 8 (`session`, `portal`, `media`, `files`, `admin`, `share`, `connect`, `cron`). Add actions to an existing route rather than a new file. Hobby crons run once a day, within the hour.
 - Vimeo is Jean's account (`jeangotay`, **Plus**): no API download links (Standard+), so films fall back to "Download on Vimeo".
-- Env today: only `PORTAL_MODE=demo`. Go-live adds `DATABASE_URL`, `BLOB_READ_WRITE_TOKEN`, `SESSION_SECRET`, `PORTAL_ENCRYPTION_KEY`, `CRON_SECRET`, `BOOTSTRAP_SECRET` (README, "Going live"). Video, email, and Notion keys can be entered in Studio → Connections instead of env vars. Never generate, read, or relay secret values in a session; the owner sets them in Vercel.
+- Env today: only `PORTAL_MODE=demo`. Go-live adds `DATABASE_URL`, `BLOB_READ_WRITE_TOKEN`, `SESSION_SECRET`, `PORTAL_ENCRYPTION_KEY`, `CRON_SECRET`, `BOOTSTRAP_SECRET`; the step-by-step runbook is `docs/GO-LIVE.md`. Video, email, Notion, and Stripe keys are entered in Studio → Connections, not env vars. Never generate, read, or relay secret values in a session; the owner sets them in Vercel.
 
 ## Architecture
 
@@ -34,6 +34,7 @@ Client portal for Nobleman Productions at `portal.noblemanproductions.gotit2work
 - Provider tokens and the Blob read-write token stay server-side. Browsers get a tus upload link for one video, or a client token for one Blob pathname. Blob downloads are signed links that expire in ten minutes.
 - `/api/cron` refuses to run without `CRON_SECRET`.
 - Demo is explicit (`PORTAL_MODE=demo`, or the `/demo` path). Never fall back to it because an API call failed. Its studio view reads `GET /api/portal?demo=studio` and `GET /api/admin?demo=1` (sample data, answered before any login check, never touching the database); `api()` in `ui.js` refuses every Studio change while the demo is on.
+- Payments (`_payments.js`): the portal never sees card details (Stripe's checkout does), and never marks a payment paid on the browser's word. Paid comes only from Stripe: the signed webhook (`verifySignature`, five-minute tolerance), `payCheck` asking Stripe, or the daily job. `settle()` moves a payment from open to paid once (a conditional update) and checks the amount and currency, so retries never double-announce. Only roles with `pay` pay; `payments.manage` asks and records. Keep Stripe calls to Checkout Sessions so a restricted key with Checkout Sessions: Write is enough.
 - Sign-up creates nothing until the email is confirmed (`signup_requests`, `_signup.js`); the answer must be the same whether or not an account exists. Joining by email domain only uses domains staff listed on a client, never free email services (`FREE_MAIL`).
 - Audit what matters (`audit()` in `_audit.js`): logins, sign-ups, Studio changes, decisions, views, downloads, shares, team changes.
 
@@ -56,4 +57,4 @@ Client portal for Nobleman Productions at `portal.noblemanproductions.gotit2work
 
 ## Verifying changes
 
-`cd tests && npm test` (README, "Testing") starts three local servers with PGlite and fakes for every provider, then runs 265 API checks and 124 browser checks on desktop and phone. `npm run shots` captures every screen (desktop 1440, phone 390) into `tests/.work/shots`. Look at the screenshots after any visual change; fonts from Google may be missing in a sandbox. Before shipping, `npx vercel build` with a hand-written `.vercel/project.json` (`{"projectId":"x","orgId":"y","settings":{"framework":null}}`), confirm 8 functions and the cron in `.vercel/output/config.json`, then delete `.vercel/`.
+`cd tests && npm test` (README, "Testing") starts three local servers with PGlite and fakes for every provider, then runs 303 API checks and 130 browser checks on desktop and phone. `npm run shots` captures every screen (desktop 1440, phone 390) into `tests/.work/shots`. Look at the screenshots after any visual change; fonts from Google may be missing in a sandbox. Before shipping, `npx vercel build` with a hand-written `.vercel/project.json` (`{"projectId":"x","orgId":"y","settings":{"framework":null}}`), confirm 8 functions and the cron in `.vercel/output/config.json`, then delete `.vercel/`.

@@ -1,9 +1,10 @@
-// Studio → Connections: video sources (Vimeo, Frame.io, YouTube, Wistia), Notion, email, and file storage.
+// Studio → Connections: video sources (Vimeo, Frame.io, YouTube, Wistia), Notion, payments (Stripe), email, and
+// file storage.
 // Credentials go to the server once and are stored encrypted; the page never gets them back.
 import { html, useApp, useState, useEffect, api, Head, Field, Modal, Confirm, Icon, copy, fmtAgo, fmtBytes, plural } from "./ui.js";
 import { useRun, providerOf } from "./studio.js";
 
-const ICON = { video: "play", tracking: "grid", email: "bottle" };
+const ICON = { video: "play", tracking: "grid", email: "bottle", payments: "key" };
 
 export function Connections({ admin }) {
   const { toast } = useApp();
@@ -41,9 +42,10 @@ export function Connections({ admin }) {
   const of = (kind) => conns.filter((c) => (providerOf(d, c.provider) || {}).kind === kind);
   const notionConn = of("tracking")[0];
   const emailConn = of("email")[0];
+  const payConn = of("payments")[0];
   return html`
     <${Head} eyebrow="Studio" title="Connections" actions=${html`<button class="btn primary" onClick=${() => setAdding("")}>Add a connection</button>`}>
-      Where videos come from, where projects are tracked, and how email goes out. Keys are stored encrypted and never shown again.
+      Where videos come from, where projects are tracked, how clients pay, and how email goes out. Keys are stored encrypted and never shown again.
     <//>
 
     <section>
@@ -67,6 +69,18 @@ export function Connections({ admin }) {
       <div class="sh"><span class="eyebrow"><span>Project tracking</span></span></div>
       <${Notion} admin=${admin} conn=${notionConn} test=${notionConn && tests[notionConn.id]} onAdd=${() => setAdding("notion")}
         onTest=${() => test(notionConn.id)} onEdit=${() => setEditing(notionConn)} onRemove=${() => setDel({ c: notionConn })} />
+    </section>
+
+    <section class="section">
+      <div class="sh"><span class="eyebrow"><span>Payments</span></span></div>
+      ${payConn ? html`<${ConnCard} c=${payConn} d=${d} test=${tests[payConn.id]} busy=${busy} admin=${admin}
+          onTest=${() => test(payConn.id)} onEdit=${() => setEditing(payConn)} onRemove=${() => setDel({ c: payConn })}
+          extra=${html`<${StripeWebhook} p=${d.payments} />`} />`
+        : html`<div class="card pad stack" style=${{ gap: "10px", maxWidth: "720px" }}>
+          <div class="row"><${Icon} name="key" size=${24} /><b>Payments (Stripe)</b><span class="pill amber">Off</span></div>
+          <span class="muted small" style=${{ lineHeight: 1.6 }}>${(providerOf(d, "stripe") || {}).blurb} You ask for a payment on a project; the client pays on Stripe’s checkout. Start with a test key to try it safely.</span>
+          <div><button class="btn primary sm" onClick=${() => setAdding("stripe")}>Connect Stripe</button></div>
+        </div>`}
     </section>
 
     <section class="section">
@@ -95,6 +109,17 @@ export function Connections({ admin }) {
       ${del.inUse || "The stored key is deleted. Nothing changes in the other service."}
     <//>` : null}
   `;
+}
+
+/** What Stripe's webhook needs: this address and four events, then its signing secret back here. */
+function StripeWebhook({ p }) {
+  const { toast } = useApp();
+  return html`<div class="stack" style=${{ gap: "8px", width: "100%" }}>
+    <span class="small"><b>Webhook</b> ${p.webhook ? html`<span class="pill green">Connected</span>` : html`<span class="pill amber">Not yet</span>`}</span>
+    <span class="muted small" style=${{ lineHeight: 1.55 }}>Stripe → Developers → Webhooks → Add endpoint. Use this address, choose these events, then paste the signing secret here under Change.</span>
+    <div class="copybox"><code class="small">${p.endpoint}</code><button class="btn ghost sm" onClick=${() => copy(p.endpoint, toast, "Address")}>Copy</button></div>
+    <span class="faint small mono">${p.events.join(" · ")}</span>
+  </div>`;
 }
 
 function Status({ c }) {

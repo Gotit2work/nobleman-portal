@@ -5,6 +5,7 @@
 // health, the daily job, cross-origin refusal, throttling, and emails.
 // Usage: node api.test.mjs  (servers from ./run.sh, freshly started: 4400 seeded, 4402 empty)
 import fs from "node:fs";
+import { createHmac } from "node:crypto";
 import { totpCode, totpStep } from "../api/_crypto.js";
 
 const B = "http://localhost:4400", FRESH = "http://localhost:4402";
@@ -261,8 +262,8 @@ check("producer: can read the activity log", r.s === 200 && r.d.entries.length >
 // ================= Studio overview (owner) =================
 r = await admin.get("/api/admin");
 const ov = r.d;
-check("overview: clients, people with roles, projects with sources, 11 capabilities, roles, providers, connections", r.s === 200 && ov.clients.length === 2 && ov.people.length === 7 && ov.projects.length === 2
-  && ov.capabilities.length === 11 && ov.roles.staff.length === 3 && ov.providers.some((p) => p.key === "frameio") && ov.connections.some((c) => c.id === "env-vimeo" && c.env) && ov.projects[0].source.conn === "env-vimeo", J({ c: ov.capabilities && ov.capabilities.length, conns: ov.connections }));
+check("overview: clients, people with roles, projects with sources, 13 capabilities, roles, providers, connections", r.s === 200 && ov.clients.length === 2 && ov.people.length === 7 && ov.projects.length === 2
+  && ov.capabilities.length === 13 && ov.roles.staff.length === 3 && ov.providers.some((p) => p.key === "frameio") && ov.connections.some((c) => c.id === "env-vimeo" && c.env) && ov.projects[0].source.conn === "env-vimeo", J({ c: ov.capabilities && ov.capabilities.length, conns: ov.connections }));
 check("overview never includes credentials", !J(ov).includes("test-token") && !J(ov).includes("re_test"));
 r = await admin.get("/api/admin?sources=env-vimeo");
 check("Vimeo folders listed for linking", r.s === 200 && r.d.sources.length === 3 && r.d.sources.some((f) => f.id === "444"), J(r.d));
@@ -640,6 +641,138 @@ r = await admin.req("GET", "/api/admin?export=projects", null, {}, true);
 check("projects export as CSV", r.s === 200 && r.text.startsWith("Project,Client,Kind,Stage"));
 r = await admin.get("/api/admin?health=1");
 check("system health lists every check, with warnings in plain words", r.s === 200 && r.d.checks.length >= 10 && r.d.checks.some((c) => c.label === "Setup code" && c.ok === "warn"), J(r.d && r.d.checks.map((c) => [c.label, c.ok])));
+
+// ================= payments (Stripe) =================
+{
+  const WHSEC = "whsec_test_portal_secret";
+  const fake = async () => (await (await fetch(B + "/__fake/state")).json()).stripe;
+  const sign = (body, secret = WHSEC, t = Math.floor(Date.now() / 1000)) => `t=${t},v1=${createHmac("sha256", secret).update(`${t}.${body}`).digest("hex")}`;
+  const hook = async (type, object, sig) => {
+    const body = JSON.stringify({ id: "evt_" + Math.random().toString(36).slice(2), type, data: { object } });
+    const r = await fetch(B + "/api/connect?webhook=stripe", { method: "POST", headers: { "content-type": "application/json", "stripe-signature": sig === undefined ? sign(body) : sig }, body });
+    let d = null; try { d = await r.json(); } catch {}
+    return { s: r.status, d };
+  };
+  const payOf = async (agent, id) => { const x = await agent.get("/api/portal"); return x.d.projects.flatMap((p) => p.payments || []).find((y) => y.id === id); };
+
+  r = await admin.admin("paymentCreate", { projectId: HARBOR, title: "Deposit (50%)", amount: "4500" });
+  check("payments: asking for one needs Stripe connected first", r.s === 409 && /Connect Stripe/.test(r.d.error), J(r.d));
+  r = await admin.admin("connectionCreate", { provider: "stripe", values: { secretKey: "hello", currency: "usd" } });
+  const stripeId = r.d.id;
+  check("payments: a key that isn't a Stripe key is refused by the test", r.s === 201 && r.d.test.ok === false && /isn’t a Stripe secret key/.test(r.d.test.error), J(r.d));
+  r = await admin.admin("connectionCreate", { provider: "stripe", values: { secretKey: "sk_test_again" } });
+  check("payments: only one Stripe connection", r.s === 409);
+  r = await admin.admin("connectionUpdate", { id: stripeId, values: { secretKey: "sk_test_portal_key", webhookSecret: WHSEC, currency: "usd" } });
+  check("payments: a test key works, and says it's test mode", r.s === 200 && r.d.test.ok === true && /test mode/.test(r.d.test.account.name) && r.d.test.notes.some((n) => /4242/.test(n)), J(r.d));
+  r = await admin.get("/api/admin");
+  check("payments: Studio knows it's ready and what the webhook needs, never the keys", r.d.payments.ready === true && r.d.payments.live === false && r.d.payments.webhook === true
+    && r.d.payments.endpoint.endsWith("/api/connect?webhook=stripe") && r.d.payments.events.length === 4 && !J(r.d).includes("sk_test_portal_key") && !J(r.d).includes(WHSEC), J(r.d.payments));
+  r = await eddie.admin("paymentCreate", { projectId: HARBOR, title: "Deposit (50%)", amount: "4500" });
+  check("payments: an editor can't ask for payments", r.s === 403);
+  r = await admin.admin("paymentCreate", { projectId: HARBOR, title: "Deposit (50%)", amount: "abc" });
+  check("payments: a made-up amount is refused", r.s === 400 && /amount/.test(r.d.error));
+  r = await admin.admin("paymentCreate", { projectId: HARBOR, title: "Deposit (50%)", amount: "0.10" });
+  check("payments: under 50 cents is refused (Stripe's minimum)", r.s === 400);
+  const before = (await mails()).length;
+  r = await admin.admin("paymentCreate", { projectId: HARBOR, title: "Deposit (50%)", amount: "$4,500", due: "2026-12-01", note: "Half now, half on delivery." });
+  const dep = r.d.id;
+  check("payments: owner asks Harbor Labs for $4,500", r.s === 201 && r.d.label === "$4,500.00", J(r.d));
+  await new Promise((x) => setTimeout(x, 300));
+  const asked = (await mails()).slice(before);
+  check("payments: Harbor Labs' decision makers are emailed a link to pay (not Dana, who's using the portal right now)", asked.some((m) => [].concat(m.to).some((t) => t.endsWith("@harbor.test")) && /Deposit \(50%\), \$4,500\.00/.test(m.subject) && /\/payments\//.test(m.html))
+    && !asked.some((m) => [].concat(m.to).includes("dana@harbor.test")), J(asked.map((m) => [m.to, m.subject])));
+  let x = await payOf(dana, dep);
+  r = await dana.get("/api/portal");
+  check("payments: Dana sees it due, with the date and note, and can pay", x && x.status === "open" && x.label === "$4,500.00" && x.due === "2026-12-01" && x.note === "Half now, half on delivery." && r.d.payReady === true
+    && r.d.projects.find((p) => p.id === HARBOR).caps.pay === true, J(x));
+  r = await rae.get("/api/portal");
+  check("payments: a reviewer sees it but doesn't pay", r.d.projects.find((p) => p.id === HARBOR).payments.length === 1 && r.d.projects.find((p) => p.id === HARBOR).caps.pay === false);
+  r = await rae.act("pay", { paymentId: dep });
+  check("payments: …and the server refuses if she tries", r.s === 403 && /decision makers pay/.test(r.d.error), J(r.d));
+  r = await rob.act("pay", { paymentId: dep });
+  check("payments: another client can't see or pay it", r.s === 404);
+  r = await dana.act("pay", { paymentId: dep });
+  const s1 = (await fake()).sessions.at(-1);
+  check("payments: Pay opens Stripe's checkout for exactly that amount", r.s === 200 && /^https:\/\/checkout\.stripe\.com\//.test(r.d.url) && s1.amount_total === 450000 && s1.currency === "usd"
+    && s1.metadata.payment === dep && s1.customer_email === "dana@harbor.test" && s1.success_url.includes(`/payments/${HARBOR}?paid=${dep}&session={CHECKOUT_SESSION_ID}`), J([r.d, s1]));
+  r = await dana.act("pay", { paymentId: dep });
+  check("payments: pressing Pay again reuses the same checkout (no double charge)", r.d.url === s1.url && (await fake()).sessions.length === 1);
+  r = await dana.act("payCheck", { paymentId: dep });
+  check("payments: coming back without paying changes nothing", r.s === 200 && r.d.payment.status === "open");
+  const paid = await (await fetch(B + "/__stripe/pay?session=" + s1.id)).json();
+  r = await hook("checkout.session.completed", paid, sign(JSON.stringify({ wrong: 1 })));
+  check("payments: a webhook with a bad signature is refused", r.s === 400);
+  r = await hook("checkout.session.completed", paid, sign("x", WHSEC, Math.floor(Date.now() / 1000) - 3600));
+  check("payments: …and so is an old one", r.s === 400);
+  const before2 = (await mails()).length;
+  r = await hook("checkout.session.completed", paid);
+  check("payments: Stripe's signed webhook marks it paid", r.s === 200 && r.d.changed === "paid", J(r.d));
+  r = await hook("checkout.session.completed", paid);
+  check("payments: the same event again changes nothing (nobody is told twice)", r.s === 200 && r.d.changed === null);
+  x = await payOf(dana, dep);
+  check("payments: Dana sees it paid, and by whom", x.status === "paid" && x.paidBy === "Dana Whitfield" && x.method === "stripe" && x.paidAt, J(x));
+  await new Promise((y) => setTimeout(y, 300));
+  const told = (await mails()).slice(before2);
+  check("payments: the studio is emailed that it's paid", told.some((m) => /Harbor Labs paid \$4,500\.00/.test(m.subject)), J(told.map((m) => m.subject)));
+
+  r = await admin.admin("paymentCreate", { projectId: HARBOR, title: "Balance (50%)", amount: "4500", tell: false });
+  const bal = r.d.id;
+  r = await dana.act("pay", { paymentId: bal });
+  const s2 = (await fake()).sessions.at(-1);
+  await fetch(B + "/__stripe/pay?session=" + s2.id);
+  r = await dana.act("payCheck", { paymentId: bal });
+  check("payments: coming back from Stripe marks it paid even with no webhook", r.s === 200 && r.d.payment.status === "paid", J(r.d));
+
+  r = await admin.admin("paymentCreate", { projectId: HARBOR, title: "Extra edit", amount: "750", tell: false });
+  const extra = r.d.id;
+  r = await dana.act("pay", { paymentId: extra });
+  const s3 = (await fake()).sessions.at(-1);
+  const bank = await (await fetch(B + "/__stripe/pay?bank=1&session=" + s3.id)).json();
+  r = await hook("checkout.session.completed", bank);
+  check("payments: a bank payment shows as on its way until it clears", r.d.changed === "processing" && (await payOf(dana, extra)).status === "processing", J(r.d));
+  r = await dana.act("pay", { paymentId: extra });
+  check("payments: …and can't be paid twice meanwhile", r.s === 409 && /on its way/.test(r.d.error));
+  r = await hook("checkout.session.async_payment_failed", bank);
+  check("payments: if the bank payment fails, it's open again", r.d.changed === "failed" && (await payOf(dana, extra)).status === "open", J(r.d));
+
+  r = await admin.admin("projectUpdate", { id: HARBOR, caps: { payfirst: true } });
+  r = await dana.get(`/api/media?project=${HARBOR}&video=5101`);
+  check("payments: with Downloads after payment on, an unpaid request holds downloads", r.d.downloads.held === true && r.d.downloads.links.length === 0 && r.d.downloads.payTo === `/payments/${HARBOR}`, J(r.d.downloads));
+  r = await dana.get(`/api/portal`);
+  r = await admin.get(`/api/media?project=${HARBOR}&video=5101`);
+  check("payments: …never for staff", !r.d.downloads.held && r.d.downloads.links.length > 0);
+  r = await eddie.admin("paymentMarkPaid", { id: extra, how: "Check" });
+  check("payments: an editor can't mark payments paid", r.s === 403);
+  r = await admin.admin("paymentMarkPaid", { id: extra, how: "Check" });
+  x = await payOf(dana, extra);
+  check("payments: paid another way, marked by the studio", r.s === 200 && x.status === "paid" && x.method === "outside" && /Recorded by Alexis \(Check\)/.test(x.paidBy), J(x));
+  r = await dana.get(`/api/media?project=${HARBOR}&video=5101`);
+  check("payments: once everything is paid, downloads open", !r.d.downloads.held && r.d.downloads.links.length > 0, J(r.d.downloads));
+  await admin.admin("projectUpdate", { id: HARBOR, caps: { payfirst: false } });
+
+  r = await admin.admin("paymentCreate", { projectId: HARBOR, title: "Rush fee", amount: "300", tell: false });
+  const rush = r.d.id;
+  await dana.act("pay", { paymentId: rush });
+  const s4 = (await fake()).sessions.at(-1);
+  r = await admin.admin("paymentCancel", { id: rush });
+  check("payments: canceling a request stops its checkout", r.s === 200 && (await fake()).sessions.find((y) => y.id === s4.id).status === "expired");
+  check("payments: …and the client no longer sees it", !(await payOf(dana, rush)));
+  r = await admin.admin("paymentCancel", { id: dep });
+  check("payments: a paid one can't be canceled", r.s === 409);
+
+  r = await hook("charge.refunded", { object: "charge", payment_intent: paid.payment_intent, refunded: true });
+  check("payments: a full refund in Stripe shows as refunded", r.d.changed === "refunded" && (await payOf(dana, dep)).status === "refunded", J(r.d));
+
+  r = await admin.admin("paymentCreate", { projectId: HARBOR, title: "Music license", amount: "200", tell: false });
+  const lic = r.d.id;
+  await dana.act("pay", { paymentId: lic });
+  await fetch(B + "/__stripe/pay?session=" + (await fake()).sessions.at(-1).id);
+  r = await anon.req("GET", "/api/cron", null, { authorization: "Bearer cron-secret-test" });
+  check("payments: the daily job catches a payment whose webhook never came", r.d.payments >= 1 && (await payOf(dana, lic)).status === "paid", J(r.d));
+
+  r = await admin.get("/api/admin?health=1");
+  check("payments: the system check reports Stripe", r.d.checks.some((c) => c.label === "Payments" && c.ok === true && /test mode/.test(c.detail)), J(r.d.checks.find((c) => c.label === "Payments")));
+}
 
 // ================= removing things =================
 r = await admin.admin("connectionDelete", { id: YTC });

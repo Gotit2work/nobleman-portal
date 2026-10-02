@@ -39,6 +39,7 @@ The goal: a busy executive opens an email, presses one button, and approves a fi
 - **Quiet email.** Emails link straight to the thing they're about, and nobody is emailed about activity while they're using the portal (active in the last 3 minutes).
 - **Two-step verification** (optional for clients, can be required for staff), with recovery codes.
 - **Milestone confirmation.** Staff can ask the client to confirm the next milestone (a filming day, a delivery); the client gets a **Confirm** button and staff are told.
+- **Payments.** When the studio asks for a payment, Home says **Please pay** and **Pay** opens Stripe's secure checkout (card or bank). The project page shows what's due; paid ones stay listed with who paid and when.
 
 ## Creating an account
 
@@ -59,8 +60,8 @@ Every account is **staff** or **client**, with a role inside that. Owners adjust
 | Owner | staff | Everything, including settings, connections, roles, and staff |
 | Producer | staff | Clients, people, and projects day to day; not connections, settings, staff, or deleting clients |
 | Editor | staff | Adds versions and files, answers notes and messages, updates progress |
-| Decision maker | client | Reviews, approves versions, downloads, shares, uploads, messages, and manages their team |
-| Reviewer | client | Watches and leaves notes; can't approve |
+| Decision maker | client | Reviews, approves versions, downloads, shares, uploads, messages, pays, and manages their team |
+| Reviewer | client | Watches and leaves notes; can't approve or pay (sees what's due) |
 | Viewer | client | Watches and downloads; no notes or messages |
 
 For clients, what they can do on a project is the project's switch **and** their role's permission: a decision maker can't download where Downloads is off.
@@ -82,19 +83,23 @@ Each project has its own switches (Studio → Projects → a project → "What <
 | Files from the studio | on | Documents staff add: quotes, schedules, call sheets |
 | Uploads | off | Send files, and send video to the project's Vimeo folder |
 | Messages | on | A message thread with the studio for the project |
+| Payments | on | See and pay what the studio asks for, on Stripe's checkout (needs Stripe connected) |
+| Downloads after payment | off | Finished films download only once nothing asked for is unpaid; watching is never held (needs Payments) |
 
 ## Running the studio (Studio tabs)
 
 | Tab | Who (by default) | What you do there |
 |---|---|---|
-| **Projects** | all staff | Create projects; set stage, progress, next milestone (and ask the client to confirm it), the review-by date, and send a reminder; choose the video source; see every video at the source and **hide**, **rename**, or **make it a finished film**; add videos by link; switch capabilities; archive or delete. Export all projects to a spreadsheet |
+| **Projects** | all staff | Create projects. Each project opens in parts (Details, Progress, Videos, Payments, What they can do) under one Save: stage, progress, next milestone (and ask the client to confirm it), the review-by date, and a reminder; the video source and every video at it (**hide**, **rename**, **make it a finished film**, add by link); **ask for a payment**, cancel one, or **mark it paid** another way; switch capabilities; archive or delete. Export all projects to a spreadsheet |
 | **Clients** | owners, producers | Add and edit companies (name, logo shown in their portal, email domain for joining by sign-up, private notes); **Export data** (everything the portal holds about a client, as JSON, for access requests or offboarding); delete |
 | **People** | owners, producers | **Asking to join**: let people who created an account in (company and role) or decline them. Invite people (an emailed one-time link to choose a password, also shown to copy); change role, company, or email; resend an invitation or send a reset link; log someone out everywhere; turn off two-step verification for a lost phone; remove. **What roles can do** is the roles table |
-| **Connections** | owners | Add, test, change, and remove video accounts (Vimeo, Frame.io, YouTube, Wistia), Notion, and email. Keys are encrypted and never shown again |
+| **Connections** | owners | Add, test, change, and remove video accounts (Vimeo, Frame.io, YouTube, Wistia), Notion, payments (Stripe, with its webhook address to copy), and email. Keys are encrypted and never shown again |
 | **Settings** | owners | A short list of sections, each with a one-line summary; one opens at a time. Studio name, help email, addresses, the line above Messages; the login screen's photo (one of the studio's, or an upload, resized in the browser to 2400 px and served by `GET /api/session?loginImage=<id>`; a replaced upload is deleted) and its Murphy's Law; the first-visit welcome; a notice for everyone; project stages (names, progress, order); defaults for new projects; security (require two-step verification for staff, emailed login links, how long logins last, client teams, who can create an account, joining by email domain); review reminders; **System check** |
 | **Activity** | owners, producers | Who did what and when (logins, sign-ups, views, downloads, approvals, Studio changes), filtered by kind of person, client, project, or word; export to a spreadsheet. Kept about 13 months |
 
-**System check** (first in Settings) lists anything that needs attention: missing secrets, the setup code still set, the demo still on, file storage, email, the daily job, each connection, Notion, fewer than two owners, staff without two-step verification.
+**System check** (first in Settings) lists anything that needs attention: missing secrets, the setup code still set, the demo still on, file storage, email, the daily job, each connection, payments, Notion, fewer than two owners, staff without two-step verification.
+
+**Getting started.** While a new portal is missing the essentials (file storage, email, a video source, a client, a project, an invited client), owners see a checklist on Home instead of the next step, with a link to where each one is done. It goes away by itself.
 
 ## Video sources
 
@@ -150,6 +155,20 @@ Keeps a Notion database with one row per project, updated as things happen: Name
 
 Every project is added at once. After that, changes go across within seconds, and the daily job catches up on anything that changed at the video sources. A deleted project's row moves to Notion's trash. **Stop syncing** leaves the database in Notion as it is. Notion allows about 3 requests a second per connection; the portal waits and retries when it's busy.
 
+## Payments (Stripe)
+
+The studio asks a client to pay on a project (Studio → Projects → a project → **Payments → Ask for a payment**: what it's for, the amount, an optional due date and note). The client's decision makers are emailed a link, and Home leads with **Please pay** once nothing needs reviewing first. **Pay** opens Stripe's own checkout page (card, Apple Pay, Google Pay, or bank, as switched on in Stripe), so card and bank details never reach the portal. Reviewers and viewers see what's due but can't pay.
+
+A payment is marked paid by whichever comes first, and each one is asked of Stripe, never taken from the browser:
+
+1. Stripe's **webhook** (`POST /api/connect?webhook=stripe`), checked against the connection's signing secret within five minutes of being sent;
+2. the client **coming back** from checkout (the page asks the server, which asks Stripe);
+3. the **daily job**, which asks Stripe about anything still open.
+
+A payment moves from open to paid only once, so nobody is told twice, and the amount and currency must match what was asked. Pressing **Pay** twice reuses the same checkout, so it can't charge twice. Bank payments (ACH) show as **on its way** until they clear and go back to **Due** if they fail. A full refund in Stripe shows as **Refunded**. Canceling a request stops its checkout. **Mark paid…** records a check or wire. **Downloads after payment** (a project switch) holds finished-film downloads while anything is unpaid; staff are never held.
+
+Connect it in Studio → Connections → **Payments → Connect Stripe**: the secret key (`sk_live_…`, a restricted key with Checkout Sessions: Write, or `sk_test_…` to try it), the currency, and the webhook signing secret. The card shows the webhook address and the four events to choose in Stripe. Step by step, test mode first: `docs/GO-LIVE.md`, step 12. Stripe keeps the money and the receipts; the portal stores each request (title, amount, due date, status, who paid and when, and Stripe's checkout and payment IDs).
+
 ## Email
 
 Set up in Studio → Connections → **Connect email** (Resend: an API key with sending access, and a "Send from" address on a domain verified in Resend), or with `RESEND_API_KEY` + `PORTAL_EMAIL_FROM` in Vercel. **Send a test email** checks it end to end. With email on, the portal sends:
@@ -166,7 +185,7 @@ Documents and client files live in a **private** Vercel Blob store: nothing in i
 
 ## The daily job
 
-`vercel.json` → `crons` calls `/api/cron` once a day (14:17 UTC, early morning in San Diego and Las Vegas; on Hobby it runs within that hour). Vercel sends `Authorization: Bearer <CRON_SECRET>`; without `CRON_SECRET` set the job refuses to run. It sends due review reminders, refreshes Frame.io's Adobe sign-in, catches Notion up, and prunes old records (activity after about 13 months, used or expired links after a week).
+`vercel.json` → `crons` calls `/api/cron` once a day (14:17 UTC, early morning in San Diego and Las Vegas; on Hobby it runs within that hour). Vercel sends `Authorization: Bearer <CRON_SECRET>`; without `CRON_SECRET` set the job refuses to run. It sends due review reminders, refreshes Frame.io's Adobe sign-in, catches Notion up, asks Stripe about payments still open, and prunes old records (activity after about 13 months, used or expired links after a week).
 
 ## Demo mode
 
@@ -191,22 +210,16 @@ Environment variables only apply to new deployments: **redeploy after every chan
 
 ## Going live
 
-Today the portal runs with `PORTAL_MODE=demo` and nothing else. In order:
+The full runbook, with exact Vercel, Resend, Vimeo, Notion, and Stripe steps, checks, troubleshooting, and rollback, is **`docs/GO-LIVE.md`**. In short:
 
-1. **Database.** Vercel → `nobleman-portal` → Storage → **Create Database** → Neon → region `iad1` (Washington, D.C., next to the functions) → connect it to Production and Preview. *Result:* `DATABASE_URL` appears under Settings → Environment Variables. No SQL to run: the first request creates the tables.
-2. **File storage.** Storage → **Create** → Blob → access **Private** → connect to the project. *Result:* `BLOB_READ_WRITE_TOKEN` appears.
-3. **Secrets.** Add `SESSION_SECRET`, `PORTAL_ENCRYPTION_KEY`, `CRON_SECRET`, and `BOOTSTRAP_SECRET` (Sensitive, Production and Preview). Generate each with `openssl rand -base64 48` on your own computer; never paste them into chat or email.
-4. **Go live.** Delete `PORTAL_MODE`, then Deployments → latest → **Redeploy**.
-5. **First owner.** Open the portal. It shows **Set up the portal**: enter the `BOOTSTRAP_SECRET` value as the setup code, your name, email, and a password. You're logged in as the owner. It only works while no staff account exists. Then delete `BOOTSTRAP_SECRET` and redeploy.
-6. **Two-step for yourself.** Account → **Set up two-step verification**. Save the recovery codes in your password manager.
-7. **Connections.** Studio → Connections: connect email (Resend), Vimeo (Jean's token, or have Jean do it), and Frame.io, YouTube, or Wistia if used. **Test it** on each. Connect Notion if you want tracking there.
-8. **People.** Studio → People → **Invite a person**: Jean and Justin as Owner or Producer. Make a second **Owner**, so the studio is never locked out. Once everyone on staff has two-step sign-in, Settings → Security → require it.
-9. **Projects and clients.** Studio → Projects → **New project** for each client (create the client in the same step), choose the video source, check the switches. Then invite the client's decision maker; they can add their own colleagues.
-10. **Settings → System check** shows everything green, or only suggestions you've chosen to accept.
+1. Vercel → Storage: a **Neon** database (`iad1`) and a **private Blob** store, both connected to the project.
+2. Environment variables: `SESSION_SECRET`, `PORTAL_ENCRYPTION_KEY`, `CRON_SECRET`, `BOOTSTRAP_SECRET` (Sensitive; generated on your own computer with `openssl rand -base64 48`).
+3. Delete `PORTAL_MODE`, redeploy. The address shows **Set up the portal**; the sample stays at `/demo`.
+4. Create the first owner with the setup code, then delete `BOOTSTRAP_SECRET` and redeploy. Turn on two-step verification.
+5. Studio → Connections: email (Resend), Vimeo, Notion, Stripe (test mode first, then live). **Test it** on each.
+6. Studio: staff, clients, projects, invitations. Home's **Getting started** checklist tracks it; Settings → **System check** confirms it.
 
-**Check it worked.** On a phone and a laptop: open an invitation link as a test client, choose a password, play a version, leave a note, approve it with a small fix in a test project, create and open a share link, send a message, upload a small file, download it. Studio → Activity shows each step.
-
-**Roll back.** Set `PORTAL_MODE=demo` again and redeploy: the public sample returns and nothing in the database is touched. Or Vercel → Deployments → an earlier one → **Promote to Production**. Schema changes only ever add, so an earlier deployment runs against the newer database.
+**Roll back:** set `PORTAL_MODE=demo` and redeploy (nothing in the database is touched), or promote an earlier deployment. Schema changes only ever add, so an earlier deployment runs against the newer database.
 
 ## Security model
 
@@ -242,14 +255,15 @@ The data layer is plain Postgres. To move: create the Supabase project; copy the
 | `GET /api/session` | anyone | Who's logged in; the login screen's settings (including whether sign-up is on); whether setup or two-step setup is needed |
 | `POST /api/session` | anyone / logged in | `login`, `twoStep`, `requestLink`, `signup`, `redeem` (also confirms sign-ups), `logout`, `setup`, `password`, `profile`, `twoStepBegin`, `twoStepEnable`, `twoStepDisable`, `recoveryCodes` |
 | `GET /api/portal` | logged in | Everything this person can see; `?demo=1` or `?demo=studio` (anyone), `?thread=`, `?notes=&video=`, `?shares=`, `?team=1` |
-| `POST /api/portal` | logged in | `note`, `resolve`, `deleteNote`, `decide`, `message`, `deleteMessage`, `seen`, `downloaded`, `confirmNext`, `shareCreate`, `shareRevoke`, `teamAdd`, `teamUpdate`, `teamRemove` |
+| `POST /api/portal` | logged in | `note`, `resolve`, `deleteNote`, `decide`, `message`, `deleteMessage`, `seen`, `downloaded`, `confirmNext`, `shareCreate`, `shareRevoke`, `teamAdd`, `teamUpdate`, `teamRemove`, `pay` (a Stripe checkout address), `payCheck` (back from checkout) |
 | `GET /api/media` | logged in | Downloads, captions, chapters for one video; `&play=1` for a fresh playback address |
 | `POST /api/media` | logged in | `uploadStart`, `uploadDone`, `uploadCancel` (Vimeo) |
 | `GET/POST /api/files` | logged in | Signed download link; `start`, `done`, `cancel`, `delete` (Blob) |
 | `GET /api/share` | anyone with a link | One shared film; `&play=1` for a fresh playback address |
 | `GET /api/connect` | owners | Frame.io's Adobe sign-in (start and return) |
+| `POST /api/connect?webhook=stripe` | Stripe | Payment events, signed with the webhook secret |
 | `GET /api/cron` | Vercel | The daily job (needs `CRON_SECRET`) |
-| `GET/POST /api/admin` | staff, by role | Overview, `?demo=1` (sample data, anyone), `?sources=`, `?videos=`, `?audit=`, `?export=`, `?notion=`, `?health=1`; client, person, account request (`signupApprove`, `signupDecline`), project, video, connection, Notion, settings, and roles actions (`api/admin.js`, `api/_admin_more.js`) |
+| `GET/POST /api/admin` | staff, by role | Overview, `?demo=1` (sample data, anyone), `?sources=`, `?videos=`, `?audit=`, `?export=`, `?notion=`, `?health=1`; client, person, account request (`signupApprove`, `signupDecline`), project, video, payment (`paymentCreate`, `paymentCancel`, `paymentMarkPaid`), connection, Notion, settings, and roles actions (`api/admin.js`, `api/_admin_more.js`) |
 
 ## Testing
 
@@ -257,7 +271,7 @@ The data layer is plain Postgres. To move: create the Supabase project; copy the
 
 ```bash
 npm ci && (cd tests && npm ci)
-cd tests && npm test        # 265 API checks, then 124 browser checks (desktop and phone)
+cd tests && npm test        # 303 API checks, then 130 browser checks (desktop and phone)
 npm run shots               # screenshots of every screen in tests/.work/shots
 ```
 

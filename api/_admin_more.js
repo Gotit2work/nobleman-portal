@@ -11,7 +11,8 @@ import { ROLE_DEFAULTS, STAFF_PERMS, CLIENT_PERMS, can, isStaff } from "./_roles
 import { listConnections, getConnection, createConnection, updateConnection, deleteConnection, forgetConnections } from "./_connections.js";
 import { PROVIDERS, VIDEO } from "./_providers/index.js";
 import * as notion from "./_notion.js";
-import { emailReady, sendEmail, layout } from "./_notify.js";
+import { emailReady, sendEmail, layout, notify, originOf } from "./_notify.js";
+import { stripeConnection, liveMode, currencyOf, parseAmount, money, expire } from "./_payments.js";
 import { audit } from "./_audit.js";
 import { later } from "./_later.js";
 import { SCHEMA_VERSION } from "./_schema.js";
@@ -74,7 +75,7 @@ export const MORE_GETS = {
       if (!c) return res.status(404).json({ error: "That client was removed." });
       const ps = await sql`select * from projects where client_id = ${c.id}`;
       const ids = ps.map((p) => p.id);
-      const [people, comments, approvals, messages, files, uploads, shares, log] = await Promise.all([
+      const [people, comments, approvals, messages, files, uploads, shares, log, payments] = await Promise.all([
         sql`select id, email, name, title, access, created_at, last_login_at, notify_email, totp_enabled from users where client_id = ${c.id}`,
         ids.length ? sql`select id, project_id, video_id, version, at_seconds, body, parent_id, author_name, author_role, resolved, created_at from comments where project_id = any(${ids})` : [],
         ids.length ? sql`select project_id, video_id, version, decision, note, user_name, created_at from approvals where project_id = any(${ids})` : [],
@@ -83,13 +84,14 @@ export const MORE_GETS = {
         ids.length ? sql`select project_id, name, size, status, uploader_name, created_at from video_uploads where project_id = any(${ids})` : [],
         ids.length ? sql`select project_id, title, created_by_name, created_at, expires_at, revoked_at, views from share_links where project_id = any(${ids})` : [],
         sql`select at, actor_name, action, summary, ip from audit_log where client_id = ${c.id} order by at`,
+        ids.length ? sql`select project_id, title, amount, currency, due, status, method, paid_at, paid_by_name, created_at from payments where project_id = any(${ids})` : [],
       ]);
       await audit(req, u, "export", `Exported all data for ${c.name}`, { clientId: c.id });
       const body = JSON.stringify({
         exported: new Date().toISOString(), studio: s.brand.studio,
         client: { id: c.id, name: c.name, created: iso(c.created_at) },
         people, projects: ps.map((p) => ({ id: p.id, title: p.title, type: p.type, summary: p.summary, created: iso(p.created_at), archived: p.archived })),
-        comments, approvals, messages, files, videoUploads: uploads, shareLinks: shares, activity: log,
+        comments, approvals, messages, files, videoUploads: uploads, shareLinks: shares, payments, activity: log,
         note: "Files and videos themselves are not included; they can be downloaded from the portal or the video host.",
       }, null, 2);
       return download(res, `${c.name.replace(/[^\w-]+/g, "-")}-data-${stamp()}.json`, "application/json; charset=utf-8", body);
@@ -126,6 +128,7 @@ export const MORE_GETS = {
       { label: "Email", ok: (await emailReady()) ? true : "warn", detail: (await emailReady()) ? "Connected: invitations, login links, reminders, receipts, and updates go out." : "Not connected: invitations are copied by hand and nobody gets updates. Studio → Connections → Email." },
       { label: "Daily job", ok: process.env.CRON_SECRET ? true : "warn", detail: process.env.CRON_SECRET ? "CRON_SECRET is set: reminders, Notion catch-up, and Frame.io sign-in refresh run daily." : "Set CRON_SECRET in Vercel so the daily job (reminders, Notion catch-up, Frame.io refresh) can run." },
       ...conns.filter((c) => PROVIDERS[c.provider] && PROVIDERS[c.provider].meta.kind === "video").map((c) => ({ label: c.name, ok: c.status === "ok" ? true : false, detail: c.status === "ok" ? `${PROVIDERS[c.provider].meta.name}: working${c.env ? " (from Vercel settings)" : ""}.` : `${PROVIDERS[c.provider].meta.name}: ${c.lastError || "not working"}` })),
+      await paymentsCheck(),
       { label: "Notion", ok: !s.notion.dataSourceId ? "warn" : s.notion.lastError ? false : true, detail: !s.notion.dataSourceId ? "Not set up." : s.notion.lastError ? `Last sync failed: ${s.notion.lastError}` : `Syncing to ${s.notion.title || "your database"}${s.notion.lastSync ? ", last at " + iso(s.notion.lastSync) : ""}.` },
       { label: "Owners", ok: owners[0].n >= 2 ? true : "warn", detail: owners[0].n >= 2 ? `${owners[0].n} owners.` : "Only one owner. Make a second person an owner so the studio is never locked out." },
       { label: "Staff two-step verification", ok: staffNo2[0].n === 0 ? true : "warn", detail: staffNo2[0].n === 0 ? "Every staff account uses it." : `${staffNo2[0].n} staff ${staffNo2[0].n === 1 ? "account doesn’t" : "accounts don’t"} use two-step verification. Settings → Security can require it.` },
@@ -172,6 +175,21 @@ const CLEAN = {
   reminders: (v, cur) => ({ enabled: bool(v.enabled, cur.enabled), daysBefore: int(v.daysBefore, 0, 14, cur.daysBefore) }),
 };
 const bad = (msg) => Object.assign(new Error(msg), { status: 400 });
+
+/** System check: payments. */
+async function paymentsCheck() {
+  const c = await stripeConnection();
+  if (!c) return { label: "Payments", ok: "warn", detail: "Not set up. Studio → Connections → Payments (Stripe) lets clients pay deposits and balances in the portal." };
+  if (c.status !== "ok") return { label: "Payments", ok: false, detail: `Stripe: ${c.lastError || "not working"}` };
+  return { label: "Payments", ok: c.creds.webhookSecret ? true : "warn", detail: `Stripe ${liveMode(c) ? "live" : "test"} mode, ${currencyOf(c).toUpperCase()}.${c.creds.webhookSecret ? " Webhook connected." : " Add the webhook signing secret so payments are marked paid even if the client closes the page."}` };
+}
+
+/** One payment with its project, for the staff actions below. */
+async function paymentRow(id) {
+  if (!isUuid(id)) return null;
+  return (await sql`select pay.*, p.title as project_title, p.client_id, p.capabilities, c.name as client_name
+    from payments pay join projects p on p.id = pay.project_id join clients c on c.id = p.client_id where pay.id = ${id}`)[0] || null;
+}
 
 /** A replaced login photo that staff uploaded is deleted from file storage; the portal's own photos stay. */
 async function dropLoginImage(image) {
@@ -244,12 +262,64 @@ export const MORE_ACTIONS = {
     return res.status(200).json({ ok: true });
   },
 
+  // ---------- payments (Stripe; _payments.js) ----------
+  /** Asks the client to pay: what for, how much, and by when. The client is emailed a link to pay. */
+  async paymentCreate(req, res, u, b, s, deny) {
+    if (deny("payments.manage")) return;
+    const conn = await stripeConnection();
+    if (!conn) return res.status(409).json({ error: "Connect Stripe first (Studio → Connections → Payments)." });
+    if (!isUuid(b.projectId)) return res.status(400).json({ error: "That project isn’t valid." });
+    const p = (await sql`select p.*, c.name as client_name from projects p join clients c on c.id = p.client_id where p.id = ${b.projectId}`)[0];
+    if (!p) return res.status(404).json({ error: "That project was removed." });
+    const title = text(b.title, 120);
+    if (!title) return res.status(400).json({ error: "Say what it’s for, like “Deposit (50%)”." });
+    const amount = parseAmount(b.amount);
+    if (!amount) return res.status(400).json({ error: "Enter an amount between 0.50 and 999,999.99." });
+    const due = /^\d{4}-\d{2}-\d{2}$/.test(String(b.due || "")) ? b.due : null;
+    const currency = currencyOf(conn);
+    const [row] = await sql`insert into payments (project_id, title, amount, currency, due, note, created_by, created_by_name)
+      values (${p.id}, ${title}, ${amount}, ${currency}, ${due}, ${longText(b.note, 600) || null}, ${u.id}, ${u.name}) returning id`;
+    await sql`update projects set updated_at = now() where id = ${p.id}`;
+    const label = money(amount, currency);
+    await audit(req, u, "payment.request", `Asked ${p.client_name} to pay ${label}: ${title}`, { projectId: p.id, clientId: p.client_id });
+    const origin = originOf(req);
+    if (b.tell !== false) await later(() => notify({ audience: "client", project: p, actor: u, origin, need: "payments", path: `/payments/${p.id}`, button: `Pay ${label}`,
+      subject: `${s.brand.studio}: ${title}, ${label}`, lines: [`${title} for ${p.title}: ${label}${due ? `, due ${new Date(due + "T12:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric" })}` : ""}.`, b.note ? text(b.note, 600) : "", "You can pay by card or bank on Stripe’s secure checkout. The portal never sees your card details."] }), "notify");
+    return res.status(201).json({ id: row.id, label });
+  },
+
+  /** Takes back a request that hasn't been paid. An open checkout is stopped so it can't be paid any more. */
+  async paymentCancel(req, res, u, b, s, deny) {
+    if (deny("payments.manage")) return;
+    const pay = await paymentRow(b.id);
+    if (!pay) return res.status(404).json({ error: "That payment was removed." });
+    if (pay.status !== "open") return res.status(409).json({ error: pay.status === "processing" ? "A bank payment is already on its way for this one. Refund it in Stripe if you need to." : "Only an unpaid request can be canceled." });
+    await expire(await stripeConnection(), pay);
+    await sql`update payments set status = 'canceled', updated_at = now() where id = ${pay.id} and status = 'open'`;
+    await audit(req, u, "payment.cancel", `Canceled the request for ${money(pay.amount, pay.currency)}: ${pay.title}`, { projectId: pay.project_id, clientId: pay.client_id });
+    return res.status(200).json({ ok: true });
+  },
+
+  /** Paid another way (a check, a wire): marks it paid so the client sees it and anything held opens. */
+  async paymentMarkPaid(req, res, u, b, s, deny) {
+    if (deny("payments.manage")) return;
+    const pay = await paymentRow(b.id);
+    if (!pay) return res.status(404).json({ error: "That payment was removed." });
+    if (pay.status !== "open") return res.status(409).json({ error: "Only an unpaid request can be marked paid." });
+    await expire(await stripeConnection(), pay);
+    const how = text(b.how, 80) || "another way";
+    await sql`update payments set status = 'paid', method = 'outside', paid_at = now(), paid_by_name = ${`Recorded by ${u.name} (${how})`}, updated_at = now()
+              where id = ${pay.id} and status = 'open'`;
+    await audit(req, u, "payment.outside", `Marked ${money(pay.amount, pay.currency)} paid (${how}): ${pay.title}`, { projectId: pay.project_id, clientId: pay.client_id });
+    return res.status(200).json({ ok: true });
+  },
+
   // ---------- connections ----------
   async connectionCreate(req, res, u, b, s, deny) {
     if (deny("connections.manage")) return;
     const prov = PROVIDERS[b.provider];
     if (!prov || prov.meta.builtin) return res.status(400).json({ error: "Choose what to connect." });
-    if (["notion", "resend"].includes(prov.meta.key) && (await listConnections()).some((c) => c.provider === prov.meta.key && !c.env)) {
+    if (["notion", "resend", "stripe"].includes(prov.meta.key) && (await listConnections()).some((c) => c.provider === prov.meta.key && !c.env)) {
       return res.status(409).json({ error: `${prov.meta.name} is already connected. Edit that connection instead.` });
     }
     const { creds, config, missing } = splitFields(prov.meta, b.values || {}, {});

@@ -1,5 +1,6 @@
 // Home (your next step, your projects, the latest activity) and a single project's page.
 import { html, useApp, useState, api, Icon, Head, Empty, Link, Stages, Avatar, greeting, firstName, fmtAgo, fmtDay, plural, isStaff } from "./ui.js";
+import { money, openOf } from "./payments.js";
 
 const POSTER = "/media/screening-poster.jpg";
 
@@ -36,6 +37,11 @@ export function nextStep(data) {
       btn: `Watch Version ${v.n}`, to: `/review/${p.id}/${encodeURIComponent(c.key)}/${v.n}`,
     };
   }
+  // Something to pay: the oldest open request on a project where this person pays.
+  for (const p of ps) if (p.caps.pay && data.payReady) {
+    const x = openOf(p).filter((y) => y.status === "open").pop();
+    if (x) return { title: `Please pay: ${x.title}, ${x.label}.`, text: `For ${p.title}${x.due ? `, due ${fmtDay(x.due)}` : ""}. You pay on Stripe’s secure checkout, by card or bank.`, btn: `Pay ${x.label}`, to: `/payments/${p.id}` };
+  }
   const confirm = ps.find((p) => p.next.confirm && !p.next.confirmedAt && p.caps.approve);
   if (confirm) return { title: `Please confirm: ${confirm.next.label || "next step"}${confirm.next.date ? ", " + confirm.next.date : ""}.`, text: confirm.next.what || confirm.title, confirm: confirm.id };
   const unread = ps.find((p) => p.messages && p.messages.unread);
@@ -70,6 +76,35 @@ function NextCard({ step }) {
       ${step.text ? html`<p>${step.text}</p>` : null}
     </div>
     ${step.confirm ? html`<${ConfirmButton} projectId=${step.confirm} label="Confirm it" />` : step.btn ? html`<${Link} to=${step.to} cls="btn primary lg">${step.btn} →<//>` : null}
+  </section>`;
+}
+
+/** A new portal's first steps, for owners. It goes away by itself once the essentials are done. */
+const setupDone = (s) => s.video && s.email && s.storage && s.clients > 0 && s.projects > 0 && s.people > 0;
+function GettingStarted({ s }) {
+  const steps = [
+    { done: s.storage, t: "Connect file storage", d: "Vercel → the portal project → Storage → Blob (private). Then redeploy.", to: "/studio/settings/check" },
+    { done: s.email, t: "Connect email", d: "Resend sends invitations, login links, reminders, and receipts.", to: "/studio/connections" },
+    { done: s.video, t: "Connect where your videos live", d: "Vimeo, Frame.io, YouTube, or Wistia. Or skip it and paste video links on a project.", to: "/studio/connections" },
+    { done: s.clients > 0, t: "Add your first client", d: "A company. Its people only ever see its own projects.", to: "/studio/clients" },
+    { done: s.projects > 0, t: "Create your first project", d: "Pick the client, where its videos come from, and what they can do.", to: "/studio/projects" },
+    { done: s.people > 0, t: "Invite the client", d: "They get an email with a link to choose their password.", to: "/studio/people" },
+    { done: s.payments, t: "Connect Stripe (optional)", d: "So clients can pay deposits and balances in the portal.", to: "/studio/connections", optional: true },
+    { done: s.notion, t: "Connect Notion (optional)", d: "Keeps one row per project up to date in your Notion.", to: "/studio/connections", optional: true },
+    { done: s.owners > 1, t: "Make a second owner (recommended)", d: "So the studio is never locked out.", to: "/studio/people", optional: true },
+  ];
+  const need = steps.filter((x) => !x.optional);
+  return html`<section class="card pad stack setup" aria-label="Getting started" style=${{ gap: "14px" }}>
+    <div class="stack" style=${{ gap: "4px" }}>
+      <span class="eyebrow"><span>Getting started</span><span class="dot" aria-hidden="true"></span></span>
+      <div class="h2">Set up the portal: ${need.filter((x) => x.done).length} of ${need.length} done.</div>
+      <span class="muted small">This list goes away once the essentials are done. Everything here is also in Studio.</span>
+    </div>
+    <div class="list">${steps.map((x) => html`<${Link} key=${x.t} to=${x.to} cls=${"li step" + (x.done ? " done" : "")}>
+      <i class="tick" aria-hidden="true">${x.done ? "✓" : ""}</i>
+      <div class="grow"><div class="name">${x.t}</div><div class="meta">${x.d}</div></div>
+      <span class="sr">${x.done ? "Done" : "Not done yet"}</span>${x.done ? null : html`<span aria-hidden="true">→</span>`}
+    <//>`)}</div>
   </section>`;
 }
 
@@ -168,10 +203,11 @@ function StaffBoard({ projects }) {
     if (v.comments.open && !(v.decision && v.decision.decision === "changes")) onUs.push({ p, c, v, since: v.video.created, what: plural(v.comments.open, "open note") });
   }
   for (const p of projects) if (p.messages && p.messages.unread) onUs.push({ p, msg: true, what: plural(p.messages.unread, "unread message") });
+  for (const p of projects) for (const x of openOf(p)) onClient.push({ p, pay: x, since: x.created });
   if (!onClient.length && !onUs.length) return null;
-  const row = (x, i) => html`<${Link} key=${i} to=${x.msg ? `/messages/${x.p.id}` : `/review/${x.p.id}/${encodeURIComponent(x.c.key)}/${x.v.n}`} cls="li">
-    <div class="grow"><div class="name">${x.msg ? x.p.title : `${x.c.title}, Version ${x.v.n}`} <span class="muted">· ${x.p.clientName}</span></div>
-      <div class="meta">${x.what || (x.p.reviewDue ? `Review by ${fmtDay(x.p.reviewDue)}` : "Waiting for review")}${x.since ? " · " + fmtAgo(x.since) : ""}${!x.what && x.p.remindedAt ? " · reminded " + fmtAgo(x.p.remindedAt) : ""}</div></div>
+  const row = (x, i) => html`<${Link} key=${i} to=${x.msg ? `/messages/${x.p.id}` : x.pay ? `/studio/projects/${x.p.id}` : `/review/${x.p.id}/${encodeURIComponent(x.c.key)}/${x.v.n}`} cls="li">
+    <div class="grow"><div class="name">${x.msg ? x.p.title : x.pay ? `${x.pay.title}, ${x.pay.label}` : `${x.c.title}, Version ${x.v.n}`} <span class="muted">· ${x.p.clientName}</span></div>
+      <div class="meta">${x.pay ? (x.pay.status === "processing" ? "Bank payment on its way" : x.pay.due ? `To pay by ${fmtDay(x.pay.due)}` : "Waiting for payment") : x.what || (x.p.reviewDue ? `Review by ${fmtDay(x.p.reviewDue)}` : "Waiting for review")}${x.since ? " · " + fmtAgo(x.since) : ""}${!x.what && !x.pay && x.p.remindedAt ? " · reminded " + fmtAgo(x.p.remindedAt) : ""}</div></div>
     <span aria-hidden="true">→</span>
   <//>`;
   return html`<section class="section"><div class="grid c2 board">
@@ -192,7 +228,7 @@ export function Home() {
       <span class="hide-phone">${admin ? "Here’s what’s happening across your clients." : demo ? "Here’s where your production stands. (A sample project: click anything.)" : "Here’s where your production stands."}</span>
     <//>
     ${!admin && data.welcome ? html`<${Welcome} w=${data.welcome} />` : null}
-    <${NextCard} step=${step} />
+    ${admin && data.setup && !setupDone(data.setup) ? html`<${GettingStarted} s=${data.setup} />` : html`<${NextCard} step=${step} />`}
     ${admin ? html`<${StaffBoard} projects=${data.projects} />` : null}
     ${data.projects.length ? html`<section class="section">
       <div class="sh"><span class="eyebrow"><span>${admin ? "Active projects" : data.projects.length > 1 ? "Your projects" : "Your project"}</span></span>
@@ -217,6 +253,10 @@ export function Project({ id }) {
   if (p.caps.review) tiles.push({ to: `/review/${p.id}`, icon: "play", t: "Review", d: p.cuts.length ? `${plural(p.cuts.length, "film")} in review${wait ? `, ${wait} waiting for ${admin ? "the client" : "you"}` : ""}` : "No versions yet" });
   tiles.push({ to: `/films/${p.id}`, icon: "growth", t: "Films", d: p.films.length ? plural(p.films.length, "finished film") : "None delivered yet" });
   if (p.caps.files || p.caps.upload) tiles.push({ to: `/files/${p.id}`, icon: "send", t: "Files", d: p.files.length + p.videoUploads.length ? plural(p.files.length + p.videoUploads.length, "file") : "No files yet" });
+  if (p.caps.payments && (p.payments || []).length) {
+    const open = openOf(p);
+    tiles.push({ to: `/payments/${p.id}`, icon: "key", t: "Payments", d: open.length ? `${money(open.reduce((n, x) => n + x.amount, 0), open[0].currency)} due` : "Everything is paid" });
+  }
   if (p.caps.messages) tiles.push({ to: `/messages/${p.id}`, icon: "bottle", t: "Messages", d: p.messages.unread ? plural(p.messages.unread, "new message") : p.messages.total ? plural(p.messages.total, "message") : "Start a conversation" });
   return html`<div class="page">
     <div class="pcard" style=${{ cursor: "default", marginBottom: "28px" }}>

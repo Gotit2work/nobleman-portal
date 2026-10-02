@@ -6,6 +6,7 @@ import * as frameio from "./frameio.js";
 import * as youtube from "./youtube.js";
 import * as wistia from "./wistia.js";
 import * as links from "./links.js";
+import * as stripe from "../_payments.js";
 
 export const VIDEO = { vimeo, frameio, youtube, wistia, links };
 
@@ -30,6 +31,9 @@ export const OTHER = {
     },
   },
 };
+
+// Payments: Stripe's module is the connection (meta, test) and the payment logic (_payments.js).
+OTHER.stripe = stripe;
 
 export const PROVIDERS = { ...VIDEO, ...OTHER };
 
