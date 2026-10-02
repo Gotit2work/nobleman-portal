@@ -6,7 +6,7 @@
 //   Connections  video sources, Notion, email, file storage     (studio-connect.js)
 //   Settings     brand, login screen, stages, defaults, security, reminders, system check (studio-settings.js)
 //   Activity     who did what, filterable, exportable           (studio-settings.js)
-import { html, useApp, useState, useEffect, api, Head, Empty, Link, Field, Toggle, Modal, Confirm, Icon, fmtDate, fmtAgo, fmtDay, plural, can } from "./ui.js";
+import { html, useApp, useState, useEffect, api, Head, Empty, Link, Field, Toggle, Modal, Confirm, More, Icon, fmtDate, fmtAgo, fmtDay, plural, can } from "./ui.js";
 import { Clients, People } from "./studio-people.js";
 import { Connections } from "./studio-connect.js";
 import { Settings, Activity } from "./studio-settings.js";
@@ -95,6 +95,7 @@ function SourcePicker({ d, value, onChange, projects, selfId, disabled }) {
   const prov = conn ? providerOf(d, conn.provider) : null;
   const [list, setList] = useState(null);
   const [err, setErr] = useState("");
+  const [paste, setPaste] = useState(false);
   const load = async () => {
     if (!conn || !prov || !prov.source) return;
     setList(null); setErr("");
@@ -121,13 +122,16 @@ function SourcePicker({ d, value, onChange, projects, selfId, disabled }) {
           ${ref && !known ? html`<option value="__typed">${prov.source.label} ${ref}</option>` : null}
         </select>
       <//>` : null}
-      <${Field} label=${list && list.length ? `Or paste the ${prov.source.label.toLowerCase()} ID` : `${prov.source.label} ID`} hint=${prov.source.help}>
+      ${!list || !list.length || paste || (ref && !known) ? html`<${Field} label=${list && list.length ? `Or paste the ${prov.source.label.toLowerCase()} ID` : `${prov.source.label} ID`} hint=${prov.source.help}>
         <input class="input mono" disabled=${disabled} value=${ref} placeholder=${prov.source.placeholder} onInput=${(e) => onChange({ conn: connId, ref: e.target.value.trim() })} />
-      <//>
+      <//>` : null}
       ${err ? html`<span class="small muted">${err}</span>` : null}
-      ${list ? html`<button type="button" class="link small" style=${{ alignSelf: "flex-start" }} onClick=${load}>Refresh the list</button>` : html`<span class="faint small">Loading from ${prov.name}…</span>`}` : null}
+      ${list ? html`<div class="row small" style=${{ gap: "16px" }}>
+        <button type="button" class="link small" onClick=${load}>Refresh the ${prov.source.label.toLowerCase()} list</button>
+        ${list.length && !paste && !(ref && !known) ? html`<button type="button" class="link small" onClick=${() => setPaste(true)}>Paste an ID instead</button>` : null}
+      </div>` : html`<span class="faint small">Loading from ${prov.name}…</span>`}` : null}
     ${connId === "links" ? html`<span class="muted small" style=${{ lineHeight: 1.6 }}>After saving, add each video under Videos by pasting its link: YouTube, Vimeo, Google Drive, Loom, Wistia, Dropbox, or a video file.</span>` : null}
-    ${prov && prov.features && prov.features.versions ? html`<span class="faint small" style=${{ lineHeight: 1.6 }}>Versions: ${prov.features.versions}</span>` : null}
+    ${connId ? html`<span class="muted small" style=${{ lineHeight: 1.6 }}>${(prov && prov.features && prov.features.versions) || "Name versions “Title V2”, “Title V3”."} Versions go to Review, where the client sees only the newest; everything else is a finished film.</span>` : null}
   </div>`;
 }
 
@@ -292,7 +296,6 @@ function ProjectEdit({ id, admin }) {
     ${part === "videos" ? html`<section class="card pad stack" style=${{ gap: "16px" }}>
       <div class="h3">Video source</div>
       <${SourcePicker} d=${d} value=${f.source} disabled=${!mayEdit} onChange=${(v) => setF({ ...f, source: v })} projects=${d.projects} selfId=${id} />
-      <p class="muted small" style=${{ margin: 0, lineHeight: 1.55 }}>A title with a version number (“Harbor Spot V2”) goes to Review, where the client sees only the newest. Everything else goes to Films.</p>
     </section>
     ${src.source && !sourceChanged ? html`<${Videos} p=${src} admin=${admin} />` : null}` : null}
 
@@ -335,7 +338,7 @@ function Progress({ f, setF, src, d, may, admin }) {
       <${Field} label="Next milestone: label" hint="For example “Next filming day” or “Next”."><input class="input" disabled=${!may} value=${n.label} onInput=${(e) => setN("label", e.target.value)} /><//>
       <${Field} label="When" hint="Plain words are fine: “October 9”, “early next week”."><input class="input" disabled=${!may} value=${n.date} onInput=${(e) => setN("date", e.target.value)} /><//>
       <${Field} label="What happens"><input class="input" disabled=${!may} value=${n.what} onInput=${(e) => setN("what", e.target.value)} placeholder="Version 2 ready to watch" /><//>
-      <${Field} label="Progress shown (%)" hint="0 = set from the stage."><input class="input" type="number" min="0" max="100" disabled=${!may} value=${f.pct} onInput=${(e) => setF({ ...f, pct: Number(e.target.value) || 0 })} /><//>
+      <${Field} label="Progress shown (%)" hint="Leave it empty to follow the stage."><input class="input" type="number" min="0" max="100" placeholder="From the stage" disabled=${!may} value=${f.pct || ""} onInput=${(e) => setF({ ...f, pct: Number(e.target.value) || 0 })} /><//>
     </div>
     <div class="cap" style=${{ maxWidth: "720px" }}>
       <${Toggle} checked=${!!n.confirm} disabled=${!may} onChange=${(v) => setN("confirm", v)} label="Ask the client to confirm" />
@@ -451,16 +454,16 @@ function Videos({ p, admin }) {
           <div class="vthumb" style=${{ backgroundImage: v.thumbnail ? `url('${v.thumbnail}')` : "none" }}></div>
           <div class="grow" style=${{ minWidth: "200px" }}>
             <div class="name">${v.title}</div>
-            <div class="meta row" style=${{ gap: "6px" }}>${kindPill(v)}${newest ? html`<span class="faint">newest</span>` : null}${v.hidden ? html`<span class="pill">Hidden from the client</span>` : null}${v.forcedFilm ? html`<span class="faint">marked as a film</span>` : null}
+            <div class="meta row" style=${{ gap: "6px" }}>${kindPill(v)}${newest ? html`<span class="faint">newest</span>` : null}${v.hidden ? html`<span class="warn-text">hidden from the client</span>` : null}${v.forcedFilm ? html`<span class="faint">marked as a film</span>` : null}
               <span>${[v.durationLabel, v.created ? fmtDate(v.created) : "", v.ready === false ? "still processing" : ""].filter(Boolean).join(" · ")}</span></div>
           </div>
-          ${may ? html`<div class="row" style=${{ gap: "6px" }}>
-            <button class="btn ghost sm" disabled=${busy} onClick=${() => set(v, { hidden: !v.hidden }, v.hidden ? "The client can see it again." : "Hidden from the client.")}>${v.hidden ? "Show" : "Hide"}</button>
-            <button class="btn ghost sm" onClick=${() => setRenaming({ v, title: v.title })}>Rename</button>
-            ${v.kind === "version" || v.forcedFilm ? html`<button class="btn ghost sm" disabled=${busy} onClick=${() => set(v, { kind: v.forcedFilm ? "auto" : "film" }, v.forcedFilm ? "Its name decides again." : "It’s now a finished film.")}>${v.forcedFilm ? "Go by its name" : "Make it a finished film"}</button>` : null}
-            ${v.linkId ? html`<button class="btn ghost sm" onClick=${() => setRemoving(v)}>Remove</button>` : null}
-            ${v.manage ? html`<a class="btn ghost sm" href=${v.manage} target="_blank" rel="noopener" aria-label=${"Open " + v.title + " at the source"}>↗</a>` : null}
-          </div>` : null}
+          ${may ? html`<${More} items=${[
+            [v.hidden ? "Show to the client" : "Hide from the client", () => set(v, { hidden: !v.hidden }, v.hidden ? "The client can see it again." : "Hidden from the client.")],
+            ["Rename for the client", () => setRenaming({ v, title: v.title })],
+            (v.kind === "version" || v.forcedFilm) && [v.forcedFilm ? "Go by its name" : "Make it a finished film", () => set(v, { kind: v.forcedFilm ? "auto" : "film" }, v.forcedFilm ? "Its name decides again." : "It’s now a finished film.")],
+            v.manage && ["Open at the source ↗", () => window.open(v.manage, "_blank", "noopener")],
+            v.linkId && ["Remove", () => setRemoving(v)],
+          ].filter(Boolean)} />` : null}
         </div>`;
   return html`<section class="card pad stack section" style=${{ gap: "14px", marginTop: "16px" }}>
     <div class="row" style=${{ justifyContent: "space-between" }}>

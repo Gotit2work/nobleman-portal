@@ -41,6 +41,7 @@ Client portal for Nobleman Productions at `portal.noblemanproductions.gotit2work
 ## Conventions — keep these when changing the UI
 
 - One door for everyone: the login never says "client". Say "log in" / "log out" / "login link" and "two-step verification" (Adobe's own "Sign in with Adobe" stays).
+- Keep screens simple: at most one or two buttons per row (rarer actions go in the shared `More` menu in `ui.js`), one status flag per project card, plain text over capsules, and setup steps or rare forms folded away until asked for. The browser tests check People rows, video rows, project cards, and the Account password form.
 - `docs/manual/` (manual.html → Nobleman-Portal-Manual.pdf via `node docs/manual/build.mjs`) describes every feature, button name, and default. When a change alters one, update the page and rebuild the PDF in the same change.
 - Every word a client sees follows `docs/WRITING.md`: plain words, buttons named for the action, no promise that isn't always true, confirmation before anything hard to undo (`Confirm`; typed name for deletes). Say "the studio", not a person's name; the name lives in settings (`brand`).
 - Demo actions go through `say(real, demo)`, which shows "Demo only: …". Never let the demo call the API's write actions.
@@ -58,4 +59,4 @@ Client portal for Nobleman Productions at `portal.noblemanproductions.gotit2work
 
 ## Verifying changes
 
-`cd tests && npm test` (README, "Testing") starts three local servers with PGlite and fakes for every provider, then runs 303 API checks and 130 browser checks on desktop and phone. `npm run shots` captures every screen (desktop 1440, phone 390) into `tests/.work/shots`. Look at the screenshots after any visual change; fonts from Google may be missing in a sandbox. Before shipping, `npx vercel build` with a hand-written `.vercel/project.json` (`{"projectId":"x","orgId":"y","settings":{"framework":null}}`), confirm 8 functions and the cron in `.vercel/output/config.json`, then delete `.vercel/`.
+`cd tests && npm test` (README, "Testing") starts three local servers with PGlite and fakes for every provider, then runs 303 API checks and 134 browser checks on desktop and phone. `npm run shots` captures every screen (desktop 1440, phone 390) into `tests/.work/shots`. Look at the screenshots after any visual change; fonts from Google may be missing in a sandbox. Before shipping, `npx vercel build` with a hand-written `.vercel/project.json` (`{"projectId":"x","orgId":"y","settings":{"framework":null}}`), confirm 8 functions and the cron in `.vercel/output/config.json`, then delete `.vercel/`.

@@ -1,5 +1,5 @@
 // Studio → Clients and Studio → People (with the roles table). See studio.js for the shell.
-import { html, useApp, useState, api, Head, Empty, Link, Field, Toggle, Modal, Confirm, copy, fmtDate, fmtAgo, plural } from "./ui.js";
+import { html, useApp, useState, api, Head, Empty, Link, Field, Toggle, Modal, Confirm, More, copy, fmtDate, fmtAgo, plural } from "./ui.js";
 import { ClientPicker, useRun } from "./studio.js";
 
 // ---------- clients ----------
@@ -184,16 +184,17 @@ export function People({ admin, view }) {
   const { d } = admin;
   const { run, busy } = useRun(admin);
   const query = new URLSearchParams(location.search);
-  const [filter, setFilter] = useState(view === "roles" ? "roles" : query.get("client") ? "client" : "all");
-  const [clientId, setClientId] = useState(query.get("client") || "");
-  const [q, setQ] = useState("");
+  const clientId = query.get("client") || "";
+  const [roles, setRoles] = useState(view === "roles");
+  const [filter, setFilter] = useState(clientId ? "client" : "all");
+  const [q, setQ] = useState(() => (d.clients.find((c) => c.id === clientId) || {}).name || "");
   const [form, setForm] = useState(null);
   const [linkOut, setLinkOut] = useState(null);
   const [ask, setAsk] = useState(null);   // {kind, p}
   const mayFor = (p) => admin.can(p.role === "admin" ? "staff.manage" : "people.manage");
   const find = q.trim().toLowerCase();
   const list = d.people.filter((p) => (filter === "all" || (filter === "staff" ? p.role === "admin" : p.role === "client"))
-    && (!clientId || p.clientId === clientId) && (!find || (p.name + " " + p.email + " " + (p.clientName || "")).toLowerCase().includes(find)));
+    && (!find || (p.name + " " + p.email + " " + (p.clientName || "")).toLowerCase().includes(find)));
   const act = async () => {
     const { kind, p } = ask;
     if (kind === "link") {
@@ -212,28 +213,27 @@ export function People({ admin, view }) {
     delete: (p) => [`Remove ${p.name}?`, "Remove them", "Their login stops working at once. Their notes and messages stay, under their name."],
   };
   return html`
-    <${Head} eyebrow="Studio" title="People" actions=${admin.can("people.manage") || admin.can("staff.manage") ? html`<button class="btn primary" onClick=${() => setForm({ defaults: { clientId } })}>Invite a person</button>` : null}>
-      Everyone with a login. New people get a link to choose their own password; nobody ever handles a password for them.
+    <${Head} eyebrow="Studio" title=${roles ? "What roles can do" : "People"} actions=${roles ? html`<button class="btn ghost" onClick=${() => setRoles(false)}>← Everyone</button>` : html`
+      <button class="btn ghost" onClick=${() => setRoles(true)}>What roles can do</button>
+      ${admin.can("people.manage") || admin.can("staff.manage") ? html`<button class="btn primary" onClick=${() => setForm({ defaults: { clientId } })}>Invite a person</button>` : null}`}>
+      ${roles ? "What staff and client people may do. A project’s own switches come first." : "Everyone with a login. New people get a link to choose their own password."}
     <//>
-    ${filter !== "roles" && admin.can("people.manage") ? html`<${Requests} admin=${admin} onLink=${setLinkOut} />` : null}
-    <div class="row" style=${{ marginBottom: "18px", justifyContent: "space-between" }}>
-      <div class="tabs">${[["all", "Everyone"], ["client", "Clients"], ["staff", "Staff"], ["roles", "What roles can do"]].map(([k, l]) => html`<button key=${k} class="tab-btn" aria-pressed=${filter === k} onClick=${() => setFilter(k)}>${l}</button>`)}</div>
-      ${filter !== "roles" ? html`<div class="row">
-        ${filter !== "staff" ? html`<select class="select" style=${{ width: "auto" }} aria-label="Client" value=${clientId} onChange=${(e) => setClientId(e.target.value)}><option value="">Every client</option>${d.clients.map((c) => html`<option key=${c.id} value=${c.id}>${c.name}</option>`)}</select>` : null}
-        <input class="input" style=${{ width: "220px" }} type="search" placeholder="Find a person" aria-label="Find a person" value=${q} onInput=${(e) => setQ(e.target.value)} /></div>` : null}
-    </div>
-    ${filter === "roles" ? html`<${Roles} admin=${admin} />` : html`
+    ${!roles && admin.can("people.manage") ? html`<${Requests} admin=${admin} onLink=${setLinkOut} />` : null}
+    ${!roles ? html`<div class="row" style=${{ marginBottom: "18px", justifyContent: "space-between" }}>
+      <div class="tabs">${[["all", "Everyone"], ["client", "Clients"], ["staff", "Staff"]].map(([k, l]) => html`<button key=${k} class="tab-btn" aria-pressed=${filter === k} onClick=${() => setFilter(k)}>${l}</button>`)}</div>
+      <input class="input" style=${{ width: "240px" }} type="search" placeholder="Find a person" aria-label="Find a person or company" value=${q} onInput=${(e) => setQ(e.target.value)} />
+    </div>` : null}
+    ${roles ? html`<${Roles} admin=${admin} />` : html`
     <table class="table"><thead><tr><th>Person</th><th>Role</th><th>Login</th><th></th></tr></thead>
       <tbody>${list.map((p) => html`<tr key=${p.id}>
         <td><b>${p.name}</b>${p.id === user.id ? html` <span class="faint small">(you)</span>` : null}<div class="muted small">${p.email}${p.title ? " · " + p.title : ""}</div></td>
-        <td><span class="pill">${p.roleLabel}</span>${p.clientName ? html` <span class="small">${p.clientName}</span>` : null}</td>
-        <td class="small" data-label="Last login">${p.invited ? html`<span class="pill amber">Invited, not logged in yet</span>` : p.lastLogin ? fmtAgo(p.lastLogin) : html`<span class="muted">Never</span>`}${p.twoStep ? html` <span class="pill green" title="Two-step verification is on">2-step</span>` : null}</td>
+        <td class="small">${p.roleLabel}${p.clientName ? html`<span class="muted"> · ${p.clientName}</span>` : null}</td>
+        <td class="small" data-label="Last login">${p.invited ? html`<span class="warn-text">Invited, not logged in yet</span>` : p.lastLogin ? fmtAgo(p.lastLogin) : html`<span class="muted">Never</span>`}${p.twoStep ? html`<span class="muted"> · two-step on</span>` : null}</td>
         <td style=${{ textAlign: "right", whiteSpace: "nowrap" }}>
           ${p.id === user.id ? html`<${Link} to="/account" cls="btn ghost sm">My account<//>`
           : mayFor(p) ? html`
             <button class="btn ghost sm" onClick=${() => setForm({ person: p })}>Edit</button>
-            <button class="btn ghost sm" onClick=${() => setAsk({ kind: "link", p })}>${p.lastLogin ? "Reset password" : "Resend invite"}</button>
-            <${More} items=${[["Log out everywhere", () => setAsk({ kind: "signout", p })], p.twoStep && ["Turn off two-step (lost phone)", () => setAsk({ kind: "twostep", p })], ["Remove", () => setAsk({ kind: "delete", p })]].filter(Boolean)} />` : null}
+            <${More} items=${[[p.lastLogin ? "Reset password" : "Resend invite", () => setAsk({ kind: "link", p })], ["Log out everywhere", () => setAsk({ kind: "signout", p })], p.twoStep && ["Turn off two-step (lost phone)", () => setAsk({ kind: "twostep", p })], ["Remove", () => setAsk({ kind: "delete", p })]].filter(Boolean)} />` : null}
         </td>
       </tr>`)}</tbody></table>
     ${!list.length ? html`<p class="muted">Nobody matches.</p>` : null}`}
@@ -241,15 +241,6 @@ export function People({ admin, view }) {
     ${linkOut ? html`<${LinkSent} ...${linkOut} onClose=${() => setLinkOut(null)} />` : null}
     ${ask ? html`<${Confirm} title=${ASK[ask.kind](ask.p)[0]} yes=${ASK[ask.kind](ask.p)[1]} danger=${ask.kind === "delete"} busy=${busy} onYes=${act} onNo=${() => setAsk(null)}>${ASK[ask.kind](ask.p)[2]}<//>` : null}
   `;
-}
-
-/** A small "More" menu for row actions that are rarely needed. */
-function More({ items }) {
-  const [open, setOpen] = useState(false);
-  return html`<span class="more">
-    <button class="btn ghost sm" aria-haspopup="true" aria-expanded=${open} onClick=${() => setOpen(!open)} onBlur=${() => setTimeout(() => setOpen(false), 150)}>More ▾</button>
-    ${open ? html`<span class="more-menu" role="menu">${items.map(([label, fn]) => html`<button key=${label} role="menuitem" onMouseDown=${(e) => e.preventDefault()} onClick=${() => { setOpen(false); fn(); }}>${label}</button>`)}</span>` : null}
-  </span>`;
 }
 
 /** What each role may do. Owners always have everything; owner-only rows can't be granted to anyone else. */
@@ -268,7 +259,7 @@ function Roles({ admin }) {
       aria-label=${`${p.label}: ${role}`} onChange=${() => flip(role, p.key)} /></td>`;
   };
   return html`<div class="stack" style=${{ gap: "22px" }}>
-    <p class="muted" style=${{ margin: 0, lineHeight: 1.6, maxWidth: "760px" }}>${may ? "Tick what each role may do. Owners can always do everything, so nobody can lock the studio out." : "Only owners can change these."} For clients, a project’s own switches come first: a decision maker can’t download where Downloads is off.</p>
+    <p class="muted" style=${{ margin: 0, lineHeight: 1.6, maxWidth: "760px" }}>${may ? "Tick what each role may do. Owners can always do everything, so nobody can lock the studio out." : "Only owners can change these."}</p>
     <div class="table-wrap"><table class="table roles-table">
       <thead><tr><th>Staff</th>${d.roles.staff.map((r) => html`<th key=${r.key} style=${{ textAlign: "center" }} title=${r.detail}>${r.label}</th>`)}</tr></thead>
       <tbody>${groups.map((g) => html`

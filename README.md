@@ -93,7 +93,7 @@ Each project has its own switches (Studio → Projects → a project → "What <
 | **Projects** | all staff | Create projects. Each project opens in parts (Details, Progress, Videos, Payments, What they can do) under one Save: stage, progress, next milestone (and ask the client to confirm it), the review-by date, and a reminder; the video source and every video at it (**hide**, **rename**, **make it a finished film**, add by link); **ask for a payment**, cancel one, or **mark it paid** another way; switch capabilities; archive or delete. Export all projects to a spreadsheet |
 | **Clients** | owners, producers | Add and edit companies (name, logo shown in their portal, email domain for joining by sign-up, private notes); **Export data** (everything the portal holds about a client, as JSON, for access requests or offboarding); delete |
 | **People** | owners, producers | **Asking to join**: let people who created an account in (company and role) or decline them. Invite people (an emailed one-time link to choose a password, also shown to copy); change role, company, or email; resend an invitation or send a reset link; log someone out everywhere; turn off two-step verification for a lost phone; remove. **What roles can do** is the roles table |
-| **Connections** | owners | Add, test, change, and remove video accounts (Vimeo, Frame.io, YouTube, Wistia), Notion, payments (Stripe, with its webhook address to copy), and email. Keys are encrypted and never shown again |
+| **Connections** | owners | Add, test, change, and remove video accounts (Vimeo, Frame.io, YouTube, Wistia), Notion, payments (Stripe; its webhook address shows until the webhook is connected, then under **Show the setup**), and email. Keys are encrypted and never shown again |
 | **Settings** | owners | A short list of sections, each with a one-line summary; one opens at a time. Studio name, help email, addresses, the line above Messages; the login screen's photo (one of the studio's, or an upload, resized in the browser to 2400 px and served by `GET /api/session?loginImage=<id>`; a replaced upload is deleted) and its Murphy's Law; the first-visit welcome; a notice for everyone; project stages (names, progress, order); defaults for new projects; security (require two-step verification for staff, emailed login links, how long logins last, client teams, who can create an account, joining by email domain); review reminders; **System check** |
 | **Activity** | owners, producers | Who did what and when (logins, sign-ups, views, downloads, approvals, Studio changes), filtered by kind of person, client, project, or word; export to a spreadsheet. Kept about 13 months |
 
@@ -103,7 +103,7 @@ Each project has its own switches (Studio → Projects → a project → "What <
 
 ## Video sources
 
-A project's videos come from **one** place: a folder (or playlist, or project) in a connected account, or **Video links** pasted one by one. Choose it in Studio → Projects → a project → Video source. In every source, a title with a version number becomes a version in Review: "Harbor Spot V2", "Harbor Spot v3", "Harbor Spot - Version 4", "Harbor Spot (V5)". Versions with the same name before the number are one cut. "V8 Engine Film" is not a version: the marker must follow a space, dash, or bracket. Anything else is a finished film. Staff can override either way per video (**Make it a finished film**), rename what the client sees, or hide a video, without changing anything at the source.
+A project's videos come from **one** place: a folder (or playlist, or project) in a connected account, or **Video links** pasted one by one. Choose it in Studio → Projects → a project → Video source. In every source, a title with a version number becomes a version in Review: "Harbor Spot V2", "Harbor Spot v3", "Harbor Spot - Version 4", "Harbor Spot (V5)". Versions with the same name before the number are one cut. "V8 Engine Film" is not a version: the marker must follow a space, dash, or bracket. Anything else is a finished film. Staff can override either way per video (**More → Make it a finished film**), rename what the client sees, or hide a video, without changing anything at the source.
 
 | Source | Plays in | Versions | Downloads | Captions | Uploads from the portal | Play counts |
 |---|---|---|---|---|---|---|
@@ -167,7 +167,7 @@ A payment is marked paid by whichever comes first, and each one is asked of Stri
 
 A payment moves from open to paid only once, so nobody is told twice, and the amount and currency must match what was asked. Pressing **Pay** twice reuses the same checkout, so it can't charge twice. Bank payments (ACH) show as **on its way** until they clear and go back to **Due** if they fail. A full refund in Stripe shows as **Refunded**. Canceling a request stops its checkout. **Mark paid…** records a check or wire. **Downloads after payment** (a project switch) holds finished-film downloads while anything is unpaid; staff are never held.
 
-Connect it in Studio → Connections → **Payments → Connect Stripe**: the secret key (`sk_live_…`, a restricted key with Checkout Sessions: Write, or `sk_test_…` to try it), the currency, and the webhook signing secret. The card shows the webhook address and the four events to choose in Stripe. Step by step, test mode first: `docs/GO-LIVE.md`, step 12. Stripe keeps the money and the receipts; the portal stores each request (title, amount, due date, status, who paid and when, and Stripe's checkout and payment IDs).
+Connect it in Studio → Connections → **Payments → Connect Stripe**: the secret key (`sk_live_…`, a restricted key with Checkout Sessions: Write, or `sk_test_…` to try it), the currency, and the webhook signing secret. Until the webhook is connected, the card shows its address and the four events to choose in Stripe (afterwards, under **Show the setup**). Step by step, test mode first: `docs/GO-LIVE.md`, step 12. Stripe keeps the money and the receipts; the portal stores each request (title, amount, due date, status, who paid and when, and Stripe's checkout and payment IDs).
 
 ## Email
 
@@ -277,7 +277,7 @@ The data layer is plain Postgres. To move: create the Supabase project; copy the
 
 ```bash
 npm ci && (cd tests && npm ci)
-cd tests && npm test        # 303 API checks, then 130 browser checks (desktop and phone)
+cd tests && npm test        # 303 API checks, then 134 browser checks (desktop and phone)
 npm run shots               # screenshots of every screen in tests/.work/shots
 ```
 
