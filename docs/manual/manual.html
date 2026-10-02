@@ -114,8 +114,8 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
 
 /* contents */
 .toc { display: flex; flex-direction: column; }
-.toc a { display: grid; grid-template-columns: .45in 1fr auto; align-items: baseline; gap: 10px; padding: 7px 0; border-bottom: .5pt solid var(--line); text-decoration: none; color: inherit; }
-.toc a b { font-family: var(--serif); font-weight: 500; font-size: 15pt; }
+.toc a { display: grid; grid-template-columns: .45in 1fr auto; align-items: baseline; gap: 10px; padding: 5px 0; border-bottom: .5pt solid var(--line); text-decoration: none; color: inherit; }
+.toc a b { font-family: var(--serif); font-weight: 500; font-size: 14pt; }
 .toc a i { font-family: var(--serif); font-style: normal; font-size: 13pt; color: var(--red); }
 .toc a span.d { display: block; font-size: 8pt; color: var(--mute); margin-top: 1px; }
 .toc a .pn { font-family: var(--serif); font-size: 13pt; }
@@ -141,6 +141,15 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
 .swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .swatches div { border-radius: 6px; padding: 30px 8px 7px; font-size: 7.4pt; line-height: 1.35; border: .5pt solid var(--line); }
 .swatches b { display: block; font-size: 8pt; }
+
+.see { display: block; margin-top: 2px; color: var(--deck); font-size: 8.3pt; line-height: 1.45; }
+.see::before { content: "→ "; color: var(--green); }
+.quick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.quick .card { background: var(--tint); border: 0; gap: 8px; }
+.quick h3 { font-family: var(--serif); font-size: 15pt; font-weight: 500; letter-spacing: 0; }
+.quick ol.steps > li { font-size: 9pt; }
+table.kv td:first-child { width: 22%; }
+table.small { font-size: 7.9pt; }
 </style>
 </head>
 <body>
@@ -149,12 +158,12 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
 <section class="page dark cover" data-title="Cover">
   <div class="photo"></div>
   <div class="frame"></div>
-  <div class="hud"><span><i></i>REC</span><span>00:00:00:01</span></div>
+  <div class="hud"><span><i></i>REC</span><span>00:00:00:02</span></div>
   <img class="logo" src="../../assets/Nobleman_Logo_White.png" alt="Nobleman Productions">
   <div class="t">
     <h1>The <em>screening room.</em></h1>
-    <div class="sub">The Nobleman Productions client portal: what it does, how to run it, and how to take it live.</div>
-    <div class="meta"><span>Manual · Edition 1</span><span>October 2026</span><span>portal.noblemanproductions.gotit2work.com</span></div>
+    <div class="sub">The Nobleman Productions client portal: how to use it, how to run it, how to take it live, and how to move it to noblemanproductions.com.</div>
+    <div class="meta"><span>Manual · Edition 2</span><span>October 2026</span><span>For the studio and its clients</span></div>
   </div>
 </section>
 
@@ -164,29 +173,58 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
     <span class="eyebrow">Contents</span>
     <h2>What’s in <em>this manual</em></h2>
     <div class="toc">
-      <a href="#ch1"><i>01</i><span><b>The portal at a glance</b><span class="d">What it is, the one login, and how a project moves.</span></span><span class="pn" data-toc="ch1"></span></a>
+      <a href="#start"><i>→</i><span><b>Start here</b><span class="d">The three things to know, and the portal’s addresses.</span></span><span class="pn" data-toc="start"></span></a>
+      <a href="#ch1"><i>01</i><span><b>The portal at a glance</b><span class="d">What it is, how a project moves, and the words this manual uses.</span></span><span class="pn" data-toc="ch1"></span></a>
       <a href="#ch2"><i>02</i><span><b>What clients see</b><span class="d">Home, Review, Films, Files, Messages, Payments, and their account.</span></span><span class="pn" data-toc="ch2"></span></a>
       <a href="#ch3"><i>03</i><span><b>Roles and switches</b><span class="d">Who can do what, and what each project allows.</span></span><span class="pn" data-toc="ch3"></span></a>
       <a href="#ch4"><i>04</i><span><b>Running the studio</b><span class="d">Studio: projects, clients, people, settings, and the activity log.</span></span><span class="pn" data-toc="ch4"></span></a>
       <a href="#ch5"><i>05</i><span><b>Connections</b><span class="d">Vimeo and other video sources, Notion, email, file storage, Stripe.</span></span><span class="pn" data-toc="ch5"></span></a>
       <a href="#ch6"><i>06</i><span><b>Payments</b><span class="d">Asking, paying, and how a payment is marked paid.</span></span><span class="pn" data-toc="ch6"></span></a>
-      <a href="#ch7"><i>07</i><span><b>Going live</b><span class="d">From the demo to the real portal, step by step.</span></span><span class="pn" data-toc="ch7"></span></a>
-      <a href="#ch8"><i>08</i><span><b>Everyday playbooks</b><span class="d">The routine jobs, as checklists.</span></span><span class="pn" data-toc="ch8"></span></a>
-      <a href="#ch9"><i>09</i><span><b>Security and privacy</b><span class="d">How accounts, keys, and files are protected.</span></span><span class="pn" data-toc="ch9"></span></a>
+      <a href="#ch7"><i>07</i><span><b>Going live</b><span class="d">From the sample to the real portal, step by step.</span></span><span class="pn" data-toc="ch7"></span></a>
+      <a href="#ch8"><i>08</i><span><b>Moving to noblemanproductions.com</b><span class="d">The studio’s own domain, without breaking a link or the email.</span></span><span class="pn" data-toc="ch8"></span></a>
+      <a href="#ch9"><i>09</i><span><b>Everyday playbooks</b><span class="d">The routine jobs, as do-this, see-this checklists.</span></span><span class="pn" data-toc="ch9"></span></a>
+      <a href="#ch10"><i>10</i><span><b>If something goes wrong</b><span class="d">What you see, and what to do about it.</span></span><span class="pn" data-toc="ch10"></span></a>
+      <a href="#ch11"><i>11</i><span><b>Security and privacy</b><span class="d">How accounts, keys, and files are protected.</span></span><span class="pn" data-toc="ch11"></span></a>
       <a href="#apxA"><i>A</i><span><b>The Nobleman document format</b><span class="d">Fonts, colors, and layout for the studio’s documents.</span></span><span class="pn" data-toc="apxA"></span></a>
     </div>
-    <div class="cols" style="margin-top:10px">
-      <div class="stack">
-        <h3>Who it’s for</h3>
-        <p>Owners and staff at Nobleman Productions, and GotIT2Work, who runs the portal. Chapter 2 is written so it can also be handed to a client.</p>
-      </div>
-      <div class="stack">
-        <h3>How to read it</h3>
-        <p>Names of buttons and places in the portal are in <span class="ui">this style</span>, and paths read left to right: <span class="ui">Studio → Settings → Login screen</span>. Numbered steps are done in that order.</p>
-      </div>
-    </div>
-    <div class="law" style="margin-top:6px"><span>Murphy’s Law, review edition</span><q>The one frame nobody checked is the one everyone sees.</q><p>So every version comes here first, for the client to check before it’s final.</p></div>
+    <div class="law" style="margin-top:8px"><span>Murphy’s Law, review edition</span><q>The one frame nobody checked is the one everyone sees.</q><p>So every version comes here first, for the client to check before it’s final.</p></div>
   </div>
+</section>
+
+<!-- ============ START HERE ============ -->
+<section class="page" data-title="Start here">
+  <div class="body" id="start">
+    <span class="eyebrow">Start here</span>
+    <h2>Three things <em>to know</em></h2>
+    <p class="lede">Nobody reads a manual first, and the portal is built for that: every screen says what it’s for and what to do next. These three cards are all most people ever need.</p>
+    <div class="quick">
+      <div class="card"><h3>If you’re a client</h3>
+        <ol class="steps"><li>Open the email from the studio.</li><li>Press its button. You land on the right page.</li><li>Watch, pause to leave a note, then <span class="ui">Approve</span> or <span class="ui">Ask for changes</span>.</li></ol>
+        <span class="see">That’s it. Home always shows your one next step.</span></div>
+      <div class="card"><h3>If you’re the studio</h3>
+        <ol class="steps"><li>Open the portal’s Home each morning.</li><li>Work down <b>Needs the studio</b>, top to bottom.</li><li>Glance at <b>Waiting on clients</b>; send a reminder if one is late.</li></ol>
+        <span class="see">Home is empty of work when nothing needs you.</span></div>
+      <div class="card"><h3>If something’s wrong</h3>
+        <ol class="steps"><li><span class="ui">Studio → Settings → System check</span>. Each row says what to fix.</li><li>Find what you see in chapter 10.</li><li>Still stuck: write to the help email in <span class="ui">Settings → Studio details</span>.</li></ol>
+        <span class="see">Nothing in the portal is lost by pressing the wrong button: anything hard to undo asks first.</span></div>
+    </div>
+    <h3>The addresses</h3>
+    <table>
+      <tr><th style="width:20%">What</th><th>Before the move</th><th>After the move (chapter 8)</th></tr>
+      <tr><td>Website</td><td><code>noblemanproductions.gotit2work.com</code></td><td><code>noblemanproductions.com</code></td></tr><!-- move-domain:keep -->
+      <tr><td>Portal</td><td><code>portal.noblemanproductions.gotit2work.com</code></td><td><code>portal.noblemanproductions.com</code></td></tr><!-- move-domain:keep -->
+      <tr><td>Sample project</td><td>the portal’s address + <code>/demo</code></td><td>the same</td></tr>
+    </table>
+    <p class="small muted">Old addresses keep working after the move: the website forwards page for page, and the portal sends people on to its new address. Bookmarks and old emails never break.</p>
+    <div class="cols">
+      <div class="stack"><h3>How to read this manual</h3>
+        <p>Buttons and places in the portal look <span class="ui">like this</span>, and paths read left to right: <span class="ui">Studio → Settings → Login screen</span>. Numbered steps go in that order.</p></div>
+      <div class="stack"><h3>“You’ll see”</h3>
+        <p>After a step, <span class="see" style="display:inline">You’ll see:</span> says what should happen. If it doesn’t, stop there and look up what you see in chapter 10, instead of carrying on.</p></div>
+    </div>
+  </div>
+  <div class="hd"><span><img src="../../assets/Nobleman_Mark_Black.png" alt="">Client portal manual</span><span>Start here</span></div>
+  <div class="ft"><span>Nobleman Productions · The screening room</span><span class="n"></span></div>
 </section>
 
 <!-- ============ 01 AT A GLANCE ============ -->
@@ -200,15 +238,15 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
     <div class="cols">
       <div class="stack">
         <h3>One door for everyone</h3>
-        <p>Clients, staff, and owners log in at the same page. What each person sees next depends on who they are: clients see their own company’s projects; staff also see <span class="ui">Studio</span>, where the studio runs everything. Nobody chooses a “client login” or “staff login”.</p>
-        <h3>Built to be simple for clients</h3>
-        <p>A busy executive opens an email, presses one button, and approves a film. Home leads with one next step, and clients see only the newest version.</p>
+        <p>Clients, staff, and owners log in at the same page. Clients then see their own company’s projects; staff also see <span class="ui">Studio</span>. Nobody picks a “client login” or a “staff login”.</p>
+        <h3>Simple for clients</h3>
+        <p>A busy executive opens an email, presses one button, and approves a film. Home leads with one next step, and clients only ever see the newest version.</p>
         <h3>Run without code</h3>
-        <p>Wording, photos, stages, roles, connections, and switches are all settings in Studio. Code changes only add or remove what the portal can do.</p>
+        <p>Wording, photos, stages, roles, connections, switches, and the portal’s address are settings in Studio. Code changes only add or remove what the portal can do.</p>
       </div>
       <figure><img src="img/login.jpg" alt=""><figcaption>The login: one door, a short form, and the studio’s Murphy’s Law. The photo is chosen in Settings.</figcaption></figure>
     </div>
-    <h3 style="margin-top:4px">How a project moves</h3>
+    <h3 style="margin-top:2px">How a project moves</h3>
     <div class="flow">
       <div class="dark"><b>Set up</b><span>Studio creates the project, picks where its videos come from, and invites the client.</span></div>
       <div><b>Review</b><span>A new version arrives; the client is emailed and watches it.</span></div>
@@ -217,12 +255,12 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
       <div><b>Pay</b><span>The studio asks for a payment; the client pays on Stripe.</span></div>
       <div class="dark"><b>Deliver</b><span>Finished films to watch, download, caption, and share.</span></div>
     </div>
-    <table style="margin-top:4px">
-      <tr><th style="width:3.05in">Address</th><th>What’s there</th></tr>
-      <tr><td><code>portal.noblemanproductions.gotit2work.com</code></td><td>The portal. Today it shows the sample; after going live (chapter 7), the login.</td></tr>
-      <tr><td><code>…/demo</code></td><td>The sample project, always. Anyone can click through it; nothing is saved or sent. A switch shows the client’s view or the studio’s.</td></tr>
-      <tr><td><code>…/signup</code></td><td>Creating an account, when it’s switched on (Settings → Logins and accounts).</td></tr>
-      <tr><td><code>noblemanproductions.gotit2work.com</code></td><td>The website. Its <span class="ui">Log in</span> button leads here; the privacy page covers the portal.</td></tr>
+    <h3>Words this manual uses</h3>
+    <table class="kv">
+      <tr><td>Version</td><td>A cut sent for review, numbered by its name: “Harbor Spot V2”. Clients see only the newest.</td></tr>
+      <tr><td>Finished film</td><td>A video without a version number: delivered, in Films.</td></tr>
+      <tr><td>Decision maker</td><td>The client person who approves and pays. Reviewers leave notes; viewers watch.</td></tr>
+      <tr><td>Switch</td><td>What a project allows, such as downloads or uploads. Set per project in Studio.</td></tr>
     </table>
   </div>
   <div class="hd"><span><img src="../../assets/Nobleman_Mark_Black.png" alt="">Client portal manual</span><span>The portal at a glance</span></div>
@@ -237,15 +275,15 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
       <p>Six places, each one tap away: Home, Review, Films, Files, Messages, and Payments. What appears depends on what the studio switched on for the project, and on the person’s role.</p></div>
   </div>
   <div class="body">
-    <figure><img src="img/client-home.jpg" alt=""><figcaption>Home for a client: the welcome on a first visit, then the one next step, the project, and the latest activity.</figcaption></figure>
+    <figure><img src="img/client-home.jpg" alt=""><figcaption>Home for a client: the welcome on a first visit, then the one next step, the projects, and the latest activity.</figcaption></figure>
     <div class="cols">
       <div class="stack">
         <h3>Home: one next step</h3>
-        <p>Home leads with the single thing that needs this person now, in this order: a version to review, a payment to make, a milestone to confirm (such as a filming day), a new message, a new film. When nothing needs them, it says so.</p>
+        <p>Home leads with the single thing that needs this person now, in this order: a version to review, a payment, a milestone to confirm (such as a filming day), a new message, a new film. When nothing needs them, it says so.</p>
       </div>
       <div class="stack">
-        <h3>The project</h3>
-        <p>Each project shows its stage (Planning to Delivered, set in Settings), progress, the next milestone, and tiles for Review, Films, Files, Messages, and Payments with what’s waiting in each.</p>
+        <h3>Project cards and pages</h3>
+        <p>Each card shows the stage, what’s next, and at most one flag (versions to review, else a new message). The project page has one tile each for Review, Films, Files, Payments, and Messages, with what’s waiting: “2 waiting for you, by Sun, Oct 4”.</p>
       </div>
     </div>
   </div>
@@ -260,14 +298,14 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
     <figure><img src="img/review.jpg" alt=""><figcaption>Review: the newest version with its “Preview” mark, the notes beside it, and the decision under the player.</figcaption></figure>
     <div class="cols">
       <ul>
-        <li><b>Only the newest version.</b> When Version 3 arrives, Version 2 disappears for the client: “The newest version. It replaces Version 2 and earlier.” Staff open every version, one at a time, from a version picker. A project can show clients earlier versions too (<span class="ui">Earlier versions</span> switch).</li>
+        <li><b>Only the newest version.</b> When Version 3 arrives, Version 2 disappears for the client: “The newest version. It replaces Version 2 and earlier.” Staff open every version, one at a time. A project can show clients earlier versions too (the <span class="ui">Earlier versions</span> switch).</li>
         <li><b>A preview mark.</b> Versions under review carry “Preview · Version N” on the player, so nobody mistakes a draft for the final film.</li>
         <li><b>Notes on the moment.</b> Pause anywhere, write a note, and it’s pinned to that second. Clicking its time jumps the film there. Staff reply under it and mark it done.</li>
       </ul>
       <ul>
-        <li><b>Approve, with small fixes.</b> <span class="ui">Approve Version 3</span> has an optional “Any small fixes?” box, so “yes, but lift the logo” doesn’t need another round. The studio is told and the client gets a receipt.</li>
-        <li><b>Or ask for changes</b> in one go: the open notes go with the message.</li>
-        <li><b>Who decides.</b> Decision makers approve; reviewers leave notes; viewers watch. A review-by date, when set, shows on the version, and decision makers get one reminder before it.</li>
+        <li><b>Decide in one place.</b> The box under the player says the date first (“Please decide by Sun, Oct 4.”), then offers <span class="ui">Approve Version 3</span> or <span class="ui">Ask for changes</span>. Open notes go with a request for changes.</li>
+        <li><b>Approve, with small fixes.</b> Approving has an optional “Any small fixes?” box, so “yes, but lift the logo” needs no extra round. The studio is told; the client gets a receipt.</li>
+        <li><b>Who decides.</b> Decision makers approve; reviewers leave notes; viewers watch. Decision makers get one reminder before the date.</li>
       </ul>
     </div>
   </div>
@@ -291,7 +329,7 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
       </div>
       <div class="stack">
         <h3>Messages</h3>
-        <p>One conversation per project. A line above it says who they’re writing to and when to expect a reply (set in Settings, and only promising what’s always true). Unread messages show as a badge.</p>
+        <p>One conversation per project. A line above it says who they’re writing to and when to expect a reply (set in Settings, promising only what’s always true). Unread messages show as a badge.</p>
       </div>
     </div>
     <div class="note"><b>Quiet email.</b> Each email links straight to what it’s about, nobody is emailed about their own actions, and nobody is emailed while they’re using the portal (active in the last three minutes). Everyone can turn updates off under <span class="ui">Account</span>.</div>
@@ -307,18 +345,18 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
     <div class="phones">
       <figure><img src="img/m-home.jpg" alt=""><figcaption>Home on a phone: a plain bar on top, tabs along the bottom.</figcaption></figure>
       <figure><img src="img/m-payments.jpg" alt=""><figcaption>Payments: what’s due, what’s paid, and one button to pay.</figcaption></figure>
-      <figure><img src="img/m-review.jpg" alt=""><figcaption>Review fits the phone: the player, the version, then the notes.</figcaption></figure>
+      <figure><img src="img/m-review.jpg" alt=""><figcaption>Review fits the phone: the player, the version, then the decision.</figcaption></figure>
     </div>
     <div class="cols">
       <div class="stack">
         <h3>Payments</h3>
-        <p>When the studio asks for a payment, Home says <span class="ui">Please pay</span> and the project shows what’s due. <span class="ui">Pay</span> opens Stripe’s secure checkout (card, plus whatever else is turned on in Stripe, such as Apple Pay or bank), so card details never reach the portal. Paid ones stay listed with who paid and when. Only decision makers pay; others see what’s due.</p>
+        <p>When the studio asks for a payment, Home says <span class="ui">Please pay</span> and the project shows what’s due. <span class="ui">Pay</span> opens Stripe’s secure checkout (card, plus whatever else is turned on in Stripe), so card details never reach the portal. Only decision makers pay; others see what’s due.</p>
         <h3>Their own team</h3>
-        <p>Decision makers invite colleagues (who get an emailed link), change their roles, and remove them. The studio is told each time.</p>
+        <p>Decision makers invite colleagues (who get an emailed link), change their roles, and remove them. <span class="ui">What each role can do</span> opens a short list. The studio is told each time.</p>
       </div>
       <div class="stack">
         <h3>Account</h3>
-        <p>Name and job title, email updates on or off, the password (changing it logs them out everywhere else), and two-step verification with an authenticator app (with recovery codes, saved once). A changed email address goes through the studio.</p>
+        <p>Name and job title, email updates on or off, and two-step verification with an authenticator app (with recovery codes, saved once). <span class="ui">Change my password</span> opens the form; changing it logs them out on other devices. A new email address goes through the studio.</p>
         <h3>Logging in</h3>
         <p>With a password, or an emailed login link (works once, within 15 minutes). <span class="ui">Forgot your password?</span> emails a link to choose a new one (works once, within an hour). New people can <span class="ui">Create an account</span> when the studio allows it.</p>
       </div>
@@ -328,7 +366,6 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
   <div class="ft"><span>Nobleman Productions · The screening room</span><span class="n"></span></div>
 </section>
 
-<!-- ============ 03 ROLES ============ -->
 <section class="page band" data-title="Roles and switches">
   <div class="cband" id="ch3" style="background-image:url('../../media/a08.jpg')">
     <img class="logo" src="../../assets/Nobleman_Logo_White.png" alt="">
@@ -405,7 +442,6 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
   <div class="ft"><span>Nobleman Productions · The screening room</span><span class="n"></span></div>
 </section>
 
-<!-- ============ 04 STUDIO ============ -->
 <section class="page band" data-title="Running the studio">
   <div class="cband" id="ch4" style="background-image:url('../../media/a03.jpg')">
     <img class="logo" src="../../assets/Nobleman_Logo_White.png" alt="">
@@ -416,7 +452,7 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
     <div class="cols" style="grid-template-columns:1fr 1.05fr">
       <div class="stack">
         <h3>Staff Home</h3>
-        <p>Leads with what needs the studio: people asking to join, changes a client asked for, unread messages, open notes. Below it, two lists: <b>Needs the studio</b> and <b>Waiting on clients</b> (versions to review and payments due), then active projects and recent activity.</p>
+        <p>Leads with what needs the studio: people asking to join, changes a client asked for, unread messages, open notes. Below it, two lists: <b>Needs the studio</b> and <b>Waiting on clients</b> (versions to review and payments due), then active projects and the five latest things anyone did.</p>
         <h3>Getting started</h3>
         <p>On a new, empty portal, owners see a checklist instead: file storage, email, a video source, the first client, the first project, the first invitation, plus Stripe, Notion, and a second owner as options. Each line links to where it’s done, and the list goes away by itself.</p>
       </div>
@@ -426,10 +462,10 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
       <tr><th style="width:16%">Tab</th><th style="width:17%">Who, by default</th><th>What you do there</th></tr>
       <tr><td>Projects</td><td>All staff</td><td>Create projects; each opens in parts (Details, Progress, Videos, Payments, What they can do) under one Save. Export all projects to a spreadsheet.</td></tr>
       <tr><td>Clients</td><td>Owners, producers</td><td>Companies: name, logo, private notes, email domains for joining. Export everything about a client (JSON). Delete.</td></tr>
-      <tr><td>People</td><td>Owners, producers</td><td>Let in or decline people asking to join; invite; change role, company, or email; resend an invitation or a reset link; log someone out everywhere; turn off two-step for a lost phone; remove. <span class="ui">What roles can do</span>.</td></tr>
+      <tr><td>People</td><td>Owners, producers</td><td>Let in or decline people asking to join; invite. Each person has <span class="ui">Edit</span> (role, company, email) and <span class="ui">More</span>: reset password or resend the invitation, log out everywhere, turn off two-step for a lost phone, remove. <span class="ui">What roles can do</span> has its own button.</td></tr>
       <tr><td>Connections</td><td>Owners</td><td>Video sources, Notion, payments (Stripe), and email. Keys are stored encrypted and never shown again.</td></tr>
       <tr><td>Settings</td><td>Owners</td><td>Nine short sections, one open at a time, beginning with the System check.</td></tr>
-      <tr><td>Activity</td><td>Owners, producers</td><td>Who did what and when, filtered by person, client, project, or word; export. Kept about 13 months.</td></tr>
+      <tr><td>Activity</td><td>Owners, producers</td><td>Who did what and when. One <span class="ui">Show</span> menu (who, a client, or a project) and a search; export. Kept about 13 months.</td></tr>
     </table>
   </div>
   <div class="hd"><span><img src="../../assets/Nobleman_Mark_Black.png" alt="">Client portal manual</span><span>Running the studio</span></div>
@@ -447,7 +483,7 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
         <p>Name, kind of project, summary, client, and an optional cover image link (empty uses the newest film’s thumbnail). <span class="ui">Archive</span> hides it from the client and can be undone; <span class="ui">Delete project…</span> removes its notes, decisions, messages, share links, payment records, and files for good, after typing its name. Videos stay where they are.</p></div>
       <div class="stack">
         <h3>Progress</h3>
-        <p>The stage, the progress shown, the next milestone (label, date, what happens) with an option to ask the client to confirm it, the review-by date, and <span class="ui">Email a review reminder now</span>.</p>
+        <p>The stage (its progress shows by itself; type a number only to override it), the next milestone (label, date, what happens) with an option to ask the client to confirm it, the review-by date, and <span class="ui">Email a review reminder now</span>.</p>
       </div>
       <div class="stack">
         <h3>Videos</h3>
@@ -481,7 +517,7 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
         <h3>Settings, one section at a time</h3>
         <table>
           <tr><td>System check</td><td>Everything the portal needs, with what to do about anything that isn’t right.</td></tr>
-          <tr><td>Studio details</td><td>Name, help email, addresses, the line above Messages.</td></tr>
+          <tr><td>Studio details</td><td>Name, help email, the portal’s address (the website and privacy page follow it), the line above Messages.</td></tr>
           <tr><td>Login screen</td><td>The photo (one of the studio’s or an upload), which side stays in view, and the Murphy’s Law.</td></tr>
           <tr><td>Welcome message</td><td>Shown once, on a client’s first visit.</td></tr>
           <tr><td>Notice for everyone</td><td>One line at the top of every page.</td></tr>
@@ -491,14 +527,13 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
           <tr><td>Review reminders</td><td>On or off, and how many days before the date.</td></tr>
         </table>
       </div>
-      <figure><img src="img/settings-login.jpg" alt=""><figcaption>Settings → Login screen: the live preview, the studio’s photos, and Upload a photo.</figcaption></figure>
+      <figure><img src="img/settings-brand.jpg" alt=""><figcaption>Settings → Studio details: the portal’s address leads; the website and privacy page say “Automatic” and follow it (chapter 8).</figcaption></figure>
     </div>
   </div>
   <div class="hd"><span><img src="../../assets/Nobleman_Mark_Black.png" alt="">Client portal manual</span><span>Running the studio</span></div>
   <div class="ft"><span>Nobleman Productions · The screening room</span><span class="n"></span></div>
 </section>
 
-<!-- ============ 05 CONNECTIONS ============ -->
 <section class="page band" data-title="Connections">
   <div class="cband" id="ch5" style="background-image:url('../../media/a05.jpg')">
     <img class="logo" src="../../assets/Nobleman_Logo_White.png" alt="">
@@ -533,13 +568,13 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
     <h2>Notion, email, <em>files, and Stripe</em></h2>
     <div class="cols">
       <div class="card"><h3><img class="ic" src="../../media/icons/grid.png" alt="">Notion</h3>
-        <p class="small">One row per project, kept up to date within seconds: name, client, stage, progress, review status, latest version, open notes, next step, review-by date, last activity, and a link back. Create an internal connection (Read, Update, Insert content), paste its token, add the connection to the Notion page, then let Studio create the database or use yours. No names, emails, notes, or messages go to Notion.</p></div>
+        <p class="small">One row per project, kept up to date within seconds: name, client, stage, progress, review status, latest version, open notes, next step, review-by date, last activity, and a link back. Create an internal connection (Read, Update, Insert content), paste its token, add the connection to the Notion page, then let Studio create the database or use yours. The card keeps <span class="ui">Sync now</span> and <span class="ui">Test it</span> in view; the rest is under More. No names, emails, notes, or messages go to Notion.</p></div>
       <div class="card"><h3><img class="ic" src="../../media/icons/bottle.png" alt="">Email (Resend)</h3>
         <p class="small">Invitations, account confirmations, login and reset links, updates, approval receipts, review reminders, and payment emails. A Resend API key with sending access on the verified <code>gotit2work.com</code> domain, sending as <code>portal@gotit2work.com</code>. <span class="ui">Send a test email</span> checks it end to end. Without email, links are shown in Studio to copy.</p></div>
       <div class="card"><h3><img class="ic" src="../../media/icons/send.png" alt="">File storage</h3>
         <p class="small">Documents and client files in a private Vercel Blob store: nothing has a public address. Uploads go straight from the browser to storage; downloads use links that expire after ten minutes. Set up in Vercel, not in Studio (chapter 7).</p></div>
       <div class="card"><h3><img class="ic" src="../../media/icons/key.png" alt="">Payments (Stripe)</h3>
-        <p class="small">The secret key (test or live), the currency, and the webhook signing secret. Until the webhook is connected, the card shows its address (with a Copy button) and the four events to choose in Stripe; after that, under <span class="ui">Show the setup</span>. Test mode first, then live (chapter 7, step 12).</p></div>
+        <p class="small">The secret key (test or live), the currency, and the webhook signing secret. Until the webhook is connected, the card shows its address (with a Copy button) and the four events to choose in Stripe; after that, they fold under <span class="ui">Show the setup</span>. Test mode first, then live (chapter 7, step 12).</p></div>
     </div>
     <figure><div class="crop" style="height:4.05in"><img src="img/connections.jpg" alt="" style="width:118%;margin-left:-14.5%;margin-top:-3.5%"></div><figcaption>Studio → Connections in the demo: each card shows whether it’s working, when it was checked, and what to change.</figcaption></figure>
   </div>
@@ -547,7 +582,6 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
   <div class="ft"><span>Nobleman Productions · The screening room</span><span class="n"></span></div>
 </section>
 
-<!-- ============ 06 PAYMENTS ============ -->
 <section class="page band" data-title="Payments">
   <div class="cband" id="ch6" style="background-image:url('../../media/a07.jpg')">
     <img class="logo" src="../../assets/Nobleman_Logo_White.png" alt="">
@@ -611,7 +645,6 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
   <div class="ft"><span>Nobleman Productions · The screening room</span><span class="n"></span></div>
 </section>
 
-<!-- ============ 07 GOING LIVE ============ -->
 <section class="page band" data-title="Going live">
   <div class="cband" id="ch7" style="background-image:url('../../media/a01.jpg');background-position:70% 50%">
     <img class="logo" src="../../assets/Nobleman_Logo_White.png" alt="">
@@ -745,45 +778,199 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
   <div class="ft"><span>Nobleman Productions · The screening room</span><span class="n"></span></div>
 </section>
 
-<!-- ============ 08 PLAYBOOKS ============ -->
-<section class="page band" data-title="Everyday playbooks">
-  <div class="cband" id="ch8" style="background-image:url('../../media/a10.jpg');background-position:40% 50%">
+<!-- ============ 08 MOVING ============ -->
+<section class="page band" data-title="Moving to noblemanproductions.com">
+  <div class="cband" id="ch8" style="background-image:url('../../media/a08.jpg');background-position:50% 70%">
     <img class="logo" src="../../assets/Nobleman_Logo_White.png" alt="">
-    <div class="in"><span class="num"><i></i>Chapter 08</span><h1>Everyday <em>playbooks</em></h1>
-      <p>The jobs that come up every week, as short checklists. Each one ends with how to know it’s done.</p></div>
+    <div class="in" style="right:.75in"><span class="num"><i></i>Chapter 08</span><h1 style="font-size:31pt">Moving to <em>noblemanproductions.com</em></h1>
+      <p>The website and the portal move to the studio’s own domain, without breaking a link, an email, a payment, or the studio’s Gmail. About 45 minutes, plus waiting for DNS.</p></div>
+  </div>
+  <div class="body">
+    <div class="cols">
+      <div class="stack">
+        <h3>The rule that makes it safe</h3>
+        <p>Every old address keeps working the whole time, so <b>nothing breaks if a step is late, skipped, or done out of order</b>.</p>
+        <ul class="small">
+          <li>The old website address forwards to the new one, page for page.</li>
+          <li>The old portal address keeps answering, and sends visitors on once the new one works.</li>
+          <li>Stripe and Adobe keep reaching the old address until updated.</li>
+          <li>The portal won’t switch to an address that doesn’t answer yet.</li>
+        </ul>
+      </div>
+      <div class="stack">
+        <h3>Before you start</h3>
+        <ul class="check">
+          <li>Jean and Justin agree to retire the current site (on Lovable); rollback brings it back in minutes.</li>
+          <li>Access to the GoDaddy account with noblemanproductions.com, and to Vercel.</li>
+          <li>📸 A screenshot of that domain’s DNS table, before any change.</li>
+        </ul>
+        <div class="warn"><b>Never touch</b> the <code>MX</code> records (the studio’s Gmail), the <code>google-site-verification</code> TXT, or anything named <code>send</code> or <code>_domainkey</code>.</div>
+      </div>
+    </div>
+    <table>
+      <tr><th style="width:4%">#</th><th style="width:30%">Do</th><th>Where</th><th style="width:30%">You’ll see</th></tr>
+      <tr><td>1</td><td>Add the new addresses</td><td>Vercel → each project → Settings → Domains (keep the old ones)</td><td>Three domains, each with the record it wants</td></tr>
+      <tr><td>2</td><td>Point the domain at Vercel</td><td>GoDaddy → noblemanproductions.com → DNS (next page)</td><td>Vercel: Valid Configuration</td></tr>
+      <tr><td>3</td><td>Check the new addresses</td><td>A private browser window</td><td>Padlocks; the site, the portal; Gmail still works</td></tr>
+      <tr><td>4</td><td>Tell Vimeo, if asked</td><td>Vimeo → the video → Privacy → embed domains</td><td>The hero video plays</td></tr>
+      <tr><td>5</td><td>Change the code’s addresses</td><td><code>node scripts/move-domain.mjs --apply</code> in each repository, then push</td><td>“Done: … now say noblemanproductions.com”</td></tr>
+      <tr><td>6</td><td>Forward the old website</td><td>Vercel → nobleman-website → old domain → Redirect to (not the portal’s)</td><td>Old links open the new site</td></tr>
+      <tr><td>7</td><td>Confirm the portal’s address</td><td>Studio → Settings → Studio details → Portal address</td><td>System check: two green rows</td></tr>
+      <tr><td>8</td><td>Update outside services</td><td>Stripe webhook, Adobe redirect URI, Notion, Google</td><td>Stripe’s test event answers 200</td></tr>
+      <tr><td>9</td><td>Send email from the new domain</td><td>Resend, then Studio → Connections → Email (optional)</td><td>A test email arrives</td></tr>
+      <tr><td>10</td><td>Retire the old site, a week later</td><td>Lovable → unpublish</td><td>Nothing changes for visitors</td></tr>
+    </table>
+  </div>
+  <div class="hd"><span><img src="../../assets/Nobleman_Mark_Black.png" alt="">Client portal manual</span><span>Moving</span></div>
+  <div class="ft"><span>Nobleman Productions · The screening room</span><span class="n"></span></div>
+</section>
+
+<section class="page" data-title="Moving to noblemanproductions.com">
+  <div class="body">
+    <span class="eyebrow">Moving · The DNS, the switch, and the way back</span>
+    <h2>Three records, <em>one switch</em></h2>
+    <p>The full guide, with every check, is <code>docs/MOVE.md</code> in the website’s repository. These are the parts that need care.</p>
+    <h3>Step 2: GoDaddy → noblemanproductions.com → DNS</h3>
+    <table>
+      <tr><th style="width:10%">Do</th><th style="width:9%">Type</th><th style="width:10%">Name</th><th>Value</th></tr>
+      <tr><td>Edit</td><td>A</td><td><code>@</code></td><td>The A value Vercel shows (replaces <code>185.158.133.1</code>, the current site)</td></tr>
+      <tr><td>Delete</td><td>A</td><td><code>www</code></td><td>The current site’s <code>185.158.133.1</code></td></tr>
+      <tr><td>Add</td><td>CNAME</td><td><code>www</code></td><td>The CNAME value Vercel shows for www</td></tr>
+      <tr><td>Add</td><td>CNAME</td><td><code>portal</code></td><td>The CNAME value Vercel shows for the portal</td></tr>
+    </table>
+    <p class="small muted">Use Vercel’s values exactly. Delete any other A record for <code>@</code>, and remove GoDaddy Forwarding if it’s on. Leave every MX and TXT record as it is.</p>
+    <div class="cols">
+      <div class="stack">
+        <h3>Step 7: the portal’s own switch</h3>
+        <ol class="steps">
+          <li>Log in as an owner → <span class="ui">Studio → Settings → Studio details</span>.<span class="see">You’ll see: Portal address, Website, and Privacy page.</span></li>
+          <li>If Portal address isn’t <code>https://portal.noblemanproductions.com</code>, type it → <span class="ui">Save</span>.<span class="see">You’ll see: Saved. If the address doesn’t answer yet, nothing changes and the message says what to fix.</span></li>
+          <li>Leave Website and Privacy page empty: they follow the portal.</li>
+          <li><span class="ui">Settings → System check</span>.<span class="see">You’ll see: Portal address, and Website and privacy page, both green.</span></li>
+        </ol>
+        <p class="small muted">Before go-live (the sample at the front door) there’s nothing to do here: step 5 changed it. After the move everyone logs in once more, because a login belongs to an address.</p>
+      </div>
+      <div class="stack">
+        <h3>If something goes wrong</h3>
+        <table class="small">
+          <tr><td>Email stopped arriving</td><td>An MX record changed. Put back what the “before” screenshot shows.</td></tr>
+          <tr><td>Still “Invalid” after an hour</td><td>Compare GoDaddy with Vercel letter by letter; delete extra A records; turn off Forwarding.</td></tr>
+          <tr><td>The hero video shows a still</td><td>Step 4: Vimeo’s embed list.</td></tr>
+          <tr><td>The portal won’t save the address</td><td>It isn’t answering as this portal yet: check steps 1 and 2.</td></tr>
+        </table>
+        <h3>The way back</h3>
+        <p class="small">Nothing in the move deletes anything. The site: put GoDaddy’s <code>@</code> and <code>www</code> back to <code>185.158.133.1</code>. The portal: set Portal address back to the old one (it answers, so it saves). The code: <code>git revert</code> the move commit. Both addresses work either way.</p>
+      </div>
+    </div>
+  </div>
+  <div class="hd"><span><img src="../../assets/Nobleman_Mark_Black.png" alt="">Client portal manual</span><span>Moving</span></div>
+  <div class="ft"><span>Nobleman Productions · The screening room</span><span class="n"></span></div>
+</section>
+
+<!-- ============ 09 PLAYBOOKS ============ -->
+<section class="page band" data-title="Everyday playbooks">
+  <div class="cband" id="ch9" style="background-image:url('../../media/a10.jpg');background-position:40% 50%">
+    <img class="logo" src="../../assets/Nobleman_Logo_White.png" alt="">
+    <div class="in"><span class="num"><i></i>Chapter 09</span><h1>Everyday <em>playbooks</em></h1>
+      <p>The jobs that come up every week. Do each step, check what you see, and stop at the first surprise: chapter 10 says what it means.</p></div>
   </div>
   <div class="body">
     <div class="cols">
       <div class="card"><h3>Start a new client project</h3>
-        <ol class="steps small"><li>Studio → Clients → Add a client (and its email domain).</li><li>Make a Vimeo folder for the project.</li><li>Studio → Projects → New project: client, folder, switches.</li><li>Progress: stage and next milestone.</li><li>People → Invite the decision maker.</li><li>Payments → Ask for the deposit.</li></ol>
-        <p class="small muted">Done when the client’s Home shows the project and the deposit.</p></div>
+        <ol class="steps small"><li>Studio → Clients → <b>Add a client</b>: name, email domain.</li><li>Make a folder for it in Vimeo.</li><li>Studio → Projects → <b>New project</b>: client, folder, switches.<span class="see">You’ll see: the project, with its five parts.</span></li><li>Progress: the stage and the next milestone.</li><li>Studio → People → <b>Invite a person</b>: the decision maker.<span class="see">You’ll see: the link, also emailed.</span></li><li>Payments → <b>Ask for a payment</b>: the deposit.</li></ol>
+        <p class="small muted">Done when the client’s Home shows the project and the deposit (<span class="ui">See it as the client does</span>).</p></div>
       <div class="card"><h3>Deliver a new version</h3>
-        <ol class="steps small"><li>Upload to the project’s Vimeo folder, named with its number: “Harbor Spot V3”.</li><li>Studio → the project → Videos → Refresh from the source.</li><li>Optional: a review-by date under Progress.</li></ol>
-        <p class="small muted">Done when Review shows Version 3 and the client is emailed. Notes arrive on staff Home under Needs the studio.</p></div>
+        <ol class="steps small"><li>Upload it to the project’s Vimeo folder, named with its number: “Harbor Spot V3”.</li><li>Studio → the project → Videos → <b>Refresh from the source</b>.<span class="see">You’ll see: Version 3 at the top, newest.</span></li><li>Optional: a review-by date under Progress.</li></ol>
+        <p class="small muted">Done when the client is emailed and their Home says “Version 3 … is ready for you”. Their notes arrive on your Home under Needs the studio.</p></div>
       <div class="card"><h3>Final delivery and payment</h3>
-        <ol class="steps small"><li>Upload the final without a version number: it goes to Films.</li><li>What they can do: Downloads after payment on.</li><li>Payments → Ask for the balance.</li><li>Stage: Delivered.</li></ol>
-        <p class="small muted">Done when the balance shows Paid and the client’s downloads are open.</p></div>
+        <ol class="steps small"><li>Upload the final without a version number: it goes to Films.</li><li>What they can do: <b>Downloads after payment</b> on.</li><li>Payments → <b>Ask for a payment</b>: the balance.<span class="see">You’ll see: Due, and the client is emailed.</span></li><li>Progress: stage Delivered.</li></ol>
+        <p class="small muted">Done when the balance shows Paid and the client’s downloads open by themselves.</p></div>
       <div class="card"><h3>Someone can’t log in</h3>
-        <ol class="steps small"><li>Studio → People → find them.</li><li>More → <b>Reset password</b> (or <b>Resend invite</b> if never logged in): the link is emailed and shown to copy.</li><li>Lost phone with two-step on: More → <b>Turn off two-step</b>.</li></ol>
+        <ol class="steps small"><li>Studio → People → find them.</li><li>More → <b>Reset password</b> (or <b>Resend invite</b> if they never logged in).<span class="see">You’ll see: the link, emailed and shown to copy.</span></li><li>Lost phone with two-step on: More → <b>Turn off two-step</b>, after confirming it’s really them.</li></ol>
         <p class="small muted">Done when their last login updates.</p></div>
-      <div class="card"><h3>Offboard a client</h3>
-        <ol class="steps small"><li>Studio → Clients → <b>Export data</b> and keep the file.</li><li>Archive each project (hides it, can be undone), or Delete it.</li><li>Remove their people, or delete the client (deletes its projects and files).</li></ol>
-        <p class="small muted">Done when their people can’t log in and the export is filed.</p></div>
-      <div class="card"><h3>Add a staff member</h3>
-        <ol class="steps small"><li>Studio → People → Invite a person, role Producer or Editor.</li><li>They choose a password from the email, then set up two-step.</li><li>Adjust What roles can do if needed.</li></ol>
-        <p class="small muted">Done when they see Studio with the tabs their role allows.</p></div>
     </div>
   </div>
   <div class="hd"><span><img src="../../assets/Nobleman_Mark_Black.png" alt="">Client portal manual</span><span>Everyday playbooks</span></div>
   <div class="ft"><span>Nobleman Productions · The screening room</span><span class="n"></span></div>
 </section>
 
-<!-- ============ 09 SECURITY ============ -->
-<section class="page band" data-title="Security and privacy">
-  <div class="cband" id="ch9" style="background-image:url('../../media/a04.jpg');background-position:90% 50%">
+<section class="page" data-title="Everyday playbooks">
+  <div class="body">
+    <span class="eyebrow">Everyday playbooks · Continued</span>
+    <h2>People, the login, <em>and the weekly check</em></h2>
+    <div class="cols">
+      <div class="card"><h3>Add a staff member</h3>
+        <ol class="steps small"><li>Studio → People → <b>Invite a person</b>: Staff, Producer or Editor.</li><li>They choose a password from the email, then set up two-step.</li><li>Change <b>What roles can do</b> only if needed.</li></ol>
+        <p class="small muted">Done when they see Studio with the tabs their role allows.</p></div>
+      <div class="card"><h3>Offboard a client</h3>
+        <ol class="steps small"><li>Studio → Clients → <b>Export data</b>; keep the file.</li><li>Archive each project (hidden, can be undone), or delete it.</li><li>Remove their people, or delete the client (its projects and files go too).</li></ol>
+        <p class="small muted">Done when their people can’t log in and the export is filed.</p></div>
+      <div class="card"><h3>Change the login photo or words</h3>
+        <ol class="steps small"><li>Studio → Settings → <b>Login screen</b>.</li><li>Choose a photo (or <b>Upload a photo</b>) and the side that stays in view; edit the Murphy’s Law.<span class="see">You’ll see: the preview change as you go.</span></li><li><b>Save</b>.</li></ol>
+        <p class="small muted">Done when a private window shows the new login.</p></div>
+      <div class="card"><h3>The weekly check</h3>
+        <ol class="steps small"><li>Studio → Settings → <b>System check</b>.<span class="see">You’ll see: every row green, or what to do for the others.</span></li><li>Home → <b>Waiting on clients</b>: send a reminder for anything late.</li><li>Studio → Activity, if something looks odd.</li></ol>
+        <p class="small muted">Done when nothing is red and nothing has waited too long.</p></div>
+    </div>
+  </div>
+  <div class="hd"><span><img src="../../assets/Nobleman_Mark_Black.png" alt="">Client portal manual</span><span>Everyday playbooks</span></div>
+  <div class="ft"><span>Nobleman Productions · The screening room</span><span class="n"></span></div>
+</section>
+
+<!-- ============ 10 IF SOMETHING GOES WRONG ============ -->
+<section class="page band" data-title="If something goes wrong">
+  <div class="cband" id="ch10" style="background-image:url('../../media/screening-poster.jpg');background-position:50% 40%">
     <img class="logo" src="../../assets/Nobleman_Logo_White.png" alt="">
-    <div class="in"><span class="num"><i></i>Chapter 09</span><h1>Security <em>and privacy</em></h1>
-      <p>What protects clients’ films, accounts, and money, and what the portal keeps. The full notice is on the website: noblemanproductions.gotit2work.com/privacy.</p></div>
+    <div class="in"><span class="num"><i></i>Chapter 10</span><h1>If something <em>goes wrong</em></h1>
+      <p>Find what you see, then do what it says. Start with the System check (Studio → Settings): it checks most of these for you.</p></div>
+  </div>
+  <div class="body">
+    <span class="eyebrow">For clients, and the studio helping them</span>
+    <table>
+      <tr><th style="width:32%">What you see</th><th>What to do</th></tr>
+      <tr><td>“I didn’t get the email”</td><td>Check spam. Then the studio: People → More → <b>Resend invite</b> or <b>Reset password</b>; the link is also shown to copy and send by hand.</td></tr>
+      <tr><td>“The link has expired”</td><td>Links work once: invitations for 14 days, login links for 15 minutes, resets for an hour. Ask for a new one, or press <b>Forgot your password?</b>.</td></tr>
+      <tr><td>“I can’t log in”</td><td><b>Forgot your password?</b> on the login. If two-step is on and the phone is lost: a recovery code, or the studio turns it off (People → More).</td></tr>
+      <tr><td>The video won’t play</td><td>Reload, or try another browser. The studio: the video’s embed settings in Vimeo must allow the portal’s address.</td></tr>
+      <tr><td>There’s no Approve button</td><td>Only decision makers approve: ask yours. Or the project’s Approve switch is off (Studio → the project → What they can do).</td></tr>
+      <tr><td>Download is missing or held</td><td>The project’s download switch is off, or <b>Downloads after payment</b> holds it until everything is paid; Payments shows what’s due.</td></tr>
+      <tr><td>There’s no Pay button</td><td>Only decision makers pay. If nobody sees it, Stripe isn’t connected (System check → Payments).</td></tr>
+    </table>
+  </div>
+  <div class="hd"><span><img src="../../assets/Nobleman_Mark_Black.png" alt="">Client portal manual</span><span>If something goes wrong</span></div>
+  <div class="ft"><span>Nobleman Productions · The screening room</span><span class="n"></span></div>
+</section>
+
+<section class="page" data-title="If something goes wrong">
+  <div class="body">
+    <span class="eyebrow">If something goes wrong · For the studio</span>
+    <h2>What you see, <em>and what to do</em></h2>
+    <table>
+      <tr><th style="width:32%">What you see</th><th>What to do</th></tr>
+      <tr><td>A red or amber row in the System check</td><td>Each row says what to fix and where. Fix the red ones first.</td></tr>
+      <tr><td>A new version doesn’t show up</td><td>Its name needs the number (“Title V3”). Then the project → Videos → <b>Refresh from the source</b>. If it says “still processing”, wait for Vimeo.</td></tr>
+      <tr><td>A client paid, but it still says Due</td><td>Wait a minute and reload: Stripe confirms it. If it stays: System check → Payments (the webhook). The daily job also asks Stripe. Paid by check or wire: <b>Mark paid…</b>.</td></tr>
+      <tr><td>Emails aren’t going out</td><td>Studio → Connections → Email → <b>Send a test email</b>. If it fails, the card says why; Resend’s domain must be verified.</td></tr>
+      <tr><td>A connection says Not working</td><td>The card → <b>Change</b> → paste a fresh key → <b>Test it</b>.</td></tr>
+      <tr><td>Every connection stopped at once</td><td><code>PORTAL_ENCRYPTION_KEY</code> changed in Vercel: put the old value back, or re-enter each key.</td></tr>
+      <tr><td>Notion stopped updating</td><td>Connections → Notion → <b>Sync now</b>; if that fails, <b>Test it</b> and check the database is still shared with the connection.</td></tr>
+      <tr><td>“The portal is still being set up”</td><td>No database yet: chapter 7, step 1, then redeploy.</td></tr>
+      <tr><td>The address still shows the sample</td><td><code>PORTAL_MODE</code> is still set in Vercel, or there was no redeploy after deleting it.</td></tr>
+      <tr><td>Someone lands on an old address</td><td>That’s fine: the portal sends them on to its address once that answers. System check → Portal address shows which one leads.</td></tr>
+      <tr><td>A button seems to do nothing</td><td>Look for the message at the bottom of the screen. In the demo, nothing is saved: it says so.</td></tr>
+      <tr><td>Something isn’t on this list</td><td>Studio → Activity shows who did what and when. Then write to the help email in Studio details, with a screenshot.</td></tr>
+    </table>
+    <div class="law"><span>Murphy’s Law, support edition</span><q>The problem disappears the moment you show someone.</q><p>So take the screenshot first, then ask.</p></div>
+  </div>
+  <div class="hd"><span><img src="../../assets/Nobleman_Mark_Black.png" alt="">Client portal manual</span><span>If something goes wrong</span></div>
+  <div class="ft"><span>Nobleman Productions · The screening room</span><span class="n"></span></div>
+</section>
+
+<section class="page band" data-title="Security and privacy">
+  <div class="cband" id="ch11" style="background-image:url('../../media/a04.jpg');background-position:90% 50%">
+    <img class="logo" src="../../assets/Nobleman_Logo_White.png" alt="">
+    <div class="in"><span class="num"><i></i>Chapter 11</span><h1>Security <em>and privacy</em></h1>
+      <p>What protects clients’ films, accounts, and money, and what the portal keeps. The full notice is the website’s privacy page, linked from every page of the portal.</p></div>
   </div>
   <div class="body">
     <div class="cols">
@@ -807,7 +994,6 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
   <div class="ft"><span>Nobleman Productions · The screening room</span><span class="n"></span></div>
 </section>
 
-<!-- ============ APPENDIX A: DOCUMENT FORMAT ============ -->
 <section class="page" data-title="The Nobleman document format">
   <div class="body" id="apxA">
     <span class="eyebrow">Appendix A</span>
@@ -849,14 +1035,13 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
   <div class="ft"><span>Nobleman Productions · The screening room</span><span class="n"></span></div>
 </section>
 
-<!-- ============ BACK COVER ============ -->
 <section class="page dark back" data-title="Back">
   <div class="in">
     <div class="law"><span>Murphy’s Law, the last one</span><q>Anything that can go wrong in the edit will show up in the final cut.</q><p>So it shows up here first, where it can still be fixed.</p></div>
   </div>
   <div class="foot">
-    <div><img src="../../assets/Nobleman_Logo_White.png" alt="Nobleman Productions"><br><br>Veteran owned · San Diego and Las Vegas<br>noblemanproductions.gotit2work.com</div>
-    <div style="text-align:right">The client portal is operated<br>by GotIT2Work for Nobleman Productions.<br>Edition 1 · October 2026</div>
+    <div><img src="../../assets/Nobleman_Logo_White.png" alt="Nobleman Productions"><br><br>Veteran owned · San Diego and Las Vegas<br>noblemanproductions.com</div>
+    <div style="text-align:right">The client portal is operated<br>by GotIT2Work for Nobleman Productions.<br>Edition 2 · October 2026</div>
   </div>
 </section>
 

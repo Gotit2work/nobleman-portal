@@ -233,7 +233,7 @@ The portal will move from `portal.noblemanproductions.gotit2work.com` to `portal
 
 ## The manual
 
-`docs/manual/Nobleman-Portal-Manual.pdf` is the printed guide to everything above, in the studio's look: what clients see, roles and switches, Studio, connections, payments, going live, everyday playbooks, and security. Its appendix defines the Nobleman document format (Cormorant Garamond and Inter, the deep-sea palette, page layout) for other studio documents.
+`docs/manual/Nobleman-Portal-Manual.pdf` is the printed guide to everything above, in the studio's look: a one-page Start here, what clients see, roles and switches, Studio, connections, payments, going live, moving to noblemanproductions.com, everyday playbooks (each step says what you'll see), what to do when something goes wrong, and security. It names addresses only in its Start here table (before and after the move), so it stays right after the move without a rebuild. Its appendix defines the Nobleman document format (Cormorant Garamond and Inter, the deep-sea palette, page layout) for other studio documents.
 
 It is built from `docs/manual/manual.html` (fixed US Letter pages, local fonts in `docs/manual/fonts/`, screenshots in `docs/manual/img/`). To change it, edit the HTML, then from the repository root run `node docs/manual/build.mjs` (needs `npm ci` in `tests/` for Playwright). It refuses to print if an image is missing or a page's content doesn't fit. Update it when a feature it describes changes.
 
