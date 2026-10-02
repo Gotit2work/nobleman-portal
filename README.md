@@ -221,6 +221,12 @@ The full runbook, with exact Vercel, Resend, Vimeo, Notion, and Stripe steps, ch
 
 **Roll back:** set `PORTAL_MODE=demo` and redeploy (nothing in the database is touched), or promote an earlier deployment. Schema changes only ever add, so an earlier deployment runs against the newer database.
 
+## The manual
+
+`docs/manual/Nobleman-Portal-Manual.pdf` is the printed guide to everything above, in the studio's look: what clients see, roles and switches, Studio, connections, payments, going live, everyday playbooks, and security. Its appendix defines the Nobleman document format (Cormorant Garamond and Inter, the deep-sea palette, page layout) for other studio documents.
+
+It is built from `docs/manual/manual.html` (fixed US Letter pages, local fonts in `docs/manual/fonts/`, screenshots in `docs/manual/img/`). To change it, edit the HTML, then from the repository root run `node docs/manual/build.mjs` (needs `npm ci` in `tests/` for Playwright). It refuses to print if an image is missing or a page's content doesn't fit. Update it when a feature it describes changes.
+
 ## Security model
 
 - **Sessions:** a signed JWT (HS256, `SESSION_SECRET`) in the `np_session` cookie (httpOnly, Secure, SameSite=Lax; 7 days by default, 1 to 30 in Settings). Every request re-reads the person and checks the session version, so removal, a reset, a role or email change, or "Sign out everywhere" takes effect at once.

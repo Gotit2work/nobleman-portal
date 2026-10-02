@@ -41,6 +41,7 @@ Client portal for Nobleman Productions at `portal.noblemanproductions.gotit2work
 ## Conventions — keep these when changing the UI
 
 - One door for everyone: the login never says "client". Say "log in" / "log out" / "login link" and "two-step verification" (Adobe's own "Sign in with Adobe" stays).
+- `docs/manual/` (manual.html → Nobleman-Portal-Manual.pdf via `node docs/manual/build.mjs`) describes every feature, button name, and default. When a change alters one, update the page and rebuild the PDF in the same change.
 - Every word a client sees follows `docs/WRITING.md`: plain words, buttons named for the action, no promise that isn't always true, confirmation before anything hard to undo (`Confirm`; typed name for deletes). Say "the studio", not a person's name; the name lives in settings (`brand`).
 - Demo actions go through `say(real, demo)`, which shows "Demo only: …". Never let the demo call the API's write actions.
 - Home leads with **Your next step** (`nextStep` in `home.js`): one clear action.
