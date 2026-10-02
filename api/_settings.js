@@ -1,17 +1,24 @@
 // Portal-wide settings that staff change in Studio → Settings, so nothing here needs a code change.
 // Stored as one JSON value per section in the settings table (key "s:<section>"); anything missing falls back
 // to DEFAULTS. Read through getSettings(), which caches for a few seconds per server instance.
+import crypto from "node:crypto";
 import { sql } from "./_db.js";
 import { CAPABILITIES } from "./_caps.js";
+
+// The studio's web address. The website is https://<HOME> and the portal https://portal.<HOME>. Moving to another
+// domain (noblemanproductions.com) is scripts/move-domain.mjs plus the steps in the website repo's docs/MOVE.md;
+// a live portal switches with Studio → Settings → Studio details → Portal address, which is checked before saving.
+export const HOME = "noblemanproductions.gotit2work.com";
 
 export const DEFAULTS = {
   brand: {
     studio: "Nobleman Productions",
     support: "alexis@gotit2work.com",
-    website: "https://noblemanproductions.gotit2work.com",
-    privacy: "https://noblemanproductions.gotit2work.com/privacy#portal",
-    // The portal's own address, for links in emails the daily job sends and in Notion.
-    portal: "https://portal.noblemanproductions.gotit2work.com",
+    // Empty = automatic: the portal's address without "portal.", and its /privacy page (see addresses()).
+    website: "",
+    privacy: "",
+    // The portal's own address: links in emails and Notion, and where other addresses send people (app/main.js).
+    portal: `https://portal.${HOME}`,
     // The line above Messages for clients: who they're writing to, and when to expect a reply.
     replies: "Write to Jean and Justin about this project. They usually reply the same business day.",
   },
@@ -55,6 +62,16 @@ export const DEFAULTS = {
   notion: { connectionId: null, databaseId: null, dataSourceId: null, url: null, lastSync: null, lastError: null },
 };
 
+/** The addresses everything links to. The website and privacy page follow the portal unless set in Studio. */
+export function addresses(brand = {}) {
+  const portal = String(brand.portal || DEFAULTS.brand.portal).replace(/\/+$/, "");
+  const website = String(brand.website || portal.replace("://portal.", "://")).replace(/\/+$/, "");
+  return { portal, website, privacy: brand.privacy || `${website}/privacy#portal` };
+}
+
+/** Brand settings with the addresses filled in; `auto` says which ones were left to follow the portal. */
+export const resolveBrand = (brand) => ({ ...brand, ...addresses(brand), auto: { website: !brand.website, privacy: !brand.privacy } });
+
 const CACHE_MS = 5000;
 let cache = null;
 
@@ -73,6 +90,7 @@ export async function getSettings({ fresh = false } = {}) {
       : def && typeof def === "object" ? { ...def, ...(s && typeof s === "object" && !Array.isArray(s) ? s : {}) }
       : s ?? def;
   }
+  value.brand = resolveBrand(value.brand);
   cache = { at: Date.now(), value };
   return value;
 }
@@ -92,6 +110,15 @@ export async function patchSection(section, patch) {
 }
 
 export const forgetSettings = () => { cache = null; };
+
+/** This portal's own ID, made once. Another address proves it serves this same portal by answering with it. */
+let instance = null;
+export async function instanceId() {
+  if (instance) return instance;
+  await sql`insert into settings (key, value) values ('instance', ${crypto.randomUUID()}) on conflict (key) do nothing`;
+  instance = (await sql`select value from settings where key = 'instance'`)[0].value;
+  return instance;
+}
 
 /** Stage names and the progress shown for each, from settings. */
 export const stageNames = (s) => s.stages.map((x) => x.name);

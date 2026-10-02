@@ -438,6 +438,24 @@ r = await admin.admin("settingsSave", { section: "stages", value: [{ name: "Plan
 r = await dana.get("/api/portal");
 check("renamed stages appear for clients", r.d.stages.join() === "Plan,Shoot,Cut,Your review,Polish,Done" && r.d.projects.find((p) => p.id === HARBOR).stageName === "Polish", J(r.d.stages));
 await admin.admin("settingsReset", { section: "stages" });
+// ---- moving to another domain (docs/MOVE.md in the website repo) ----
+r = await anon.get("/api/session");
+const inst = r.d.instance;
+check("the website and privacy page follow the portal's address", /^[0-9a-f-]{36}$/.test(inst || "") && r.d.brand.website === r.d.brand.portal.replace("://portal.", "://") && r.d.brand.privacy === r.d.brand.website + "/privacy#portal", J(r.d.brand));
+const brandNow = (await admin.get("/api/admin")).d.settings.brand;
+const brandIn = { studio: brandNow.studio, support: brandNow.support, replies: brandNow.replies, website: "", privacy: "" };
+r = await admin.admin("settingsSave", { section: "brand", value: { ...brandIn, portal: "https://portal.nowhere.invalid" } });
+check("a new portal address that doesn't answer yet is refused, saying what to do", r.s === 400 && /doesn’t answer yet/.test(r.d.error) && (await anon.get("/api/session")).d.brand.portal === brandNow.portal, J(r.d));
+r = await admin.admin("settingsSave", { section: "brand", value: { ...brandIn, portal: "https://portal.moved.portal.test/" } });
+const moved = (await anon.get("/api/session")).d;
+check("…one that answers as this same portal is saved, and everything follows it", r.s === 200 && moved.brand.portal === "https://portal.moved.portal.test" && moved.brand.website === "https://moved.portal.test" && moved.brand.privacy === "https://moved.portal.test/privacy#portal" && moved.instance === inst, J(moved.brand));
+r = await admin.get("/api/admin?health=1");
+const addr = (k) => (r.d.checks.find((c) => c.label === k) || {});
+check("the system check confirms the portal's address and that the privacy page opens", addr("Portal address").ok === true && addr("Website and privacy page").ok === true, J([addr("Portal address"), addr("Website and privacy page")]));
+r = await admin.admin("settingsSave", { section: "brand", value: { ...brandIn, portal: "https://portal.moved.portal.test", website: "https://www.website.test" } });
+check("a website set by hand is kept, with its own privacy page", (await anon.get("/api/session")).d.brand.privacy === "https://www.website.test/privacy#portal");
+await admin.admin("settingsReset", { section: "brand" });
+check("…and Back to the original returns to the portal's own address", (await anon.get("/api/session")).d.brand.portal === brandNow.portal);
 r = await admin.admin("settingsSave", { section: "announcement", value: { text: "The portal is down for maintenance Sunday 6–7 AM." } });
 r = await dana.get("/api/portal");
 check("an announcement reaches everyone", r.d.announcement && /maintenance/.test(r.d.announcement.text));

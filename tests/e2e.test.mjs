@@ -521,6 +521,48 @@ const PHONE = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch:
   await page.context().close();
 }
 
+// ---------- 12. Moving to another domain (docs/MOVE.md in the website repo) ----------
+{
+  const page = await as("alexis@gotit2work.com", "/studio/settings/brand");
+  const portalField = page.locator("label.field", { hasText: "Portal address" }).locator("input");
+  const websiteField = page.locator("label.field", { hasText: /^Website/ }).locator("input");
+  await portalField.waitFor();
+  check("Studio details: the website and privacy page follow the portal, and say where they lead", (await websiteField.inputValue()) === "" && /^Automatic: https:\/\//.test(await websiteField.getAttribute("placeholder")));
+  await portalField.fill("https://portal.nowhere.invalid");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  check("…a portal address that doesn't answer yet can't be saved, and the message says what to do", await waitText(page, /doesn’t answer yet\. Add it in Vercel/));
+  await portalField.fill("https://portal.moved.portal.test");
+  const saved = page.waitForResponse((r) => r.url().endsWith("/api/admin") && r.request().method() === "POST");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  check("…one that answers as this portal is saved", (await saved).ok());
+  await page.context().close();
+
+  // An old address: the page stays while the new address doesn't answer, and moves on, same page, once it does.
+  const old = await newPage();
+  const ctx = old.context();
+  await ctx.route("http://old.portal.test/**", async (route) => {
+    const req = route.request();
+    const r = await fetch(req.url().replace("http://old.portal.test", B), { method: req.method(), headers: req.headers(), body: req.postDataBuffer() || undefined });
+    return route.fulfill({ status: r.status, headers: Object.fromEntries(r.headers), body: Buffer.from(await r.arrayBuffer()) });
+  });
+  let answering = false;
+  await ctx.route("https://portal.moved.portal.test/**", (route) => answering ? route.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><title>Moved</title><h1>The new address</h1>" }) : route.abort());
+  await old.goto("http://old.portal.test/review?from=email");
+  check("an old address keeps working while the new one doesn't answer", await waitText(old, "Log in") && new URL(old.url()).host === "old.portal.test");
+  answering = true;
+  await old.goto("http://old.portal.test/review?from=email");
+  await old.waitForURL(/portal\.moved\.portal\.test/).catch(() => {});
+  check("…and sends people on to the new address, same page, once it answers", old.url() === "https://portal.moved.portal.test/review?from=email", old.url());
+  const api = await old.goto("http://old.portal.test/api/session");
+  check("…while the old address's API keeps answering (Stripe and Adobe still reach it)", api.ok() && JSON.parse(await api.text()).brand.portal === "https://portal.moved.portal.test" && new URL(old.url()).host === "old.portal.test");
+  await old.context().close();
+  const back = await as("alexis@gotit2work.com", "/studio/settings/brand");
+  await back.getByRole("button", { name: "Back to the original" }).click();
+  await back.getByRole("button", { name: "Put it back" }).click();
+  check("…and Back to the original returns the portal to its own address", await waitText(back, "Back to the original."));
+  await back.context().close();
+}
+
 check("no JavaScript errors on any page", pageErrors.length === 0, pageErrors.join(" | "));
 await browser.close();
 console.log(`\n${pass} passed, ${fail} failed`);

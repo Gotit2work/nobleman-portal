@@ -6,7 +6,7 @@ import { generateClientTokenFromReadWriteToken } from "@vercel/blob/client";
 import { sql } from "./_db.js";
 import { isUuid, text, longText } from "./_auth.js";
 import { cleanCaps } from "./_caps.js";
-import { getSettings, saveSection, patchSection, DEFAULTS, LOGIN_MEDIA, LOGIN_UPLOAD, MAX_LOGIN_IMAGE } from "./_settings.js";
+import { getSettings, saveSection, patchSection, DEFAULTS, LOGIN_MEDIA, LOGIN_UPLOAD, MAX_LOGIN_IMAGE, instanceId } from "./_settings.js";
 import { ROLE_DEFAULTS, STAFF_PERMS, CLIENT_PERMS, can, isStaff } from "./_roles.js";
 import { listConnections, getConnection, createConnection, updateConnection, deleteConnection, forgetConnections } from "./_connections.js";
 import { PROVIDERS, VIDEO } from "./_providers/index.js";
@@ -129,6 +129,7 @@ export const MORE_GETS = {
       { label: "Daily job", ok: process.env.CRON_SECRET ? true : "warn", detail: process.env.CRON_SECRET ? "CRON_SECRET is set: reminders, Notion catch-up, and Frame.io sign-in refresh run daily." : "Set CRON_SECRET in Vercel so the daily job (reminders, Notion catch-up, Frame.io refresh) can run." },
       ...conns.filter((c) => PROVIDERS[c.provider] && PROVIDERS[c.provider].meta.kind === "video").map((c) => ({ label: c.name, ok: c.status === "ok" ? true : false, detail: c.status === "ok" ? `${PROVIDERS[c.provider].meta.name}: working${c.env ? " (from Vercel settings)" : ""}.` : `${PROVIDERS[c.provider].meta.name}: ${c.lastError || "not working"}` })),
       await paymentsCheck(),
+      ...(await addressChecks(req, s)),
       { label: "Notion", ok: !s.notion.dataSourceId ? "warn" : s.notion.lastError ? false : true, detail: !s.notion.dataSourceId ? "Not set up." : s.notion.lastError ? `Last sync failed: ${s.notion.lastError}` : `Syncing to ${s.notion.title || "your database"}${s.notion.lastSync ? ", last at " + iso(s.notion.lastSync) : ""}.` },
       { label: "Owners", ok: owners[0].n >= 2 ? true : "warn", detail: owners[0].n >= 2 ? `${owners[0].n} owners.` : "Only one owner. Make a second person an owner so the studio is never locked out." },
       { label: "Staff two-step verification", ok: staffNo2[0].n === 0 ? true : "warn", detail: staffNo2[0].n === 0 ? "Every staff account uses it." : `${staffNo2[0].n} staff ${staffNo2[0].n === 1 ? "account doesn’t" : "accounts don’t"} use two-step verification. Settings → Security can require it.` },
@@ -176,6 +177,32 @@ const CLEAN = {
 };
 const bad = (msg) => Object.assign(new Error(msg), { status: 400 });
 
+/** System check: the addresses every link leads to (docs/MOVE.md in the website repo covers moving them). */
+async function addressChecks(req, s) {
+  const here = originOf(req), { portal, website, privacy } = s.brand;
+  const fine = /^http:\/\/localhost(:\d+)?$/.test(here) || here === portal;
+  const page = privacy.split("#")[0];
+  let opens = false;
+  try { opens = (await fetch(page, { redirect: "follow", signal: AbortSignal.timeout(6000) })).ok; } catch { opens = false; }
+  return [
+    { label: "Portal address", ok: fine ? true : "warn", detail: fine ? `${portal}. Links in emails and Notion lead here.` : `You opened the portal at ${here}, but its address is ${portal}, so links in emails lead there. If the portal has moved, change Portal address in Settings → Studio details.` },
+    { label: "Website and privacy page", ok: opens ? true : "warn", detail: opens ? `${website}, and its privacy page opens.` : `${page} didn’t open. Every page links to it: check Website in Settings → Studio details.` },
+  ];
+}
+
+/** A new portal address must already serve this portal; otherwise links in emails, and visitors sent on from the
+ *  old address (app/main.js), would lead nowhere. Returns why not, or null when it does. */
+async function portalAnswers(url) {
+  try {
+    const r = await fetch(url + "/api/session", { redirect: "manual", signal: AbortSignal.timeout(8000) });
+    const j = await r.json().catch(() => null);
+    if (j && j.instance && j.instance === (await instanceId())) return null;
+    return `${url} answers, but not as this portal. In Vercel, add it to the nobleman-portal project’s domains, then try again.`;
+  } catch {
+    return `${url} doesn’t answer yet. Add it in Vercel and at the domain’s DNS, wait until Vercel says it’s valid, then try again.`;
+  }
+}
+
 /** System check: payments. */
 async function paymentsCheck() {
   const c = await stripeConnection();
@@ -204,6 +231,10 @@ export const MORE_ACTIONS = {
     const section = String(b.section || "");
     if (!CLEAN[section]) return res.status(400).json({ error: "Unknown settings section." });
     const value = CLEAN[section](b.value || {}, s[section]);
+    if (section === "brand" && value.portal !== s.brand.portal) {
+      const why = await portalAnswers(value.portal);
+      if (why) return res.status(400).json({ error: why });
+    }
     if (section === "security" && value.staffTwoStep && !s.security.staffTwoStep && !u.totp_enabled) {
       return res.status(400).json({ error: "Turn on two-step verification for yourself first (your account page), so requiring it can’t lock you out." });
     }

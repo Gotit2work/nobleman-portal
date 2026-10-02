@@ -24,6 +24,7 @@
 - [ ] You can log in to Vercel as `amangual1` and see the project **nobleman-portal** in team Gotit2Work.
 - [ ] A password manager is open: you'll create five secrets and save them there.
 - [ ] A terminal on your own computer, for generating secrets: Terminal on a Mac, or PowerShell 7 on Windows.
+- [ ] Moving to `noblemanproductions.com` is a separate job, before or after this one; the order doesn't matter (`docs/MOVE.md` in the website repo). If it's already done, read `portal.noblemanproductions.com` wherever this guide says `portal.noblemanproductions.gotit2work.com`. <!-- move-domain:keep -->
 - [ ] Optional for later steps: Jean available for the Vimeo token; access to GoDaddy DNS for `gotit2work.com` (email, step 9); the Nobleman Stripe login (step 12).
 
 **How to add an environment variable** (steps 3–5): Vercel → nobleman-portal → **Settings → Environment Variables → Add New**. Enter the **Key** and **Value**, tick **Production** and **Preview**, turn on **Sensitive**, then **Save**. Variables only apply to new deployments, so each part ends with a redeploy.
@@ -185,7 +186,7 @@ Clients pay deposits and balances by card or bank on Stripe's own checkout page.
 
 ### 14. The login page and settings
 
-Studio → Settings: check **Studio details** (help email, the line above Messages), **Login screen** (the photo and the Murphy's Law), **Welcome message**, and **Review reminders**.
+Studio → Settings: check **Studio details** (help email, the line above Messages; leave **Website** and **Privacy page** empty so they follow the portal's address), **Login screen** (the photo and the Murphy's Law), **Welcome message**, and **Review reminders**.
 
 ---
 

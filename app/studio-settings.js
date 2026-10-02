@@ -58,13 +58,13 @@ export function Settings({ admin, section }) {
   const title = SECTIONS.find((x) => x.key === cur).title;
   const pane = {
     check: () => html`<${Health} h=${health} />`,
-    brand: () => html`<${Section} admin=${admin} section="brand" title=${title} value=${s.brand} render=${(v, set) => html`
+    brand: () => html`<${Section} admin=${admin} section="brand" title=${title} value=${brandForm(s.brand)} render=${(v, set) => html`
       <div class="formgrid">
         <${Field} label="Studio name"><input class="input" value=${v.studio} onInput=${(e) => set({ studio: e.target.value })} /><//>
         <${Field} label="Help email"><input class="input" type="email" value=${v.support} onInput=${(e) => set({ support: e.target.value })} /><//>
-        <${Field} label="Website"><input class="input" value=${v.website} onInput=${(e) => set({ website: e.target.value })} placeholder="https://" /><//>
-        <${Field} label="Privacy page"><input class="input" value=${v.privacy} onInput=${(e) => set({ privacy: e.target.value })} placeholder="https://" /><//>
-        <${Field} label="Portal address"><input class="input" value=${v.portal} onInput=${(e) => set({ portal: e.target.value })} placeholder="https://" /><//>
+        <${Field} label="Portal address" hint="Change it only when the portal moves. It’s checked before it’s saved."><input class="input" value=${v.portal} onInput=${(e) => set({ portal: e.target.value })} placeholder="https://" /><//>
+        <${Field} label="Website" hint="Empty follows the portal’s address."><input class="input" value=${v.website} onInput=${(e) => set({ website: e.target.value })} placeholder=${"Automatic: " + s.brand.website} /><//>
+        <${Field} label="Privacy page" hint="Empty is the website’s privacy page."><input class="input" value=${v.privacy} onInput=${(e) => set({ privacy: e.target.value })} placeholder=${"Automatic: " + s.brand.privacy} /><//>
       </div>
       <${Field} label="Above Messages, for clients" hint="Promise only what’s always true."><input class="input" value=${v.replies || ""} onInput=${(e) => set({ replies: e.target.value })} /><//>`} />`,
     signin: () => html`<${Section} admin=${admin} section="signin" title=${title} value=${s.signin} render=${(v, set) => html`<${LoginScreen} v=${v} set=${set} />`} />`,
@@ -203,6 +203,9 @@ async function shrink(file) {
 }
 
 /** One settings section with its own Save, Discard, and Reset. */
+/** Studio details as the form edits them: addresses left automatic show as empty, with the automatic one shown. */
+const brandForm = (b) => ({ studio: b.studio, support: b.support, portal: b.portal, website: b.auto && b.auto.website ? "" : b.website, privacy: b.auto && b.auto.privacy ? "" : b.privacy, replies: b.replies });
+
 function Section({ admin, section, title, hint, value, render, array }) {
   const { run, busy } = useRun(admin);
   const [v, setV] = useState(value);

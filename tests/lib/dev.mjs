@@ -120,6 +120,9 @@ globalThis.fetch = async (input, init = {}) => {
   if (u.host === "api.notion.com") return fakes.notion(u, init);
   if (u.host === "api.stripe.com") return fakes.stripe(u, init);
   if ((u.host === "www.youtube.com" && u.pathname === "/oembed") || (u.host === "vimeo.com" && u.pathname === "/api/oembed.json")) return fakes.oembed(u);
+  // A domain move: <anything>.portal.test answers as this same portal; the studio's website answers its pages.
+  if (u.host.endsWith(".portal.test")) return realFetch(ORIGIN + u.pathname + u.search, init);
+  if (u.host === "noblemanproductions.gotit2work.com" || u.host.endsWith(".website.test")) return new Response("<!doctype html><title>Privacy</title>", { status: 200, headers: { "content-type": "text/html" } });
   return realFetch(input, init);
 };
 

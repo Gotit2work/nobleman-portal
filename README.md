@@ -221,6 +221,16 @@ The full runbook, with exact Vercel, Resend, Vimeo, Notion, and Stripe steps, ch
 
 **Roll back:** set `PORTAL_MODE=demo` and redeploy (nothing in the database is touched), or promote an earlier deployment. Schema changes only ever add, so an earlier deployment runs against the newer database.
 
+## Moving to noblemanproductions.com
+
+The portal will move from `portal.noblemanproductions.gotit2work.com` to `portal.noblemanproductions.com` (and the website to `noblemanproductions.com`). It's wired so that nothing breaks at any step, in any order. The guide is `docs/MOVE.md` in `Gotit2work/nobleman-website`.
+
+- **One address leads.** `HOME` in `api/_settings.js` is the studio's domain; the portal is `https://portal.<HOME>`. Studio → Settings → Studio details → **Portal address** overrides it on a live portal. **Website** and **Privacy page** are empty by default and follow the portal's address (`portal.` removed, then `/privacy#portal`).
+- **The switch is checked.** Saving a new Portal address first asks that address for `/api/session` and compares the portal's `instance` (a random ID made once, kept in `settings`). If it doesn't answer as this same portal, nothing is saved and the message says what to fix.
+- **Old addresses keep working.** When the portal is opened at any other custom address, the page sends the visitor on to the Portal address, same path, but only after a quick check that it answers (`movedOn` in `app/main.js`). API calls are never moved, so Stripe webhooks and Adobe sign-in keep reaching the old address until they're updated. Previews (`*.vercel.app`) and local copies stay put.
+- **The System check shows it.** It has two rows: **Portal address** (warns when the portal is opened somewhere else) and **Website and privacy page** (warns when the privacy page doesn't open).
+- **One command changes the code.** `node scripts/move-domain.mjs` lists every line naming the old domain; `--apply` changes them and checks that none were missed. Lines with `move-domain:keep` stay. The same script is in the website repo. The full suite passes on a moved copy.
+
 ## The manual
 
 `docs/manual/Nobleman-Portal-Manual.pdf` is the printed guide to everything above, in the studio's look: what clients see, roles and switches, Studio, connections, payments, going live, everyday playbooks, and security. Its appendix defines the Nobleman document format (Cormorant Garamond and Inter, the deep-sea palette, page layout) for other studio documents.
@@ -277,7 +287,7 @@ The data layer is plain Postgres. To move: create the Supabase project; copy the
 
 ```bash
 npm ci && (cd tests && npm ci)
-cd tests && npm test        # 303 API checks, then 134 browser checks (desktop and phone)
+cd tests && npm test        # 309 API checks, then 141 browser checks (desktop and phone)
 npm run shots               # screenshots of every screen in tests/.work/shots
 ```
 
