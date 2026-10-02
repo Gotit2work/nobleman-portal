@@ -212,10 +212,9 @@ export function Project({ id }) {
   const admin = isStaff(user);
   const p = data.projects.find((x) => x.id === id);
   if (!p) return html`<div class="page"><${Empty} title="That project isn’t here." action=${html`<${Link} to="/" cls="btn primary">Go to Home<//>`}>It may have been archived, or the link is old.<//></div>`;
-  const versions = p.cuts.reduce((n, c) => n + c.versions.length, 0);
   const wait = awaiting(p);
   const tiles = [];
-  if (p.caps.review) tiles.push({ to: `/review/${p.id}`, icon: "play", t: "Review", d: versions ? `${plural(versions, "version")}${wait ? `, ${wait} waiting for you` : ""}` : "No versions yet" });
+  if (p.caps.review) tiles.push({ to: `/review/${p.id}`, icon: "play", t: "Review", d: p.cuts.length ? `${plural(p.cuts.length, "film")} in review${wait ? `, ${wait} waiting for ${admin ? "the client" : "you"}` : ""}` : "No versions yet" });
   tiles.push({ to: `/films/${p.id}`, icon: "growth", t: "Films", d: p.films.length ? plural(p.films.length, "finished film") : "None delivered yet" });
   if (p.caps.files || p.caps.upload) tiles.push({ to: `/files/${p.id}`, icon: "send", t: "Files", d: p.files.length + p.videoUploads.length ? plural(p.files.length + p.videoUploads.length, "file") : "No files yet" });
   if (p.caps.messages) tiles.push({ to: `/messages/${p.id}`, icon: "bottle", t: "Messages", d: p.messages.unread ? plural(p.messages.unread, "new message") : p.messages.total ? plural(p.messages.total, "message") : "Start a conversation" });

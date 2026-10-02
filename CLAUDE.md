@@ -43,6 +43,9 @@ Client portal for Nobleman Productions at `portal.noblemanproductions.gotit2work
 - Every word a client sees follows `docs/WRITING.md`: plain words, buttons named for the action, no promise that isn't always true, confirmation before anything hard to undo (`Confirm`; typed name for deletes). Say "the studio", not a person's name; the name lives in settings (`brand`).
 - Demo actions go through `say(real, demo)`, which shows "Demo only: …". Never let the demo call the API's write actions.
 - Home leads with **Your next step** (`nextStep` in `home.js`): one clear action.
+- Versions show one at a time everywhere: the newest, with earlier ones in a picker (Review) or folded under it (Studio → Videos). Never a row of version chips.
+- The login is compact and still: a camera photo (`media/login-camera.jpg`), not a video; it fits 1440×900 without scrolling and keeps the form above the fold on a 390 px phone. The tabs name the form, so no visible heading repeats them.
+- Switches (`.demo-switch`, `.doortabs`) move a sliding thumb (`data-on`) the moment they're pressed; the demo's two views load together so switching never waits.
 - Desktop navigation is the `.rail` capsule (960 px and wider); phones get `.bottombar`. A new top-level screen needs an entry in `navFor` (main.js), an icon from `media/icons/`, a Help line, and a check in `tests/e2e.test.mjs`. A new Studio tab goes in `TABS` (studio.js) with the permissions that reveal it.
 - Capabilities are defined once in `api/_caps.js`; role permissions once in `api/_roles.js`. Studio renders the switches and the roles table from them.
 - Privacy: the notice is on the website (`/privacy#portal`). Adding a cookie, storage key, provider, tracked event, or stored field means updating the website's `privacy.html` (and its date) in the same change. Today the portal sets one cookie (`np_session`) and no browser storage.

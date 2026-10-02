@@ -212,7 +212,7 @@ function loadScript(src, ready) {
   if (ready()) return Promise.resolve(true);
   if (!scripts[src]) {
     scripts[src] = new Promise((resolve) => {
-      if (!document.querySelector(`script[src="${src}"]`)) { // index.html already loads Vimeo's
+      if (!document.querySelector(`script[src="${src}"]`)) {
         const s = document.createElement("script");
         s.src = src; s.async = true;
         s.onerror = () => resolve(false);

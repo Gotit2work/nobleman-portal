@@ -1,58 +1,38 @@
 // The way in, for everyone: clients, staff, and owners log in at the same door, and what they see next depends
 // on their role. Also: creating an account (three short steps), emailed login links, two-step codes, first-run
-// setup, and choosing a password. The left side is the reel playing behind a frame with a REC light and running timecode;
-// the right side is the door, with the studio's Murphy's Law under it (Studio → Settings → Login screen).
+// setup, and choosing a password. The left side is a camera at work, framed like a viewfinder (REC light, running
+// timecode), with the studio's Murphy's Law under the title (Studio → Settings → Login screen); the right side is the door.
 import { html, useState, useEffect, useRef, api, Icon, Field } from "./ui.js";
 import { TwoStepSetup } from "./twostep.js";
 
-const REEL = "https://player.vimeo.com/video/1197058424?h=796798a19d&background=1&autoplay=1&loop=1&muted=1&dnt=1&title=0&byline=0&portrait=0";
+/** The studio's Murphy's Law: the risk, then how the portal handles it. */
+function Law({ law, cls }) {
+  if (!law || !law.quote) return null;
+  return html`<figure class=${"law " + (cls || "")}>
+    ${law.kicker ? html`<figcaption>${law.kicker}</figcaption>` : null}
+    <blockquote>“${law.quote}”</blockquote>
+    ${law.answer ? html`<p>${law.answer}</p>` : null}
+  </figure>`;
+}
 
-function Screen({ title, sub }) {
-  const film = useRef(null);
-  const [on, setOn] = useState(false);
-  const [time, setTime] = useState("00:00:00:00");
+function Screen({ law }) {
+  const tc = useRef(null);
   useEffect(() => {
     const t0 = Date.now();
     const p = (n) => String(n).padStart(2, "0");
     const iv = setInterval(() => {
       const f = Math.floor(((Date.now() - t0) / 1000) * 24);
-      setTime(`${p(Math.floor(f / 86400) % 24)}:${p(Math.floor(f / 1440) % 60)}:${p(Math.floor(f / 24) % 60)}:${p(f % 24)}`);
+      if (tc.current) tc.current.textContent = `${p(Math.floor(f / 86400) % 24)}:${p(Math.floor(f / 1440) % 60)}:${p(Math.floor(f / 24) % 60)}:${p(f % 24)}`;
     }, 1000 / 12);
-    // The reel plays behind the poster on larger screens, and only fades in once it is really playing.
-    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches || window.innerWidth < 960;
-    let alive = true;
-    if (!still && film.current) {
-      const f = document.createElement("iframe");
-      f.src = REEL; f.title = "Nobleman Productions reel"; f.allow = "autoplay; fullscreen"; f.tabIndex = -1;
-      film.current.appendChild(f);
-      const wait = setInterval(() => {
-        if (!window.Vimeo || !window.Vimeo.Player) return;
-        clearInterval(wait);
-        try {
-          const pl = new window.Vimeo.Player(f);
-          let errored = false;
-          pl.on("error", () => { errored = true; if (alive) setOn(false); });
-          pl.on("timeupdate", () => { if (alive && !errored) setOn(true); });
-        } catch {}
-      }, 120);
-      setTimeout(() => clearInterval(wait), 15000);
-    }
-    return () => { alive = false; clearInterval(iv); };
+    return () => clearInterval(iv);
   }, []);
   return html`<section class="screen" aria-label="Nobleman Productions">
     <div class="poster" aria-hidden="true"></div>
-    <div class=${"film" + (on ? " on" : "")} ref=${film} aria-hidden="true"></div>
     <div class="grain" aria-hidden="true"></div>
     <div class="frame" aria-hidden="true"></div>
-    <div class="hud" aria-hidden="true"><span class="rec"><i></i>REC</span><span>${time}</span></div>
-    <h1>${title}</h1>
-    ${sub ? html`<p class="sub">${sub}</p>` : null}
-    <div class="feats" aria-label="What happens here">
-      <span><${Icon} name="play" size=${18} />Review every version</span>
-      <span><${Icon} name="growth" size=${18} />Approve and download</span>
-      <span><${Icon} name="bottle" size=${18} />Talk to the studio</span>
-      <span><${Icon} name="key" size=${18} />Run every project</span>
-    </div>
+    <div class="hud" aria-hidden="true"><span class="rec"><i></i>REC</span><span ref=${tc}>00:00:00:00</span></div>
+    <h1>The <em>screening room.</em></h1>
+    <${Law} law=${law} cls="on-screen" />
   </section>`;
 }
 
@@ -68,13 +48,9 @@ function Password({ value, onInput, label, auto, name }) {
 
 function Door({ children, law, brand }) {
   return html`<section class="door"><div class="in">
-    <img class="logo" src="/assets/Nobleman_Logo_White.png" alt=${(brand && brand.studio) || "Nobleman Productions"} style=${{ alignSelf: "flex-start" }} />
+    <img class="logo" src="/assets/Nobleman_Logo_White.png" alt=${(brand && brand.studio) || "Nobleman Productions"} />
     ${children}
-    ${law && law.quote ? html`<figure class="law">
-      ${law.kicker ? html`<figcaption>${law.kicker}</figcaption>` : null}
-      <blockquote>“${law.quote}”</blockquote>
-      ${law.answer ? html`<p>${law.answer}</p>` : null}
-    </figure>` : null}
+    <${Law} law=${law} cls="in-door" />
   </div></section>`;
 }
 
@@ -90,7 +66,7 @@ function Steps({ at, labels }) {
 const SIGNUP_STEPS = ["Your details", "Confirm your email", "You’re in"];
 
 /** Creating an account: name, work email, company. Nothing exists until they confirm the email. */
-function SignUp({ session, onLogin, preview }) {
+function SignUp({ session, preview }) {
   const [f, setF] = useState({ name: "", email: "", company: "", note: "" });
   const [noteOpen, setNoteOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -137,7 +113,6 @@ function SignUp({ session, onLogin, preview }) {
       : html`<button type="button" class="link small" style=${{ alignSelf: "flex-start" }} onClick=${() => setNoteOpen(true)}>Add a note for the studio</button>`}
     ${err ? html`<div class="alert" role="alert">${err}</div>` : null}
     <button class="btn primary lg" type="submit" disabled=${busy || !f.name.trim() || !f.email.includes("@") || !f.company.trim()}>${busy ? "One moment…" : "Create my account"}</button>
-    <span class="faint small" style=${{ lineHeight: 1.55 }}>Already have an account? <button type="button" class="link" onClick=${onLogin}>Log in</button></span>
   </form>`;
 }
 
@@ -231,35 +206,33 @@ function Login({ session, onSignedIn, problem, start }) {
   };
   const back = () => { setMode("password"); setErr(""); };
   const tab = (m) => { setMode(m); setErr(""); history.replaceState(null, "", m === "signup" ? "/signup" : location.pathname === "/signup" ? "/" : location.pathname + location.search); };
-  const studio = (s.brand && s.brand.studio) || "Nobleman Productions";
+  const tabs = signupOn && (mode === "password" || mode === "signup");
+  const title = mode === "code" ? "One more step" : mode === "reset" ? "Choose a new password" : mode === "signin-link" ? "Log in by email" : "Log in";
   return html`<${Door} law=${s.signin} brand=${s.brand}>
-    <div class="stack" style=${{ gap: "14px" }}>
-      <span class="eyebrow"><span>${studio}</span><span class="dot"></span></span>
-      ${signupOn && (mode === "password" || mode === "signup") ? html`<div class="doortabs" role="tablist" aria-label="Log in or create an account">
-        <button type="button" role="tab" aria-selected=${mode === "password"} onClick=${() => tab("password")}>Log in</button>
-        <button type="button" role="tab" aria-selected=${mode === "signup"} onClick=${() => tab("signup")}>Create an account</button>
-      </div>` : null}
-      <h2 class="h2">${mode === "code" ? "One more step" : mode === "reset" ? "Choose a new password" : mode === "signup" ? "Create your account" : "Log in"}</h2>
-    </div>
-    ${mode === "signup" ? html`<${SignUp} session=${s} preview=${preview} onLogin=${() => tab("password")} />`
+    ${tabs ? html`<div class="doortabs" data-on=${mode === "signup" ? "2" : "1"} role="tablist" aria-label="Log in or create an account">
+      <i class="thumb" aria-hidden="true"></i>
+      <button type="button" role="tab" aria-selected=${mode === "password"} onClick=${() => tab("password")}>Log in</button>
+      <button type="button" role="tab" aria-selected=${mode === "signup"} onClick=${() => tab("signup")}>Create an account</button>
+    </div>` : null}
+    <h2 class=${"h2 door-title" + (tabs ? " sr-only" : "")}>${tabs && mode === "signup" ? "Create an account" : title}</h2>
+    ${mode === "signup" ? html`<${SignUp} session=${s} preview=${preview} />`
       : mode === "code" ? html`<${CodeForm} ticket=${ticket} next=${next} onSignedIn=${onSignedIn} onRestart=${back} />`
       : mode === "signin-link" || mode === "reset" ? html`<${LinkForm} purpose=${mode === "reset" ? "reset" : "signin"} email=${email} setEmail=${setEmail} next=${next} onBack=${back} />`
-      : html`<form onSubmit=${submit} noValidate>
+      : html`<form class="login" onSubmit=${submit} noValidate>
       <${Field} label="Email"><input class="input" type="email" name="email" autoComplete="username" required value=${email} onInput=${(e) => setEmail(e.target.value)} /><//>
       <${Password} label="Password" name="password" auto="current-password" value=${pass} onInput=${setPass} />
       ${err ? html`<div class="alert" role="alert">${err}</div>` : null}
       <button class="btn primary lg" type="submit" disabled=${busy}>${busy ? "Logging in…" : "Log in"}</button>
-      ${linksOn ? html`<button type="button" class="btn ghost" onClick=${() => { setMode("signin-link"); setErr(""); }}>Email me a login link instead</button>` : null}
-      <button type="button" class="link small" style=${{ alignSelf: "flex-start" }} onClick=${() => (s.email ? setMode("reset") : setForgot(!forgot))} aria-expanded=${forgot}>Forgot your password?</button>
+      <div class="door-links">
+        ${linksOn ? html`<button type="button" class="link small" onClick=${() => { setMode("signin-link"); setErr(""); }}>Email me a login link</button>` : null}
+        <button type="button" class="link small" onClick=${() => (s.email ? setMode("reset") : setForgot(!forgot))} aria-expanded=${forgot}>Forgot your password?</button>
+      </div>
       ${forgot ? html`<div class="alert info small">Email <a href=${"mailto:" + support + "?subject=Portal%20password"}>${support}</a> from the address you log in with, and the studio will send you a link to choose a new one.</div>` : null}
     </form>`}
-    ${mode === "password" ? html`<a class="demo-entry" href="/demo">
-      <span><b>Just looking?</b><br /><span class="muted small">See a sample project. Nothing you do there is saved.</span></span>
-      <span aria-hidden="true">→</span>
-    </a>` : null}
     <div class="foot">
+      ${mode === "password" ? html`<a class="demo-line" href="/demo">Just looking? <u>See a sample project</u> <span aria-hidden="true">→</span></a>` : null}
       ${!signupOn ? html`<span>No account yet? Ask the studio to invite you.</span>` : null}
-      <span><a href=${(s.brand && s.brand.privacy) || "https://noblemanproductions.gotit2work.com/privacy#portal"}>Privacy</a> · <a href=${(s.brand && s.brand.website) || "https://noblemanproductions.gotit2work.com"}>${String((s.brand && s.brand.website) || "noblemanproductions.gotit2work.com").replace(/^https:\/\//, "")}</a></span>
+      <span class="faint"><a href=${(s.brand && s.brand.privacy) || "https://noblemanproductions.gotit2work.com/privacy#portal"}>Privacy</a> · <a href=${(s.brand && s.brand.website) || "https://noblemanproductions.gotit2work.com"}>${String((s.brand && s.brand.website) || "noblemanproductions.gotit2work.com").replace(/^https:\/\//, "")}</a></span>
     </div>
   <//>`;
 }
@@ -282,8 +255,7 @@ function Redeem({ session, onSignedIn, onPassword }) {
   }, []);
   return html`<${Door} law=${s.signin} brand=${s.brand}>
     <div class="stack" style=${{ gap: "10px" }}>
-      <span class="eyebrow"><span>${(s.brand && s.brand.studio) || "Nobleman Productions"}</span><span class="dot"></span></span>
-      <h2 class="h2">${st.phase === "error" ? "That link didn’t work" : st.phase === "code" ? "One more step" : st.phase === "waiting" ? `You’re on the list, ${String(st.name || "").split(" ")[0]}.` : "Opening your portal…"}</h2>
+      <h2 class="h2 door-title">${st.phase === "error" ? "That link didn’t work" : st.phase === "code" ? "One more step" : st.phase === "waiting" ? `You’re on the list, ${String(st.name || "").split(" ")[0]}.` : "Opening your portal…"}</h2>
     </div>
     ${st.phase === "waiting" ? html`<${Waiting} name=${st.name} studio=${st.studio} />` : null}
     ${st.phase === "busy" ? html`<div class="boot-line"><i></i></div>` : null}
@@ -374,9 +346,7 @@ function TwoStepRequired({ session, onDone, onSignOut, toast }) {
 export function Gate({ mode, session, problem, start, onSignedIn, onSetupDone, onPasswordDone, onPasswordNeeded, onTwoStepDone, onSignOut, toast }) {
   const s = session || {};
   return html`<div class="gate">
-    <${Screen}
-      title=${html`The <em>screening room.</em>`}
-      sub="Where every film is reviewed, approved, and delivered. Clients see their own projects; the studio runs them all from here." />
+    <${Screen} law=${s.signin} />
     ${mode === "setup" ? html`<${Setup} ready=${s.setupReady} onDone=${onSetupDone} session=${s} />`
       : mode === "password" ? html`<${NewPassword} user=${s.user} onDone=${onPasswordDone} onSignOut=${onSignOut} session=${s} />`
       : mode === "link" ? html`<${Redeem} session=${s} onSignedIn=${onSignedIn} onPassword=${onPasswordNeeded} />`
