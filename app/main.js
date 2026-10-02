@@ -11,6 +11,7 @@ import { Messages } from "./messages.js";
 import { Account } from "./account.js";
 import { Studio } from "./studio.js";
 import { Watch } from "./watch.js";
+import { Payments } from "./payments.js";
 
 const R = window.React;
 
@@ -213,6 +214,7 @@ function Shell({ route, more, setMore }) {
     case "files": screen = html`<${Files} pid=${route[1]} />`; break;
     case "messages": screen = html`<${Messages} pid=${route[1]} />`; break;
     case "account": screen = html`<${Account} />`; break;
+    case "payments": screen = html`<${Payments} pid=${route[1]} />`; break;
     case "studio": screen = isStaff(user) ? html`<${Studio} tab=${route[1]} id=${route[2]} />` : html`<${NotFound} />`; break;
     default: screen = html`<${NotFound} />`;
   }
@@ -307,10 +309,11 @@ const HELP = [
   { icon: "growth", t: "Films", d: "Your finished films. Watch them here and, where it’s switched on, download them, get caption files, or create a link to share." },
   { icon: "send", t: "Files", d: "Documents from the studio, like quotes and schedules, and anything you send: logos, footage, references." },
   { icon: "bottle", t: "Messages", d: "Write to the studio about a project. Your conversation stays with the project." },
+  { icon: "key", t: "Payments", d: "When the studio asks for a payment, it shows on Home and on the project, with a button to pay by card or bank on Stripe’s secure checkout.", payments: true },
 ];
 const STAFF_HELP = [
   { icon: "anchor", t: "Home", d: "What needs you: versions waiting on clients, change requests, unread messages, and what clients did lately." },
-  { icon: "key", t: "Studio", d: "Projects and their video sources, clients, people and roles, connections (Vimeo, Frame.io, YouTube, Wistia, Notion, email), settings, and the activity log." },
+  { icon: "key", t: "Studio", d: "Projects (video sources, progress, payments, what the client can do), clients, people and roles, connections (Vimeo, Frame.io, YouTube, Wistia, Notion, email, Stripe), settings, and the activity log." },
   { icon: "play", t: "Review and Films", d: "See every version, reply to notes, and check what the client sees. Clients see only the newest version unless Earlier versions is on." },
 ];
 
@@ -322,7 +325,7 @@ function Help({ onClose }) {
   return html`<${Modal} title=${staff ? "How the portal works" : "How your portal works"} onClose=${onClose} wide>
     ${app.demo ? html`<div class="alert"><b>This is a demo.</b> The client, projects, and files are made up. Click anything you like: nothing here is saved or sent.</div>
       <div class="stack" style=${{ gap: "8px" }}><span class="muted small" style=${{ lineHeight: 1.55 }}>Everyone logs in at the same door; what they see depends on who they are. Switch to see both sides:</span><${DemoSwitch} /></div>` : null}
-    <div class="list">${(staff ? STAFF_HELP : HELP).map((h) => html`<div class="li" key=${h.t}><${Icon} name=${h.icon} size=${30} /><div class="grow"><div class="name">${h.t}</div><div class="meta" style=${{ lineHeight: 1.55 }}>${h.d}</div></div></div>`)}</div>
+    <div class="list">${(staff ? STAFF_HELP : HELP.filter((h) => !h.payments || app.data.projects.some((p) => p.caps.payments && (p.payments || []).length))).map((h) => html`<div class="li" key=${h.t}><${Icon} name=${h.icon} size=${30} /><div class="grow"><div class="name">${h.t}</div><div class="meta" style=${{ lineHeight: 1.55 }}>${h.d}</div></div></div>`)}</div>
     ${!staff && app.user.roleLabel ? html`<p class="muted small" style=${{ margin: 0, lineHeight: 1.6 }}>You’re a <b>${app.user.roleLabel}</b> for ${app.user.clientName || "your company"}.${app.user.access === "reviewer" ? " Your notes reach the studio and your company’s decision makers, who approve each version." : app.user.access === "viewer" ? " You can watch and download; your colleagues leave notes and approve." : ""}</p>` : null}
     <p class="muted small" style=${{ margin: 0, lineHeight: 1.6 }}>Some parts only appear when the studio switches them on for your project. Stuck? Use Messages, or email <a href=${"mailto:" + support}>${support}</a>. How we handle your information: <a href=${brand.privacy || "https://noblemanproductions.gotit2work.com/privacy#portal"}>Privacy</a>.</p>
     <div><button class="btn primary" onClick=${onClose}>Got it</button></div>

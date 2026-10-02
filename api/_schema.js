@@ -4,7 +4,7 @@
 //
 // To read it as one SQL file: node -e "import('./api/_schema.js').then(m => console.log(m.STATEMENTS.join(';\n\n') + ';'))"
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 export const STATEMENTS = [
   `create table if not exists settings (
@@ -303,4 +303,30 @@ export const STATEMENTS = [
     created_at       timestamptz not null default now()
   )`,
   `create index if not exists signup_requests_email_idx on signup_requests(email, status)`,
+
+  // Payments the studio asks a client for on a project (a deposit, the balance), paid on Stripe's checkout
+  // (_payments.js). amount is in the currency's smallest unit (cents). status: open | processing (a bank
+  // payment on its way) | paid | canceled | refunded. method: stripe | outside (recorded by staff).
+  `create table if not exists payments (
+    id              uuid primary key default gen_random_uuid(),
+    project_id      uuid not null references projects(id) on delete cascade,
+    title           text not null,
+    amount          integer not null check (amount > 0),
+    currency        text not null default 'usd',
+    due             date,
+    note            text,
+    status          text not null default 'open',
+    method          text,
+    stripe_session  text,
+    stripe_intent   text,
+    paid_at         timestamptz,
+    paid_by         uuid references users(id) on delete set null,
+    paid_by_name    text,
+    created_by      uuid references users(id) on delete set null,
+    created_by_name text,
+    created_at      timestamptz not null default now(),
+    updated_at      timestamptz not null default now()
+  )`,
+  `create index if not exists payments_project_idx on payments(project_id, created_at)`,
+  `create index if not exists payments_session_idx on payments(stripe_session)`,
 ];

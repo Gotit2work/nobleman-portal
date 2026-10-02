@@ -6,10 +6,11 @@
 //   Connections  video sources, Notion, email, file storage     (studio-connect.js)
 //   Settings     brand, login screen, stages, defaults, security, reminders, system check (studio-settings.js)
 //   Activity     who did what, filterable, exportable           (studio-settings.js)
-import { html, useApp, useState, useEffect, api, Head, Empty, Link, Field, Toggle, Modal, Icon, fmtDate, fmtAgo, fmtDay, plural, can } from "./ui.js";
+import { html, useApp, useState, useEffect, api, Head, Empty, Link, Field, Toggle, Modal, Confirm, Icon, fmtDate, fmtAgo, fmtDay, plural, can } from "./ui.js";
 import { Clients, People } from "./studio-people.js";
 import { Connections } from "./studio-connect.js";
 import { Settings, Activity } from "./studio-settings.js";
+import { openOf, money } from "./payments.js";
 
 const R = window.React;
 
@@ -208,8 +209,9 @@ function NewProject({ admin, onClose }) {
   <//>`;
 }
 
-// A project's page in Studio, in four parts so it never becomes one long form; one Save covers them all.
-const PARTS = [["details", "Details"], ["progress", "Progress"], ["videos", "Videos"], ["access", "What they can do"]];
+// A project's page in Studio, in parts so it never becomes one long form; one Save covers them all (payments
+// save as you go: each request is its own action).
+const PARTS = [["details", "Details"], ["progress", "Progress"], ["videos", "Videos"], ["payments", "Payments"], ["access", "What they can do"]];
 const firstSentence = (t) => (String(t || "").match(/^.*?[.!?](?=\s|$)/) || [t])[0];
 
 function ProjectEdit({ id, admin }) {
@@ -294,6 +296,8 @@ function ProjectEdit({ id, admin }) {
     </section>
     ${src.source && !sourceChanged ? html`<${Videos} p=${src} admin=${admin} />` : null}` : null}
 
+    ${part === "payments" ? html`<${PaymentsPart} p=${src} admin=${admin} />` : null}
+
     ${part === "access" ? html`<section class="card pad stack" style=${{ gap: "16px" }}>
       <div class="stack" style=${{ gap: "4px" }}><div class="h3">What ${src.clientName} can do</div>
         <span class="muted small">Off means hidden from the client. Roles narrow it further (People → Roles).</span></div>
@@ -346,6 +350,66 @@ function Progress({ f, setF, src, d, may, admin }) {
         <span class="faint small">${src.remindedAt ? "Last reminder " + fmtAgo(src.remindedAt) + "." : d.email ? "No reminder sent yet." : "Reminders need email (Studio → Connections)."}</span>
       </div>
     </div>
+  </section>`;
+}
+
+/** A project's payments: ask the client to pay, cancel a request, or mark one paid another way. */
+function PaymentsPart({ p, admin }) {
+  const { d } = admin;
+  const { run, busy } = useRun(admin);
+  const [asking, setAsking] = useState(false);
+  const [f, setF] = useState({ title: "", amount: "", due: "", note: "", tell: true });
+  const [act, setAct] = useState(null); // { kind: "cancel" | "paid", x, how }
+  const may = admin.can("payments.manage");
+  const pays = p.payments || [];
+  const open = openOf(p);
+  const STAT = { open: ["Due", "amber"], processing: ["Bank payment on its way", "amber"], paid: ["Paid", "green"], refunded: ["Refunded", ""] };
+  if (!d.payments.ready) {
+    return html`<section class="card pad stack" style=${{ gap: "12px" }}>
+      <div class="h3">Payments</div>
+      <p class="muted" style=${{ margin: 0, lineHeight: 1.6 }}>Connect Stripe to ask ${p.clientName} for deposits and balances here. They pay by card or bank on Stripe’s checkout, and each payment marks itself paid.</p>
+      ${admin.can("connections.manage") ? html`<div><${Link} to="/studio/connections" cls="btn primary sm">Connect Stripe<//></div>` : html`<span class="faint small">An owner connects it in Studio → Connections.</span>`}
+    </section>`;
+  }
+  const ask = async () => {
+    const r = await run({ action: "paymentCreate", projectId: p.id, ...f }, (x) => `Asked ${p.clientName} for ${x.label}.${f.tell && d.email ? " They’ve been emailed." : ""}`);
+    if (r) { setAsking(false); setF({ title: "", amount: "", due: "", note: "", tell: true }); }
+  };
+  return html`<section class="card pad stack" style=${{ gap: "14px" }}>
+    <div class="row" style=${{ justifyContent: "space-between" }}>
+      <div class="stack" style=${{ gap: "4px" }}><div class="h3">Payments</div>
+        <span class="muted small">${open.length ? `${money(open.reduce((n, x) => n + x.amount, 0), open[0].currency)} due` : pays.length ? "Everything is paid" : "Nothing asked for yet"} · Stripe ${d.payments.live ? "live" : "test mode"} · ${p.caps.payfirst ? "downloads wait for payment" : "downloads don’t wait for payment"}</span></div>
+      ${may ? html`<button class="btn primary sm" onClick=${() => setAsking(true)}>Ask for a payment</button>` : null}
+    </div>
+    ${!p.caps.payments ? html`<div class="alert info small">Payments is off for ${p.clientName} on this project, so they can’t see or pay these. Turn it on under What they can do.</div>` : null}
+    ${pays.length ? html`<div class="list">${pays.map((x) => html`<div class="li payrow" key=${x.id}>
+      <div class="grow"><div class="name">${x.title}</div>
+        <div class="meta">${x.status === "paid" ? `Paid ${fmtDate(x.paidAt)}${x.paidBy ? " · " + x.paidBy : ""}` : x.due ? `Due ${fmtDay(x.due)}` : `Asked ${fmtDate(x.created)}`}${x.createdBy ? " · asked by " + x.createdBy : ""}</div></div>
+      <b class="amt">${x.label}</b>
+      <span class=${"pill " + (STAT[x.status] || ["", ""])[1]}>${(STAT[x.status] || [x.status])[0]}</span>
+      ${may && x.status === "open" ? html`<div class="row" style=${{ gap: "6px" }}>
+        <button class="btn ghost sm" onClick=${() => setAct({ kind: "paid", x, how: "Check" })}>Mark paid…</button>
+        <button class="btn ghost sm" onClick=${() => setAct({ kind: "cancel", x })}>Cancel</button></div>` : null}
+    </div>`)}</div>` : null}
+    ${asking ? html`<${Modal} title=${`Ask ${p.clientName} to pay`} onClose=${() => setAsking(false)}>
+      <${Field} label="What it’s for"><input class="input" value=${f.title} onInput=${(e) => setF({ ...f, title: e.target.value })} placeholder="Deposit (50%)" /><//>
+      <div class="formgrid">
+        <${Field} label=${`Amount (${d.payments.currency.toUpperCase()})`}><input class="input" inputMode="decimal" value=${f.amount} onInput=${(e) => setF({ ...f, amount: e.target.value })} placeholder="4,500" /><//>
+        <${Field} label="Due (optional)"><input class="input" type="date" value=${f.due} onInput=${(e) => setF({ ...f, due: e.target.value })} /><//>
+      </div>
+      <${Field} label="Note for the client (optional)"><input class="input" value=${f.note} onInput=${(e) => setF({ ...f, note: e.target.value })} placeholder="Balance on delivery of the final cut." /><//>
+      ${d.email ? html`<div class="setopt"><div><b>Email ${p.clientName}</b><span>Their decision makers get a link to pay.</span></div><${Toggle} checked=${f.tell} onChange=${(v) => setF({ ...f, tell: v })} label="Email the client" /></div>` : null}
+      <div class="row"><button class="btn primary" disabled=${busy || !f.title.trim() || !f.amount.trim()} onClick=${ask}>${busy ? "Asking…" : "Ask for it"}</button><button class="btn ghost" onClick=${() => setAsking(false)}>Not now</button></div>
+    <//>` : null}
+    ${act && act.kind === "cancel" ? html`<${Confirm} title=${`Cancel “${act.x.title}”?`} yes="Cancel the request" danger busy=${busy}
+      onYes=${async () => { if (await run({ action: "paymentCancel", id: act.x.id }, "Canceled. It can’t be paid any more.")) setAct(null); }} onNo=${() => setAct(null)}>
+      ${p.clientName} won’t see it any more, and its checkout stops working.
+    <//>` : null}
+    ${act && act.kind === "paid" ? html`<${Modal} title=${`Mark ${act.x.label} paid`} onClose=${() => setAct(null)}>
+      <p class="muted" style=${{ margin: 0, lineHeight: 1.6 }}>For a payment that came another way. ${p.clientName} sees it as paid, and anything waiting for it opens.</p>
+      <${Field} label="How it was paid"><input class="input" value=${act.how} onInput=${(e) => setAct({ ...act, how: e.target.value })} placeholder="Check, bank transfer" /><//>
+      <div class="row"><button class="btn primary" disabled=${busy} onClick=${async () => { if (await run({ action: "paymentMarkPaid", id: act.x.id, how: act.how }, "Marked paid.")) setAct(null); }}>Mark it paid</button><button class="btn ghost" onClick=${() => setAct(null)}>Not now</button></div>
+    <//>` : null}
   </section>`;
 }
 

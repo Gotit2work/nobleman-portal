@@ -12,6 +12,7 @@ import { randomToken, hashToken, seal, open } from "./_crypto.js";
 import { createLink, emailLink } from "./_links.js";
 import { later } from "./_later.js";
 import { syncProject } from "./_notion.js";
+import { stripeConnection, checkout, reconcile, announce, paymentOut } from "./_payments.js";
 
 /**
  * GET  /api/portal                        everything the signed-in person can see (see _build.js)
@@ -22,7 +23,7 @@ import { syncProject } from "./_notion.js";
  * GET  /api/portal?team=1                 a decision maker's teammates
  * POST /api/portal {action}               note | resolve | deleteNote | decide | message | deleteMessage |
  *                                         seen | downloaded | confirmNext | shareCreate | shareRevoke |
- *                                         teamAdd | teamUpdate | teamRemove
+ *                                         teamAdd | teamUpdate | teamRemove | pay | payCheck
  *
  * Every action re-checks that the person may see the project, that the project allows it (_caps.js), and that
  * their role does (_roles.js).
@@ -60,6 +61,15 @@ export default async function handler(req, res) {
 }
 
 const NOT_FOUND = { error: "That project isn’t available to you." };
+
+/** One payment the person may see: on a project they can reach, with Payments switched on for them. */
+async function payFor(req, res, u, b) {
+  const pay = isUuid(b.paymentId) ? (await sql`select * from payments where id = ${b.paymentId} and status <> 'canceled'`)[0] : null;
+  const p = pay && (await projectFor(u, pay.project_id));
+  if (!p) { res.status(404).json({ error: "That payment isn’t available to you." }); return null; }
+  if (!p.caps.payments) { res.status(403).json(OFF("Payments")); return null; }
+  return { p, pay };
+}
 const OFF = (what) => ({ error: `${what} isn’t switched on for you on this project. Ask the studio if you need it.` });
 const iso = (d) => (d ? new Date(d).toISOString() : null);
 const touch = (p) => sql`update projects set updated_at = now() where id = ${p.id}`;
@@ -254,6 +264,39 @@ const ACTIONS = {
     if (!p) return res.status(404).json(NOT_FOUND);
     await audit(req, u, "downloaded", `Downloaded ${text(b.what, 160) || "a file"}`, { projectId: p.id, clientId: p.client_id });
     return res.status(200).json({ ok: true });
+  },
+
+  /** Pay: a Stripe checkout page for one payment the studio asked for. The browser goes there next. */
+  async pay(req, res, u, b) {
+    const x = await payFor(req, res, u, b);
+    if (!x) return;
+    const { p, pay } = x;
+    if (!p.caps.pay) return res.status(403).json({ error: "Your company’s decision makers pay. You can see what’s due here." });
+    if (pay.status === "paid") return res.status(200).json({ payment: paymentOut(pay) });
+    if (pay.status === "processing") return res.status(409).json({ error: "Your bank payment is on its way. It shows as paid once it clears." });
+    if (pay.status !== "open") return res.status(409).json({ error: "This payment isn’t open any more." });
+    const conn = await stripeConnection();
+    if (!conn) return res.status(409).json({ error: "Payments aren’t set up yet. Ask the studio how to pay." });
+    const r = await checkout(conn, pay, p, u, originOf(req));
+    if (r.settled) {
+      await announce(r.settled, { req, actor: u, origin: originOf(req) });
+      return res.status(200).json({ payment: paymentOut(r.settled.row) });
+    }
+    return res.status(200).json({ url: r.url });
+  },
+
+  /** Back from Stripe's checkout: asks Stripe how it went (never trusts the address) and settles the payment. */
+  async payCheck(req, res, u, b) {
+    const x = await payFor(req, res, u, b);
+    if (!x) return;
+    const conn = await stripeConnection();
+    let t = null;
+    if (conn && ["open", "processing"].includes(x.pay.status)) {
+      try { t = await reconcile(conn, x.pay); } catch (err) { console.error("stripe check", err.message); }
+      if (t) await announce(t, { req, actor: u, origin: originOf(req) });
+    }
+    const fresh = (await sql`select * from payments where id = ${x.pay.id}`)[0];
+    return res.status(200).json({ payment: paymentOut(fresh) });
   },
 
   /** The client confirms the next milestone (a filming day, a delivery date). */

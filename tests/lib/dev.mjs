@@ -118,6 +118,7 @@ globalThis.fetch = async (input, init = {}) => {
   if (u.host === "www.googleapis.com" && u.pathname.startsWith("/youtube/")) return fakes.youtube(u, init);
   if (u.host === "api.wistia.com") return fakes.wistia(u, init);
   if (u.host === "api.notion.com") return fakes.notion(u, init);
+  if (u.host === "api.stripe.com") return fakes.stripe(u, init);
   if ((u.host === "www.youtube.com" && u.pathname === "/oembed") || (u.host === "vimeo.com" && u.pathname === "/api/oembed.json")) return fakes.oembed(u);
   return realFetch(input, init);
 };
@@ -137,6 +138,7 @@ http.createServer(async (req, res) => {
   if (p.startsWith("/__blob")) return fakeBlob(req, res, url, raw);
   if (p === "/__mail") { res.writeHead(200, { "content-type": "application/json" }); return res.end(JSON.stringify(mail)); }
   if (p === "/__fake/state") { res.writeHead(200, { "content-type": "application/json" }); return res.end(JSON.stringify(fakes.snapshot())); }
+  if (p === "/__stripe/pay") { const s = fakes.stripePay(url.searchParams.get("session"), url.searchParams.get("bank") === "1"); res.writeHead(s ? 200 : 404, { "content-type": "application/json" }); return res.end(JSON.stringify(s)); }
   if (p === "/__vimeo/state") { res.writeHead(200, { "content-type": "application/json" }); return res.end(JSON.stringify(V.folders)); }
   if (p === "/__vimeo/finish") { // mark every finished upload as transcoded
     for (const f of Object.values(V.folders)) for (const v of f.videos) if (v.status === "uploading" && tus.get(v.uri.split("/").pop())?.offset > 0) v.status = "available";
@@ -157,6 +159,7 @@ http.createServer(async (req, res) => {
 
   if (p.startsWith("/api/")) {
     req.query = Object.fromEntries(url.searchParams);
+    req.rawBody = raw;
     const file = path.join(root, p + ".js");
     if (!fs.existsSync(file) || path.basename(file).startsWith("_")) { res.statusCode = 404; return res.end("no such function"); }
     Object.defineProperty(req, "body", { get() {

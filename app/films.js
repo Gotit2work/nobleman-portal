@@ -93,6 +93,7 @@ function Film({ p, f }) {
               </div>`)}</div>
               <span class="faint small">Links come straight from ${dl.siteName || "the video host"} and work for a limited time. Reopen this page for fresh ones.</span>`
             : dl && dl.onSite ? html`<span class="muted small" style=${{ lineHeight: 1.55 }}>Download this film from its page on ${dl.siteName || "the video host"}.</span><a class="btn primary" href=${dl.onSite} target="_blank" rel="noopener" onClick=${() => note("from " + (dl.siteName || "the host"))}>Download on ${dl.siteName || "the host"}</a>`
+            : dl && dl.held ? html`<span class="muted small" style=${{ lineHeight: 1.55 }}>${dl.reason}</span><div><${Link} to=${dl.payTo} cls="btn primary sm">See what’s due<//></div>`
             : html`<span class="muted small" style=${{ lineHeight: 1.55 }}>${(dl && dl.reason) || "Downloads aren’t available for this film."}</span>`}
         </div>` : null}
         ${p.caps.share ? html`<${Share} p=${p} f=${f} />` : null}

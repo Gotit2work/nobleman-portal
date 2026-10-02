@@ -8,7 +8,51 @@ const ago = (d) => new Date(Date.now() - d * 86400e3).toISOString();
 export const state = {
   frameio: { tokens: new Set(), refresh: new Set(["fio-refresh-0"]), grants: [] },
   notion: { databases: new Map(), dataSources: new Map(), pages: new Map(), calls: [] },
+  stripe: { sessions: new Map(), n: 0, calls: [] },
 };
+
+// ---------- Stripe (Checkout Sessions) ----------
+// Keys starting sk_test_ work, except sk_test_bad. /__stripe/pay in dev.mjs plays the client paying.
+export async function stripe(u, init) {
+  const key = auth(init).replace(/^Bearer /, "");
+  const S = state.stripe;
+  S.calls.push((init.method || "GET") + " " + u.pathname);
+  if (!/^(sk|rk)_test_/.test(key) || key === "sk_test_bad") return json({ error: { message: "Invalid API Key provided: " + key.slice(0, 12) + "…" } }, 401);
+  if (u.pathname === "/v1/account") return json({ id: "acct_test", email: "studio@nobleman.test", settings: { dashboard: { display_name: "Nobleman Productions" } } });
+  if (u.pathname === "/v1/checkout/sessions" && (init.method || "GET") === "GET") return json({ object: "list", data: [...S.sessions.values()].slice(-1) });
+  if (u.pathname === "/v1/checkout/sessions" && init.method === "POST") {
+    const f = new URLSearchParams(String(init.body || ""));
+    const id = "cs_test_" + (++S.n);
+    const s = {
+      id, object: "checkout.session", status: "open", payment_status: "unpaid", url: "https://checkout.stripe.com/c/pay/" + id,
+      amount_total: Number(f.get("line_items[0][price_data][unit_amount]")), currency: f.get("line_items[0][price_data][currency]"),
+      metadata: { payment: f.get("metadata[payment]"), project: f.get("metadata[project]") }, client_reference_id: f.get("client_reference_id"),
+      customer_email: f.get("customer_email"), success_url: f.get("success_url"), cancel_url: f.get("cancel_url"), payment_intent: null, customer_details: null,
+      name: f.get("line_items[0][price_data][product_data][name]"),
+    };
+    S.sessions.set(id, s);
+    return json(s);
+  }
+  const m = /^\/v1\/checkout\/sessions\/([\w]+)(\/expire)?$/.exec(u.pathname);
+  if (m) {
+    const s = S.sessions.get(m[1]);
+    if (!s) return json({ error: { message: "No such checkout.session: " + m[1] } }, 404);
+    if (m[2]) { if (s.status !== "open") return json({ error: { message: "Only open sessions can be expired." } }, 400); s.status = "expired"; }
+    return json(s);
+  }
+  return json({ error: { message: "Unrecognized request URL: " + u.pathname } }, 404);
+}
+
+/** The client finishing checkout: paid by card, or a bank payment still on its way (bank=1). */
+export function stripePay(id, bank) {
+  const s = state.stripe.sessions.get(id);
+  if (!s) return null;
+  s.status = "complete";
+  s.payment_status = bank ? "unpaid" : "paid";
+  s.payment_intent = "pi_" + id.slice(8);
+  s.customer_details = { email: s.customer_email, name: "Dana Whitfield" };
+  return s;
+}
 
 // ---------- Adobe IMS + Frame.io V4 ----------
 const FIO = {
@@ -197,5 +241,6 @@ export function snapshot() {
   return {
     frameio: { grants: state.frameio.grants, tokens: state.frameio.tokens.size },
     notion: { pages: [...state.notion.pages.values()], dataSources: [...state.notion.dataSources.values()], calls: state.notion.calls },
+    stripe: { sessions: [...state.stripe.sessions.values()], calls: state.stripe.calls },
   };
 }
