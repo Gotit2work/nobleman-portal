@@ -278,7 +278,7 @@ const dana = await newPage();
 
   await tab(page, "Activity").click();
   check("the activity log shows what clients did", await waitText(page, /Approved Harbor Spot/i) && await waitText(page, /Created a share link/));
-  await page.getByRole("button", { name: "Clients", exact: true }).click();
+  await page.getByRole("combobox", { name: "Show" }).selectOption("kind:client");
   check("…and filters by who did it", await waitText(page, "Dana Whitfield"));
   await page.context().close();
 }
@@ -464,7 +464,27 @@ const PHONE = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch:
   await page.locator(".parts").getByRole("button", { name: "Payments", exact: true }).click();
   check("demo Studio: a project's payments, with ways to ask, cancel, or mark paid", await waitText(page, "Ask for a payment") && await visible(page.getByRole("button", { name: "Mark paid…" })) && await waitText(page, "Stripe live"));
   await page.goto(DEMO + "/studio/connections?view=studio");
-  check("demo Studio: Stripe is a connection, with its webhook address", await waitText(page, "Payments (Stripe)") && await waitText(page, "/api/connect?webhook=stripe"));
+  const hidden = await waitText(page, "Payments (Stripe)") && !(await page.getByText("/api/connect?webhook=stripe").count());
+  await page.getByRole("button", { name: "Show the setup" }).click();
+  check("demo Studio: Stripe is a connection; its connected webhook's setup folds away until asked for", hidden && await waitText(page, "/api/connect?webhook=stripe"));
+  // Simple by design: one or two buttons per row, one flag per project card, rare things folded away.
+  await page.goto(DEMO + "/studio/people?view=studio");
+  await waitText(page, "Jonathan Reyes");
+  const rowBtns = await page.locator("table.table tbody tr").evaluateAll((rs) => Math.max(...rs.map((r) => r.querySelectorAll("td:last-child > button, td:last-child > a, td:last-child > .more > button").length)));
+  await page.locator("table.table tbody tr", { hasText: "Justin" }).getByRole("button", { name: "More" }).click();
+  check("People: at most two buttons per person, with a password reset in More", rowBtns <= 2 && await visible(page.getByRole("menuitem", { name: "Reset password" })));
+  await page.goto(DEMO + "/studio/projects/demo-meridian?view=studio");
+  await page.locator(".parts").getByRole("button", { name: "Videos", exact: true }).click();
+  await waitText(page, "Campaign Film V3");
+  check("Videos: one menu per video instead of a row of buttons", await page.locator(".vrow").first().evaluate((r) => r.querySelectorAll("button.btn").length) === 1);
+  await page.locator(".demo-switch").first().getByRole("button", { name: "Client’s view" }).click();
+  await page.goto(DEMO + "/");
+  await waitText(page, "Your projects");
+  check("Home: each project card shows one flag at most", (await page.locator(".pcard").evaluateAll((cs) => cs.map((c) => c.querySelectorAll(".pill").length))).every((n) => n <= 1));
+  await page.goto(DEMO + "/account");
+  const pwHidden = !(await page.locator('input[autocomplete="current-password"]').count());
+  await page.getByRole("button", { name: "Change my password" }).click();
+  check("Account: the password form opens only when asked for", pwHidden && await visible(page.locator('input[autocomplete="current-password"]')));
   await page.goto(DEMO + "/signin");
   check("/signin still reaches the real login in demo mode", await page.getByRole("heading", { name: "Log in" }).waitFor().then(() => true, () => false));
   await page.goto(B + "/demo");

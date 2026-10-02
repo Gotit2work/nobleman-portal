@@ -170,7 +170,7 @@ Clients pay deposits and balances by card or bank on Stripe's own checkout page.
 3. Log in as the test client (a private window) → Home shows **Please pay** → **Pay** → card `4242 4242 4242 4242`, any future date, any CVC, any ZIP → **Pay**.
 4. *Expected:* back in the portal, "Thank you. $1.00 is paid."; Studio → the project → Payments shows **Paid**; Stripe → Payments shows it; the studio receives an email.
 
-**12e. Go live.** In Stripe, turn **Test mode off** and repeat 12b (the live key, `sk_live_…`, pasted with **Change**) and 12c (live mode has its own webhook endpoint and its own signing secret). Then pay a real $1 and refund it in Stripe → Payments → **Refund**. *Expected:* the portal shows it as **Refunded**.
+**12e. Go live.** In Stripe, turn **Test mode off** and repeat 12b (the live key, `sk_live_…`, pasted with **Change**) and 12c (live mode has its own webhook endpoint and its own signing secret; on the Stripe card the address is under **Show the setup** once a webhook is connected). Then pay a real $1 and refund it in Stripe → Payments → **Refund**. *Expected:* the portal shows it as **Refunded**.
 
 ---
 

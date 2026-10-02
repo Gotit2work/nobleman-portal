@@ -451,7 +451,7 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
       </div>
       <div class="stack">
         <h3>Videos</h3>
-        <p>Where videos come from, and every video there. A title with a version number (“Harbor Spot V2”) goes to Review; the rest go to Films. Each film’s earlier versions fold under its newest. Per video: <span class="ui">Hide</span>, <span class="ui">Rename</span>, <span class="ui">Make it a finished film</span>, nothing changed at the source.</p>
+        <p>Where videos come from, and every video there. A title with a version number (“Harbor Spot V2”) goes to Review; the rest go to Films. Each film’s earlier versions fold under its newest. Each video’s <span class="ui">More</span> menu hides it, renames it for the client, or makes it a finished film; nothing changes at the source.</p>
       </div>
       <div class="stack">
         <h3>Payments, and what they can do</h3>
@@ -539,7 +539,7 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
       <div class="card"><h3><img class="ic" src="../../media/icons/send.png" alt="">File storage</h3>
         <p class="small">Documents and client files in a private Vercel Blob store: nothing has a public address. Uploads go straight from the browser to storage; downloads use links that expire after ten minutes. Set up in Vercel, not in Studio (chapter 7).</p></div>
       <div class="card"><h3><img class="ic" src="../../media/icons/key.png" alt="">Payments (Stripe)</h3>
-        <p class="small">The secret key (test or live), the currency, and the webhook signing secret. The card shows the webhook address and the four events to choose in Stripe, with a Copy button. Test mode first, then live (chapter 7, step 12).</p></div>
+        <p class="small">The secret key (test or live), the currency, and the webhook signing secret. Until the webhook is connected, the card shows its address (with a Copy button) and the four events to choose in Stripe; after that, under <span class="ui">Show the setup</span>. Test mode first, then live (chapter 7, step 12).</p></div>
     </div>
     <figure><div class="crop" style="height:4.05in"><img src="img/connections.jpg" alt="" style="width:118%;margin-left:-14.5%;margin-top:-3.5%"></div><figcaption>Studio → Connections in the demo: each card shows whether it’s working, when it was checked, and what to change.</figcaption></figure>
   </div>
@@ -764,7 +764,7 @@ figcaption { font-size: 7.4pt; color: var(--faint); }
         <ol class="steps small"><li>Upload the final without a version number: it goes to Films.</li><li>What they can do: Downloads after payment on.</li><li>Payments → Ask for the balance.</li><li>Stage: Delivered.</li></ol>
         <p class="small muted">Done when the balance shows Paid and the client’s downloads are open.</p></div>
       <div class="card"><h3>Someone can’t log in</h3>
-        <ol class="steps small"><li>Studio → People → find them.</li><li><b>Reset password</b> (or <b>Resend invite</b> if never logged in): the link is emailed and shown to copy.</li><li>Lost phone with two-step on: More → <b>Turn off two-step</b>.</li></ol>
+        <ol class="steps small"><li>Studio → People → find them.</li><li>More → <b>Reset password</b> (or <b>Resend invite</b> if never logged in): the link is emailed and shown to copy.</li><li>Lost phone with two-step on: More → <b>Turn off two-step</b>.</li></ol>
         <p class="small muted">Done when their last login updates.</p></div>
       <div class="card"><h3>Offboard a client</h3>
         <ol class="steps small"><li>Studio → Clients → <b>Export data</b> and keep the file.</li><li>Archive each project (hides it, can be undone), or Delete it.</li><li>Remove their people, or delete the client (deletes its projects and files).</li></ol>

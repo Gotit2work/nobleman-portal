@@ -1,7 +1,7 @@
 // Studio → Connections: video sources (Vimeo, Frame.io, YouTube, Wistia), Notion, payments (Stripe), email, and
 // file storage.
 // Credentials go to the server once and are stored encrypted; the page never gets them back.
-import { html, useApp, useState, useEffect, api, Head, Field, Modal, Confirm, Icon, copy, fmtAgo, fmtBytes, plural } from "./ui.js";
+import { html, useApp, useState, useEffect, api, Head, Field, Modal, Confirm, More, Icon, copy, fmtAgo, fmtBytes, plural } from "./ui.js";
 import { useRun, providerOf } from "./studio.js";
 
 const ICON = { video: "play", tracking: "grid", email: "bottle", payments: "key" };
@@ -114,11 +114,13 @@ export function Connections({ admin }) {
 /** What Stripe's webhook needs: this address and four events, then its signing secret back here. */
 function StripeWebhook({ p }) {
   const { toast } = useApp();
+  const [open, setOpen] = useState(!p.webhook);
   return html`<div class="stack" style=${{ gap: "8px", width: "100%" }}>
-    <span class="small"><b>Webhook</b> ${p.webhook ? html`<span class="pill green">Connected</span>` : html`<span class="pill amber">Not yet</span>`}</span>
-    <span class="muted small" style=${{ lineHeight: 1.55 }}>Stripe → Developers → Webhooks → Add endpoint. Use this address, choose these events, then paste the signing secret here under Change.</span>
+    <span class="small"><b>Webhook</b> ${p.webhook ? html`<span class="pill green">Connected</span>` : html`<span class="pill amber">Not yet</span>`}
+      ${p.webhook ? html` <button type="button" class="link small" onClick=${() => setOpen(!open)}>${open ? "Hide the setup" : "Show the setup"}</button>` : null}</span>
+    ${open ? html`<span class="muted small" style=${{ lineHeight: 1.55 }}>Stripe → Developers → Webhooks → Add endpoint. Use this address, choose these events, then paste the signing secret here under Change.</span>
     <div class="copybox"><code class="small">${p.endpoint}</code><button class="btn ghost sm" onClick=${() => copy(p.endpoint, toast, "Address")}>Copy</button></div>
-    <span class="faint small mono">${p.events.join(" · ")}</span>
+    <span class="faint small mono">${p.events.join(" · ")}</span>` : null}
   </div>`;
 }
 
@@ -262,14 +264,11 @@ function Notion({ admin, conn, test, onAdd, onTest, onEdit, onRemove }) {
       <span>Projects sync to <b>${n.title || "your database"}</b>${n.url ? html` · <a href=${n.url} target="_blank" rel="noopener">Open in Notion ↗</a>` : null}</span>
       <span class="muted small">${plural(synced, "project")} in Notion${n.lastSync ? ` · last update ${fmtAgo(n.lastSync)}` : ""}. Changes go across within seconds; the daily job catches up on anything else.</span>
       ${n.lastError ? html`<div class="alert small">Last sync failed: ${n.lastError}</div>` : null}
-      <div class="row" style=${{ gap: "6px" }}>
-        <button class="btn ghost sm" disabled=${busy} onClick=${() => run({ action: "notionSyncAll" }, (r) => `Syncing ${plural(r.projects, "project")} now.`)}>Sync every project now</button>
-        <button class="btn ghost sm" onClick=${() => setStop(true)}>Stop syncing</button>
-      </div>`}
+`}
     <div class="row" style=${{ gap: "6px" }}>
+      ${n.dataSourceId ? html`<button class="btn ghost sm" disabled=${busy} onClick=${() => run({ action: "notionSyncAll" }, (r) => `Syncing ${plural(r.projects, "project")} now.`)}>Sync now</button>` : null}
       <button class="btn ghost sm" disabled=${busy} onClick=${onTest}>Test it</button>
-      <button class="btn ghost sm" onClick=${onEdit}>Change token</button>
-      <button class="btn ghost sm" onClick=${onRemove}>Remove</button>
+      <${More} items=${[["Change token", onEdit], n.dataSourceId && ["Stop syncing", () => setStop(true)], ["Remove Notion", onRemove]].filter(Boolean)} />
     </div>
     ${pick ? html`<${NotionPick} kind=${pick} admin=${admin} onClose=${() => setPick(null)} />` : null}
     ${stop ? html`<${Confirm} title="Stop syncing to Notion?" yes="Stop syncing" busy=${busy} onYes=${async () => { await run({ action: "notionDisconnect" }, "Stopped. The database stays in Notion as it is."); setStop(false); }} onNo=${() => setStop(false)}>

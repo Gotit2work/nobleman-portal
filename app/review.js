@@ -143,7 +143,7 @@ function Stage({ p, c, v, latest }) {
         : !isLatest ? html`<div class="decision"><span class="muted">This is an older version. The newest is <${Link} to=${`/review/${p.id}/${encodeURIComponent(c.key)}/${latest.n}`} cls="link">Version ${latest.n}<//>.</span></div>`
         : admin ? html`<div class="decision"><span class="muted">Waiting for ${p.clientName} to approve Version ${v.n} or ask for changes${p.reviewDue ? `, planned by ${fmtDay(p.reviewDue)}` : ""}.</span></div>`
         : p.caps.approve ? html`<div class="decision">
-            <div class="stack" style=${{ gap: "4px" }}><b>Is Version ${v.n} right?</b><span class="muted small">${open ? `You have ${plural(open, "open note")}. Asking for changes sends them along with your message.` : "Approve it, or tell the studio what to change."}${p.reviewDue ? ` Planned by ${fmtDay(p.reviewDue)}.` : ""}</span></div>
+            <div class="stack" style=${{ gap: "4px" }}><b>Is Version ${v.n} right?</b><span class="muted small">${p.reviewDue ? `Please decide by ${fmtDay(p.reviewDue)}. ` : ""}${open ? `Your ${plural(open, "open note")} go${open === 1 ? "es" : ""} with any request for changes.` : "Approve it, or tell the studio what to change."}</span></div>
             <div class="row">
               <button class="btn primary" onClick=${() => setConfirming(true)}>Approve Version ${v.n}</button>
               <button class="btn ghost" onClick=${() => setAsking(true)}>Ask for changes</button>

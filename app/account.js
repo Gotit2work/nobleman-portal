@@ -12,6 +12,7 @@ export function Account() {
   const [busy, setBusy] = useState(false);
   const [pw, setPw] = useState({ current: "", next: "", again: "" });
   const [pwErr, setPwErr] = useState("");
+  const [pwOpen, setPwOpen] = useState(false);
   const [pwBusy, setPwBusy] = useState(false);
   const emailOn = data.emailEnabled;
   const brand = data.brand || {};
@@ -36,6 +37,7 @@ export function Account() {
     try {
       await api("/api/session", { method: "POST", body: { action: "password", current: pw.current, next: pw.next } });
       setPw({ current: "", next: "", again: "" });
+      setPwOpen(false);
       toast("Password changed. You’re logged out everywhere else.");
     } catch (x) { setPwErr(x.message); }
     setPwBusy(false);
@@ -56,16 +58,19 @@ export function Account() {
         </div>` : null}
         <div><button class="btn primary" disabled=${busy || !name.trim() || !dirty} onClick=${save}>${busy ? "Saving…" : "Save my details"}</button></div>
       </section>
-      <section class="card pad stack" style=${{ gap: "18px" }}>
+      <section class="card pad stack" style=${{ gap: "18px", alignSelf: "start" }}>
         <div class="h3">Password</div>
+        ${!pwOpen ? html`<p class="muted small" style=${{ margin: 0 }}>Changing it logs you out on your other devices.</p>
+        <div><button class="btn ghost" onClick=${() => setPwOpen(true)}>Change my password</button></div>` : html`
         <form class="stack" style=${{ gap: "16px" }} onSubmit=${change}>
           <input type="email" autoComplete="username" value=${user.email || ""} readOnly hidden />
           <${Field} label="Current password"><input class="input" type="password" autoComplete="current-password" required value=${pw.current} onInput=${(e) => setPw({ ...pw, current: e.target.value })} /><//>
           <${Field} label="New password" hint="At least 10 characters. A short phrase is easy to remember and hard to guess."><input class="input" type="password" autoComplete="new-password" required value=${pw.next} onInput=${(e) => setPw({ ...pw, next: e.target.value })} /><//>
           <${Field} label="New password again"><input class="input" type="password" autoComplete="new-password" required value=${pw.again} onInput=${(e) => setPw({ ...pw, again: e.target.value })} /><//>
           ${pwErr ? html`<div class="alert" role="alert">${pwErr}</div>` : null}
-          <div><button class="btn primary" disabled=${pwBusy}>${pwBusy ? "Changing…" : "Change my password"}</button></div>
-        </form>
+          <div class="row"><button class="btn primary" disabled=${pwBusy}>${pwBusy ? "Changing…" : "Change my password"}</button>
+            <button type="button" class="btn ghost" onClick=${() => { setPwOpen(false); setPwErr(""); setPw({ current: "", next: "", again: "" }); }}>Cancel</button></div>
+        </form>`}
       </section>
     </div>
     <${TwoStep} />
@@ -169,7 +174,8 @@ function Team() {
       <div class="h3">Your team at ${user.clientName}</div>
       ${t.canInvite ? html`<button class="btn ghost sm" onClick=${() => setAdding(true)}>Add a teammate</button>` : null}
     </div>
-    <p class="muted small" style=${{ margin: 0, lineHeight: 1.6 }}>${t.roles.map((r) => html`<span key=${r.key}><b>${r.label}:</b> ${r.detail} </span>`)}</p>
+    <details class="small muted"><summary style=${{ cursor: "pointer" }}>What each role can do</summary>
+      <ul style=${{ margin: "8px 0 0", paddingLeft: "18px", lineHeight: 1.6 }}>${t.roles.map((r) => html`<li key=${r.key}><b>${r.label}:</b> ${r.detail}</li>`)}</ul></details>
     <div class="list">${t.people.map((x) => html`<div class="li" key=${x.id} style=${{ flexWrap: "wrap" }}>
       <${Avatar} name=${x.name} />
       <div class="grow" style=${{ minWidth: "160px" }}><div class="name">${x.name}${x.me ? html` <span class="faint">· you</span>` : null}</div>

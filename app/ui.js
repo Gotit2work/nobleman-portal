@@ -174,6 +174,15 @@ export function Confirm({ title, children, yes, no = "Not yet", danger, busy, on
 }
 
 /** A link inside the app: changes the page without reloading it. */
+/** A small menu for actions that are rarely needed, so each row shows one or two buttons at most. */
+export function More({ items, label = "More" }) {
+  const [open, setOpen] = useState(false);
+  return html`<span class="more">
+    <button type="button" class="btn ghost sm" aria-haspopup="true" aria-expanded=${open} onClick=${() => setOpen(!open)} onBlur=${() => setTimeout(() => setOpen(false), 150)}>${label} ▾</button>
+    ${open ? html`<span class="more-menu" role="menu">${items.map(([text, fn]) => html`<button type="button" key=${text} role="menuitem" onMouseDown=${(e) => e.preventDefault()} onClick=${() => { setOpen(false); fn(); }}>${text}</button>`)}</span>` : null}
+  </span>`;
+}
+
 export function Link({ to, children, cls, current, label, onClick }) {
   const { go, base } = useApp();
   const href = base + to;

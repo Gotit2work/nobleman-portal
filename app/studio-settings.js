@@ -237,7 +237,6 @@ function Health({ h }) {
 }
 
 // ---------- activity ----------
-const KINDS = [["", "Everyone"], ["client", "Clients"], ["staff", "Staff"], ["system", "The portal"]];
 
 export function Activity({ admin }) {
   const { d } = admin;
@@ -259,12 +258,14 @@ export function Activity({ admin }) {
       Who did what, and when: logins, views, downloads, approvals, changes in Studio. Kept for about 13 months.
     <//>
     <div class="row filters" style=${{ marginBottom: "16px" }}>
-      <div class="tabs">${KINDS.map(([k, l]) => html`<button key=${k} class="tab-btn" aria-pressed=${f.kind === k} onClick=${() => setF({ ...f, kind: k })}>${l}</button>`)}</div>
-      <select class="select" style=${{ width: "auto" }} aria-label="Client" value=${f.client} onChange=${(e) => setF({ ...f, client: e.target.value, project: "" })}>
-        <option value="">Every client</option>${d.clients.map((c) => html`<option key=${c.id} value=${c.id}>${c.name}</option>`)}</select>
-      <select class="select" style=${{ width: "auto" }} aria-label="Project" value=${f.project} onChange=${(e) => setF({ ...f, project: e.target.value })}>
-        <option value="">Every project</option>${d.projects.filter((p) => !f.client || p.clientId === f.client).map((p) => html`<option key=${p.id} value=${p.id}>${p.title}</option>`)}</select>
-      <input class="input" style=${{ width: "220px" }} type="search" placeholder="Find a name or word" aria-label="Find in the activity" value=${f.q} onInput=${(e) => setF({ ...f, q: e.target.value })} />
+      <select class="select" style=${{ width: "auto", maxWidth: "100%" }} aria-label="Show" value=${f.kind ? "kind:" + f.kind : f.client ? "client:" + f.client : f.project ? "project:" + f.project : ""}
+        onChange=${(e) => { const [k, v] = e.target.value.split(":"); setF({ ...f, kind: k === "kind" ? v : "", client: k === "client" ? v : "", project: k === "project" ? v : "" }); }}>
+        <option value="">Everything</option>
+        <optgroup label="Who">${[["client", "Client people only"], ["staff", "Staff only"], ["system", "The portal itself"]].map(([k, l]) => html`<option key=${k} value=${"kind:" + k}>${l}</option>`)}</optgroup>
+        ${d.clients.length ? html`<optgroup label="Client">${d.clients.map((c) => html`<option key=${c.id} value=${"client:" + c.id}>${c.name}</option>`)}</optgroup>` : null}
+        ${d.projects.length ? html`<optgroup label="Project">${d.projects.map((p) => html`<option key=${p.id} value=${"project:" + p.id}>${p.title}</option>`)}</optgroup>` : null}
+      </select>
+      <input class="input" style=${{ width: "240px" }} type="search" placeholder="Find a name or word" aria-label="Find in the activity" value=${f.q} onInput=${(e) => setF({ ...f, q: e.target.value })} />
     </div>
     ${err ? html`<div class="alert">${err}</div>` : null}
     ${rows == null ? html`<div class="boot-line"><i></i></div>` : !rows.length ? html`<p class="muted">Nothing yet${f.kind || f.project || f.client || f.q ? " that matches" : ""}.</p>`

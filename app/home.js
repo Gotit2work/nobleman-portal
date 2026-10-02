@@ -150,10 +150,7 @@ export function ProjectCard({ p, admin }) {
       <${Stages} stage=${p.stage} names=${data.stages} short />
       <div class="row small muted" style=${{ gap: "8px 18px" }}>
         ${p.next.what || p.next.date ? html`<span><b style=${{ color: "var(--ink)" }}>${p.next.label || "Next"}:</b> ${[p.next.what, p.next.date].filter(Boolean).join(" · ")}</span>` : html`<span>Now: ${p.stageName}</span>`}
-        ${wait ? html`<span class="pill red">${admin ? `${plural(wait, "version")} waiting on ${p.clientName}` : `${plural(wait, "version")} to review`}</span>` : null}
-        ${!admin && wait && p.reviewDue ? html`<span class="pill">Review by ${fmtDay(p.reviewDue)}</span>` : null}
-        ${admin && p.status.key === "changes" ? html`<span class="pill amber">Changes requested</span>` : null}
-        ${p.messages && p.messages.unread ? html`<span class="pill red">${plural(p.messages.unread, "new message")}</span>` : null}
+        ${flagOf(p, admin, wait)}
       </div>
     </div>
   <//>`;
@@ -218,6 +215,16 @@ function StaffBoard({ projects }) {
   </div></section>`;
 }
 
+/** The one thing on a project card that needs someone: for clients, versions to review, then messages; for the
+ *  studio, changes asked for, then messages. Everything else is on Home's lists and the nav badges. */
+function flagOf(p, admin, wait) {
+  const unread = p.messages && p.messages.unread;
+  const f = admin
+    ? (p.status.key === "changes" ? ["amber", "Changes asked for"] : unread ? ["red", plural(unread, "new message")] : null)
+    : (wait ? ["red", `${plural(wait, "version")} to review`] : unread ? ["red", plural(unread, "new message")] : null);
+  return f ? html`<span class=${"pill " + f[0]}>${f[1]}</span>` : null;
+}
+
 export function Home() {
   const { data, user, demo } = useApp();
   const admin = isStaff(user);
@@ -238,7 +245,7 @@ export function Home() {
     <section class="section latest">
       <div class="sh"><span class="eyebrow"><span>${admin ? "What clients and the team did lately" : "Latest"}</span></span>
         ${admin && user.perms && user.perms["audit.view"] ? html`<${Link} to="/studio/activity" cls="btn ghost sm">Full activity log<//>` : null}</div>
-      <${Activity} items=${data.activity} limit=${admin ? 12 : 8} />
+      <${Activity} items=${data.activity} limit=${5} />
     </section>
   </div>`;
 }
@@ -250,7 +257,7 @@ export function Project({ id }) {
   if (!p) return html`<div class="page"><${Empty} title="That project isn’t here." action=${html`<${Link} to="/" cls="btn primary">Go to Home<//>`}>It may have been archived, or the link is old.<//></div>`;
   const wait = awaiting(p);
   const tiles = [];
-  if (p.caps.review) tiles.push({ to: `/review/${p.id}`, icon: "play", t: "Review", d: p.cuts.length ? `${plural(p.cuts.length, "film")} in review${wait ? `, ${wait} waiting for ${admin ? "the client" : "you"}` : ""}` : "No versions yet" });
+  if (p.caps.review) tiles.push({ to: `/review/${p.id}`, icon: "play", t: "Review", d: wait ? `${wait} waiting for ${admin ? "the client" : "you"}${p.reviewDue ? `, by ${fmtDay(p.reviewDue)}` : ""}` : p.cuts.length ? "Nothing waiting" : "No versions yet" });
   tiles.push({ to: `/films/${p.id}`, icon: "growth", t: "Films", d: p.films.length ? plural(p.films.length, "finished film") : "None delivered yet" });
   if (p.caps.files || p.caps.upload) tiles.push({ to: `/files/${p.id}`, icon: "send", t: "Files", d: p.files.length + p.videoUploads.length ? plural(p.files.length + p.videoUploads.length, "file") : "No files yet" });
   if (p.caps.payments && (p.payments || []).length) {
@@ -283,8 +290,7 @@ export function Project({ id }) {
     ${p.summary ? html`<p class="lead" style=${{ marginBottom: "28px", maxWidth: "820px" }}>${p.summary}</p>` : null}
     ${p.videosError ? html`<div class="alert" style=${{ marginBottom: "20px" }}>${p.videosError}</div>` : null}
     ${admin && !p.source ? html`<div class="alert info" style=${{ marginBottom: "20px" }}>This project has no video source yet, so it has no versions or films. <${Link} to=${"/studio/projects/" + p.id} cls="link">Choose one in Studio<//>.</div>` : null}
-    ${!admin && p.reviewDue && awaiting(p) ? html`<div class="alert info" style=${{ marginBottom: "20px" }}>The studio planned your review by <b>${fmtDay(p.reviewDue)}</b>, to keep the schedule on track.</div>` : null}
-    <div class="grid c4">${tiles.map((t) => html`<div key=${t.t}><${Link} to=${t.to} cls="tile"><${Icon} name=${t.icon} size=${30} /><b>${t.t}</b><span>${t.d}</span><//></div>`)}</div>
+    <div class="grid tiles">${tiles.map((t) => html`<div key=${t.t}><${Link} to=${t.to} cls="tile"><${Icon} name=${t.icon} size=${30} /><b>${t.t}</b><span>${t.d}</span><//></div>`)}</div>
     <section class="section">
       <div class="sh"><span class="eyebrow"><span>Latest on this project</span></span></div>
       <${Activity} items=${data.activity.filter((a) => a.projectId === p.id)} />
