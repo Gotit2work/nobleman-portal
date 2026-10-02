@@ -6,7 +6,7 @@ import { findVideo, sourceOf } from "./_sources.js";
 
 /**
  * Public share links (/watch/<token>): one finished film on a page branded with the studio's name, for
- * whoever has the link. No sign-in. Each link can expire and can be turned off at any time.
+ * whoever has the link. No login. Each link can expire and can be turned off at any time.
  *
  * GET /api/share?token=<token>          the film's title, description, and how to play it (counts a view)
  * GET /api/share?token=<token>&play=1   a fresh address for sources that sign them (Frame.io)

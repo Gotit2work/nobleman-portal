@@ -129,7 +129,7 @@ function TestResult({ t }) {
   </div>`;
 }
 
-/** Frame.io with Adobe sign-in: the redirect address to register, the sign-in button, and the account choice. */
+/** Frame.io with Adobe sign-in: the redirect address to register, the login button, and the account choice. */
 function FrameioSteps({ c, d, test, admin }) {
   const { toast } = useApp();
   const { run, busy } = useRun(admin);

@@ -13,7 +13,8 @@ import { audit } from "./_audit.js";
  *   - sends review reminders that are due (Studio → Settings → Reminders),
  *   - refreshes Frame.io's Adobe sign-in so it doesn't lapse (Adobe's refresh tokens last about 14 days unused),
  *   - catches Notion up with anything that changed at the video sources,
- *   - prunes old records: activity log after about 13 months, used or expired links after a week.
+ *   - prunes old records: activity log after about 13 months, used or expired links after a week, unconfirmed
+ *     sign-ups after a day, handled sign-ups after 30 days.
  */
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
@@ -37,6 +38,9 @@ export default async function handler(req, res) {
     await sql`delete from audit_log where at < now() - interval '400 days'`;
     await sql`delete from link_tokens where (used_at is not null or expires_at < now()) and created_at < now() - interval '7 days'`;
     await sql`delete from login_attempts where at < now() - interval '1 day'`;
+    // Sign-ups: unconfirmed ones after a day; handled ones (approved, declined, joined) after 30 days.
+    await sql`delete from signup_requests where (status = 'new' and created_at < now() - interval '1 day')
+              or (status in ('approved', 'declined', 'joined') and coalesce(decided_at, created_at) < now() - interval '30 days')`;
   } catch (err) { out.pruned = false; console.error("cron prune", err.message); }
   if (out.reminders) await audit(req, null, "reminder", `Sent ${out.reminders} automatic review reminder${out.reminders === 1 ? "" : "s"}`);
   return res.status(200).json(out);

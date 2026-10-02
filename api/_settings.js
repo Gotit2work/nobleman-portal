@@ -15,7 +15,7 @@ export const DEFAULTS = {
     // The line above Messages for clients: who they're writing to, and when to expect a reply.
     replies: "Write to Jean and Justin about this project. They usually reply the same business day.",
   },
-  // The Murphy's Law on the sign-in screen (docs/WRITING.md, "Voice").
+  // The Murphy's Law on the login screen (docs/WRITING.md, "Voice").
   signin: {
     kicker: "Murphy’s Law, review edition",
     quote: "The one frame nobody checked is the one everyone sees.",
@@ -25,7 +25,7 @@ export const DEFAULTS = {
     title: "Welcome to your screening room.",
     text: "Every version of your film lands here first. Watch it, pause on anything you’d change and leave a note, then approve it when it’s right.",
   },
-  // A short notice at the top of every page, for everyone signed in. Empty = none.
+  // A short notice at the top of every page, for everyone logged in. Empty = none.
   announcement: { text: "", tone: "info" },
   stages: [
     { name: "Planning", pct: 8 },
@@ -40,10 +40,13 @@ export const DEFAULTS = {
   // Overrides to what each role may do (_roles.js has the defaults; Studio → People → Roles edits these).
   roles: {},
   security: {
-    staffTwoStep: false,     // staff must turn on two-step sign-in
-    signinLinks: true,       // "Email me a sign-in link" on the sign-in screen (needs email)
-    sessionDays: 7,          // how long a sign-in lasts
+    staffTwoStep: false,     // staff must turn on two-step verification
+    signinLinks: true,       // "Email me a login link" on the login screen (needs email)
+    sessionDays: 7,          // how long a login lasts
     clientTeams: true,       // decision makers can add teammates from their own company
+    signup: "request",       // who can create an account: "off" (invitation only) | "request" (anyone; the studio approves)
+    domainJoin: true,        // people at a client's email domain join that client without waiting (Studio → Clients)
+    domainRole: "reviewer",  // the role they join with
   },
   email: { fromName: "Nobleman Productions", from: "", replyTo: "" },
   reminders: { enabled: true, daysBefore: 1 },

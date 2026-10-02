@@ -1,5 +1,5 @@
 // A share link (/watch/<token>): one finished film on a page with the studio's name, for whoever has the
-// link. No sign-in, no portal around it, nothing about the client or project beyond the film.
+// link. No login, no portal around it, nothing about the client or project beyond the film.
 import { html, useState, useEffect, api, Player, fmtDate } from "./ui.js";
 
 export function Watch({ token }) {

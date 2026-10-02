@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { sql, ready, dbConfigured } from "./_db.js";
 import { TROUBLE, readBody, requireUser, projectFor, isUuid, longText, text } from "./_auth.js";
 import { buildPortal } from "./_build.js";
-import { demoPortal } from "./_demo.js";
+import { demoPortal, demoStudioPortal } from "./_demo.js";
 import { findVideo } from "./_sources.js";
 import { notify, originOf, emailReady, layout, sendEmail } from "./_notify.js";
 import { audit } from "./_audit.js";
@@ -15,7 +15,7 @@ import { syncProject } from "./_notion.js";
 
 /**
  * GET  /api/portal                        everything the signed-in person can see (see _build.js)
- * GET  /api/portal?demo=1                 the public sample portal (no sign-in, nothing saved)
+ * GET  /api/portal?demo=1                 the public sample portal (no login, nothing saved)
  * GET  /api/portal?thread=<project>       a project's messages; marks them read
  * GET  /api/portal?notes=<project>&video=<id>   review notes on one version
  * GET  /api/portal?shares=<project>       share links on a project
@@ -30,7 +30,7 @@ import { syncProject } from "./_notion.js";
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "private, no-store");
   const q = req.query || {};
-  if (req.method === "GET" && q.demo) return res.status(200).json(demoPortal());
+  if (req.method === "GET" && q.demo) return res.status(200).json(q.demo === "studio" ? demoStudioPortal() : demoPortal());
   if (!dbConfigured()) return res.status(503).json({ error: "The portal isn’t connected to its database yet." });
   try { await ready(); } catch (err) { console.error("db not ready", err); return res.status(500).json({ error: TROUBLE }); }
 

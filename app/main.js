@@ -1,7 +1,7 @@
-// The portal app: decides what to show (sign-in, first-run setup, new password, demo, or the portal), routes
+// The portal app: decides what to show (login, first-run setup, new password, demo, or the portal), routes
 // between screens without page reloads, and draws the navigation: a floating side capsule on desktop, a bottom
 // bar on phones.
-import { html, AppCtx, useState, useEffect, useMemo, useCallback, useRef, api, Icon, Link, Modal, Avatar, plural, isStaff } from "./ui.js";
+import { html, AppCtx, useState, useEffect, useMemo, useCallback, useRef, api, setDemoMode, Icon, Link, Modal, Avatar, plural, isStaff } from "./ui.js";
 import { Gate } from "./gate.js";
 import { Home, Project } from "./home.js";
 import { Review } from "./review.js";
@@ -47,15 +47,26 @@ function App() {
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
-  const loadDemo = useCallback(async (base) => {
-    const data = await api("/api/portal?demo=1");
-    setSt({ phase: "app", demo: true, base, data, session: null });
+  // The demo shows the client's view, or the studio's (?view=studio): same portal, different person logged in.
+  const loadDemo = useCallback(async (base, view) => {
+    const studio = view ? view === "studio" : new URLSearchParams(location.search).get("view") === "studio" || /^(\/demo)?\/studio(\/|$)/.test(location.pathname);
+    setDemoMode(true);
+    const data = await api("/api/portal?demo=" + (studio ? "studio" : "1"));
+    setSt({ phase: "app", demo: true, demoView: studio ? "studio" : "client", base, data, session: null });
   }, []);
+  const demoView = useCallback(async (view) => {
+    await loadDemo(st.base, view);
+    history.replaceState(null, "", (st.base || "") + "/" + (view === "studio" ? "?view=studio" : ""));
+    setPath(location.pathname);
+    window.scrollTo(0, 0);
+    toast(view === "studio" ? "You’re seeing what the studio sees: every version, and Studio for running it all." : "You’re seeing what a client sees.");
+  }, [st.base, loadDemo]);
 
   const loadPortal = useCallback(async (session, next) => {
+    setDemoMode(false);
     const data = await api("/api/portal");
     // Land on the page they wanted, or stay where they are; never on a used one-time link or /signin.
-    const target = next && /^\/(?!\/)/.test(next) ? next : /^\/(link|signin)(\/|$)/.test(location.pathname) ? "/" : location.pathname;
+    const target = next && /^\/(?!\/)/.test(next) ? next : /^\/(link|signin|signup|login)(\/|$)/.test(location.pathname) ? "/" : location.pathname;
     if (target !== location.pathname) history.replaceState(null, "", target);
     setPath(target);
     setSt({ phase: "app", demo: false, base: "", data, session });
@@ -65,7 +76,9 @@ function App() {
     const p = location.pathname;
     if (p.startsWith("/watch/")) return setSt({ phase: "watch" });
     const wantsDemo = p === "/demo" || p.startsWith("/demo/");
-    const wantsSignIn = p === "/signin" || new URLSearchParams(location.search).has("signin");
+    const wantsSignUp = p === "/signup";
+    const wantsSignIn = wantsSignUp || p === "/signin" || p === "/login" || new URLSearchParams(location.search).has("signin");
+    const start = wantsSignUp ? "signup" : undefined;
     let s;
     try { s = await api("/api/session"); } catch (e) { s = { error: e.message }; }
     try {
@@ -78,10 +91,10 @@ function App() {
         return await loadPortal(s);
       }
       if (s.demoAtRoot && !wantsSignIn) return await loadDemo("");
-      if (s.error) return setSt({ phase: "gate", gate: "login", session: s, problem: s.error });
-      if (s.db === false) return setSt({ phase: "gate", gate: "login", session: s, problem: "The portal is still being set up. Try again soon, or see the demo." });
+      if (s.error) return setSt({ phase: "gate", gate: "login", session: s, problem: s.error, start });
+      if (s.db === false) return setSt({ phase: "gate", gate: "login", session: s, problem: "The portal is still being set up. Try again soon, or see the demo.", start });
       if (s.setup) return setSt({ phase: "gate", gate: "setup", session: s });
-      return setSt({ phase: "gate", gate: "login", session: s });
+      return setSt({ phase: "gate", gate: "login", session: s, start });
     } catch (e) {
       setSt({ phase: "gate", gate: "login", session: s, problem: e.message });
     }
@@ -96,7 +109,7 @@ function App() {
       const data = await api("/api/portal");
       setSt((x) => ({ ...x, data }));
     } catch (e) {
-      if (e.status === 401) { toast("You were signed out. Sign in again to continue.", { err: true }); setSt({ phase: "gate", gate: "login", session: {} }); }
+      if (e.status === 401) { toast("You were logged out. Log in again to continue.", { err: true }); setSt({ phase: "gate", gate: "login", session: {} }); }
       else toast(e.message, { err: true });
     }
   }, [st.demo]);
@@ -118,7 +131,7 @@ function App() {
   }, [st.session]);
 
   const signOut = useCallback(async () => {
-    if (st.demo) { toast("This is the demo. There’s nothing to sign out of. Sign in at the top of the page."); return; }
+    if (st.demo) { toast("This is the demo. There’s nothing to log out of. Log in at the top of the page."); return; }
     await api("/api/session", { method: "POST", body: { action: "logout" } }).catch(() => {});
     history.replaceState(null, "", "/");
     setPath("/");
@@ -128,7 +141,7 @@ function App() {
   if (st.phase === "boot") return html`<div class="boot" role="status" aria-label="Loading the portal"><img src="/assets/Nobleman_Mark_White.png" alt="" /><div class="bar"><i></i></div><div class="eyebrow">Private screening room</div></div>`;
   if (st.phase === "watch") return html`<${Watch} token=${location.pathname.split("/")[2] || ""} /><${Toasts} items=${toasts} />`;
   if (st.phase === "gate") {
-    return html`<${Gate} mode=${st.gate} session=${st.session} problem=${st.problem}
+    return html`<${Gate} mode=${st.gate} session=${st.session} problem=${st.problem} start=${st.start}
       onSignedIn=${signedIn} onSetupDone=${signedIn}
       onPasswordNeeded=${(user, next) => setSt({ phase: "gate", gate: "password", session: { ...(st.session || {}), user }, next })}
       onPasswordDone=${(user) => signedIn(user, st.next)}
@@ -137,7 +150,7 @@ function App() {
       <${Toasts} items=${toasts} />`;
   }
 
-  const ctx = { ...st, user: st.data.user, go, toast, say, reload, setData, signOut, openHelp: () => setHelp(true), path };
+  const ctx = { ...st, user: st.data.user, go, toast, say, reload, setData, signOut, openHelp: () => setHelp(true), path, demoView };
   return html`<${AppCtx.Provider} value=${ctx}>
     <${Shell} route=${routeOf(path, st.base)} more=${more} setMore=${setMore} />
     ${help ? html`<${Help} onClose=${() => setHelp(false)} />` : null}
@@ -241,12 +254,23 @@ function Shell({ route, more, setMore }) {
   </div>`;
 }
 
+/** Client's view / studio's view, in the demo. */
+function DemoSwitch() {
+  const app = R.useContext(AppCtx);
+  const studio = app.demoView === "studio";
+  return html`<div class="demo-switch" role="group" aria-label="Whose view of the demo">
+    <button aria-pressed=${!studio} onClick=${() => studio && app.demoView("client")}>Client’s view</button>
+    <button aria-pressed=${studio} onClick=${() => !studio && app.demoView("studio")}>Studio’s view</button>
+  </div>`;
+}
+
 function DemoRibbon() {
   const app = R.useContext(AppCtx);
   return html`<div style=${{ position: "fixed", top: "18px", right: "22px", zIndex: 55 }} class="rail-only-desktop">
     <div class="row" style=${{ gap: "8px" }}>
+      <${DemoSwitch} />
       <button class="demo-chip" onClick=${app.openHelp} title="Nothing here is saved or sent. Click for what that means.">Demo · sample project</button>
-      <a class="btn primary sm" href="/signin">Client sign-in</a>
+      <a class="btn primary sm" href="/signin">Log in</a>
     </div>
   </div>`;
 }
@@ -278,7 +302,8 @@ function Help({ onClose }) {
   const staff = isStaff(app.user);
   const support = brand.support || "alexis@gotit2work.com";
   return html`<${Modal} title=${staff ? "How the portal works" : "How your portal works"} onClose=${onClose} wide>
-    ${app.demo ? html`<div class="alert"><b>This is a demo.</b> The client, projects, and files are made up. Click anything you like: nothing here is saved or sent.</div>` : null}
+    ${app.demo ? html`<div class="alert"><b>This is a demo.</b> The client, projects, and files are made up. Click anything you like: nothing here is saved or sent.</div>
+      <div class="stack" style=${{ gap: "8px" }}><span class="muted small" style=${{ lineHeight: 1.55 }}>Everyone logs in at the same door; what they see depends on who they are. Switch to see both sides:</span><${DemoSwitch} /></div>` : null}
     <div class="list">${(staff ? STAFF_HELP : HELP).map((h) => html`<div class="li" key=${h.t}><${Icon} name=${h.icon} size=${30} /><div class="grow"><div class="name">${h.t}</div><div class="meta" style=${{ lineHeight: 1.55 }}>${h.d}</div></div></div>`)}</div>
     ${!staff && app.user.roleLabel ? html`<p class="muted small" style=${{ margin: 0, lineHeight: 1.6 }}>You’re a <b>${app.user.roleLabel}</b> for ${app.user.clientName || "your company"}.${app.user.access === "reviewer" ? " Your notes reach the studio and your company’s decision makers, who approve each version." : app.user.access === "viewer" ? " You can watch and download; your colleagues leave notes and approve." : ""}</p>` : null}
     <p class="muted small" style=${{ margin: 0, lineHeight: 1.6 }}>Some parts only appear when the studio switches them on for your project. Stuck? Use Messages, or email <a href=${"mailto:" + support}>${support}</a>. How we handle your information: <a href=${brand.privacy || "https://noblemanproductions.gotit2work.com/privacy#portal"}>Privacy</a>.</p>

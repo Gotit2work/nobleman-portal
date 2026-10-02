@@ -35,7 +35,7 @@ export const STAFF_PERMS = [
   { key: "shares.manage", label: "See and turn off share links", group: "Projects" },
   { key: "clients.manage", label: "Add and edit clients", group: "Clients" },
   { key: "clients.delete", label: "Delete clients", detail: "Deletes their projects and files too.", group: "Clients" },
-  { key: "people.manage", label: "Manage client people", detail: "Invite, change roles, reset sign-in, remove.", group: "Clients" },
+  { key: "people.manage", label: "Manage client people", detail: "Invite, change roles, reset passwords, remove.", group: "Clients" },
   { key: "data.export", label: "Export data", group: "Clients" },
   { key: "audit.view", label: "See the activity log", group: "Studio" },
   { key: "connections.manage", label: "Manage connections", detail: "Vimeo, Frame.io, Notion, email.", group: "Studio" },

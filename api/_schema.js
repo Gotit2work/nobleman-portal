@@ -4,7 +4,7 @@
 //
 // To read it as one SQL file: node -e "import('./api/_schema.js').then(m => console.log(m.STATEMENTS.join(';\n\n') + ';'))"
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 export const STATEMENTS = [
   `create table if not exists settings (
@@ -280,4 +280,27 @@ export const STATEMENTS = [
   `alter table projects add column if not exists next_confirm boolean not null default false`,
   `alter table projects add column if not exists next_confirmed_at timestamptz`,
   `alter table projects add column if not exists next_confirmed_by text`,
+
+  // Sign-up: people create an account themselves. They confirm their email first (token_hash, one hour), then
+  // either join their company straight away (its email domain is listed on the client) or wait for the studio
+  // to approve them. status: new (email not confirmed) | waiting | approved | declined | joined.
+  `alter table clients add column if not exists domains jsonb not null default '[]'::jsonb`,
+  `create table if not exists signup_requests (
+    id               uuid primary key default gen_random_uuid(),
+    email            text not null,
+    name             text not null,
+    company          text,
+    note             text,
+    token_hash       text unique,
+    token_expires_at timestamptz,
+    verified_at      timestamptz,
+    status           text not null default 'new',
+    client_id        uuid references clients(id) on delete set null,
+    user_id          uuid references users(id) on delete set null,
+    decided_by       text,
+    decided_at       timestamptz,
+    ip               text,
+    created_at       timestamptz not null default now()
+  )`,
+  `create index if not exists signup_requests_email_idx on signup_requests(email, status)`,
 ];

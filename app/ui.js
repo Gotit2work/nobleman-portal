@@ -10,8 +10,17 @@ export const html = htm.bind(R.createElement);
 export const AppCtx = createContext(null);
 export const useApp = () => useContext(AppCtx);
 
+// In the demo, Studio reads sample data and refuses every change (main.js turns this on).
+let demoMode = false;
+export const setDemoMode = (on) => { demoMode = !!on; };
+export const DEMO_REFUSAL = "Demo only: nothing here is saved, so nothing changed. In the real portal this takes effect at once.";
+
 /** JSON API call. Throws an Error whose message is the server's plain-words explanation. */
 export async function api(path, { method = "GET", body } = {}) {
+  if (demoMode && path.startsWith("/api/admin")) {
+    if (method !== "GET") throw Object.assign(new Error(DEMO_REFUSAL), { status: 0, demo: true });
+    path += (path.includes("?") ? "&" : "?") + "demo=1";
+  }
   let r;
   try {
     r = await fetch(path, {

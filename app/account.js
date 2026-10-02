@@ -1,4 +1,4 @@
-// Account: your details, email updates, password, two-step sign-in, your team (decision makers), and sign out.
+// Account: your details, email updates, password, two-step verification, your team (decision makers), and sign out.
 import { html, useApp, useState, useEffect, api, Head, Field, Toggle, Avatar, Confirm, Modal, copy, saveText, fmtAgo, isStaff } from "./ui.js";
 import { TwoStepSetup } from "./twostep.js";
 
@@ -36,20 +36,20 @@ export function Account() {
     try {
       await api("/api/session", { method: "POST", body: { action: "password", current: pw.current, next: pw.next } });
       setPw({ current: "", next: "", again: "" });
-      toast("Password changed. You’re signed out everywhere else.");
+      toast("Password changed. You’re logged out everywhere else.");
     } catch (x) { setPwErr(x.message); }
     setPwBusy(false);
   };
 
   return html`<div class="page">
-    <${Head} eyebrow="Account" title="Your account">Your details, how the studio reaches you, and how you sign in.<//>
+    <${Head} eyebrow="Account" title="Your account">Your details, how the studio reaches you, and how you log in.<//>
     <div class="grid c2">
       <section class="card pad stack" style=${{ gap: "18px" }} data-reveal="card">
         <div class="row"><${Avatar} name=${user.name} size=${52} /><div><div class="h3">${user.name}</div>
           <div class="muted small">${[user.email, user.clientName || (staff ? studio : ""), user.roleLabel].filter(Boolean).join(" · ")}</div></div></div>
         <${Field} label="Your name"><input class="input" value=${name} onInput=${(e) => setName(e.target.value)} autoComplete="name" /><//>
         <${Field} label="Job title (optional)"><input class="input" value=${title} onInput=${(e) => setTitle(e.target.value)} autoComplete="organization-title" /><//>
-        <${Field} label="Email" hint=${staff ? "An owner can change it in Studio → People." : "To change the email you sign in with, ask the studio."}><input class="input" value=${user.email || ""} disabled /><//>
+        <${Field} label="Email" hint=${staff ? "An owner can change it in Studio → People." : "To change the email you log in with, ask the studio."}><input class="input" value=${user.email || ""} disabled /><//>
         ${emailOn ? html`<div class="row" style=${{ justifyContent: "space-between", flexWrap: "nowrap" }}>
           <div><b>Email me about updates</b><div class="muted small" style=${{ lineHeight: 1.5 }}>${staff ? "When a client leaves notes, decides on a version, sends a message, or uploads." : "When the studio shares a new version, film, file, or message."} Not while you’re using the portal.</div></div>
           <${Toggle} checked=${notify} onChange=${setNotify} label="Email me about updates" />
@@ -71,7 +71,7 @@ export function Account() {
     <${TwoStep} />
     ${!staff && user.perms && user.perms.team ? html`<${Team} />` : null}
     <section class="section row" style=${{ justifyContent: "space-between" }}>
-      <button class="btn ghost" onClick=${signOut}>Sign out</button>
+      <button class="btn ghost" onClick=${signOut}>Log out</button>
       <span class="muted small">How we handle your information: <a href=${brand.privacy || "https://noblemanproductions.gotit2work.com/privacy#portal"}>Privacy</a></span>
     </section>
   </div>`;
@@ -108,19 +108,19 @@ function TwoStep() {
   const set = (v) => setData((x) => ({ ...x, user: { ...x.user, twoStep: v } }));
   return html`<section class="card pad stack section" style=${{ gap: "14px" }} data-reveal="card">
     <div class="row" style=${{ justifyContent: "space-between" }}>
-      <div class="h3">Two-step sign-in</div>
+      <div class="h3">Two-step verification</div>
       <span class=${"pill " + (on ? "green" : "")}>${on ? "On" : "Off"}</span>
     </div>
-    ${mode === "setup" ? html`<${TwoStepSetup} toast=${toast} onDone=${() => { set(true); setMode(null); toast("Two-step sign-in is on."); }} />`
+    ${mode === "setup" ? html`<${TwoStepSetup} toast=${toast} onDone=${() => { set(true); setMode(null); toast("Two-step verification is on."); }} />`
       : on ? html`<p class="muted" style=${{ margin: 0, lineHeight: 1.6 }}>After your password, the portal asks for the code from your authenticator app. Lost your phone? Use a recovery code instead.</p>
           <div class="row">
             <button class="btn ghost" onClick=${() => setMode("codes")}>Make new recovery codes</button>
             ${user.twoStepRequired ? html`<span class="faint small">Staff must keep it on.</span>` : html`<button class="btn ghost" onClick=${() => setMode("off")}>Turn it off</button>`}
           </div>`
       : html`<p class="muted" style=${{ margin: 0, lineHeight: 1.6 }}>Adds a six-digit code from your phone after your password, so a leaked password alone can’t open your portal. Takes about a minute.</p>
-          <div><button class="btn primary" onClick=${() => demo ? say("", "two-step sign-in can’t be turned on in the demo.") : setMode("setup")}>Set up two-step sign-in</button></div>`}
-    ${mode === "off" ? html`<${CodeAsk} title="Turn off two-step sign-in?" yes="Turn it off" action="twoStepDisable" toast=${toast}
-      onClose=${() => setMode(null)} onDone=${() => { set(false); setMode(null); toast("Two-step sign-in is off."); }} />` : null}
+          <div><button class="btn primary" onClick=${() => demo ? say("", "two-step verification can’t be turned on in the demo.") : setMode("setup")}>Set up two-step verification</button></div>`}
+    ${mode === "off" ? html`<${CodeAsk} title="Turn off two-step verification?" yes="Turn it off" action="twoStepDisable" toast=${toast}
+      onClose=${() => setMode(null)} onDone=${() => { set(false); setMode(null); toast("Two-step verification is off."); }} />` : null}
     ${mode === "codes" ? html`<${CodeAsk} title="Make new recovery codes?" yes="Make new codes" action="recoveryCodes" toast=${toast}
       onClose=${() => setMode(null)} onDone=${(d) => { setCodes(d.recoveryCodes); setMode(null); }} />` : null}
     ${codes ? html`<${Modal} title="Your new recovery codes" onClose=${() => setCodes(null)}>
@@ -173,7 +173,7 @@ function Team() {
     <div class="list">${t.people.map((x) => html`<div class="li" key=${x.id} style=${{ flexWrap: "wrap" }}>
       <${Avatar} name=${x.name} />
       <div class="grow" style=${{ minWidth: "160px" }}><div class="name">${x.name}${x.me ? html` <span class="faint">· you</span>` : null}</div>
-        <div class="meta">${x.email} · ${x.invited ? "Invited, hasn’t signed in yet" : x.lastLogin ? "Last signed in " + fmtAgo(x.lastLogin) : "Hasn’t signed in yet"}</div></div>
+        <div class="meta">${x.email} · ${x.invited ? "Invited, hasn’t logged in yet" : x.lastLogin ? "Last logged in " + fmtAgo(x.lastLogin) : "Hasn’t logged in yet"}</div></div>
       ${x.me ? html`<span class="pill">${label(x.access)}</span>` : html`
         <label class="sr" for=${"role-" + x.id}>Role for ${x.name}</label>
         <select id=${"role-" + x.id} class="select" style=${{ width: "auto" }} value=${x.access} disabled=${busy}
@@ -195,7 +195,7 @@ function Team() {
     <//>` : null}
     ${del ? html`<${Confirm} title=${`Remove ${del.name}?`} yes=${`Remove ${del.name}`} busy=${busy}
       onYes=${async () => { await act({ action: "teamRemove", id: del.id }, `${del.name} was removed.`); setDel(null); }} onNo=${() => setDel(null)}>
-      They’re signed out and can’t sign in again. Their notes and messages stay. The studio is told.
+      They’re logged out and can’t log in again. Their notes and messages stay. The studio is told.
     <//>` : null}
   </section>`;
 }

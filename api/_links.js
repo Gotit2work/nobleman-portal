@@ -1,6 +1,6 @@
-// One-time links: an invitation (choose your password, 14 days), a password reset (1 hour), or a sign-in link
+// One-time links: an invitation (choose your password, 14 days), a password reset (1 hour), or a login link
 // (15 minutes). The token is 256 random bits; only its SHA-256 hash is stored, and it works once.
-// Also the sign-in throttle, shared by passwords, two-step codes, and link requests.
+// Also the login throttle, shared by passwords, two-step codes, and link requests.
 import { sql } from "./_db.js";
 import { randomToken, hashToken } from "./_crypto.js";
 import { getSettings } from "./_settings.js";
@@ -41,26 +41,62 @@ export async function redeemLink(token) {
 export async function emailLink(user, purpose, link, invitedBy) {
   const s = await getSettings();
   const studio = s.brand.studio;
+  const first = user.name.split(" ")[0];
+  const staff = user.role === "admin";
   const copy = {
     invite: {
-      subject: `Your ${studio} client portal is ready`,
-      lines: [`Hi ${user.name.split(" ")[0]},`, `${invitedBy ? invitedBy + " has" : "We’ve"} set up your private portal for ${studio}. Every version of your film comes here first: watch it, leave notes on the exact moment, and approve it when it’s right.`, "Choose your password to get in. The link works once, within 14 days."],
+      subject: `Your ${studio} portal is ready`,
+      lines: staff
+        ? [`Hi ${first},`, `${invitedBy ? invitedBy + " has" : "We’ve"} added you to the ${studio} portal, where the studio runs every client project: versions, notes, approvals, files, and messages.`, "Choose your password to get in. The link works once, within 14 days."]
+        : [`Hi ${first},`, `${invitedBy ? invitedBy + " has" : "We’ve"} set up your private portal for ${studio}. Every version of your film comes here first: watch it, leave notes on the exact moment, and approve it when it’s right.`, "Choose your password to get in. The link works once, within 14 days."],
       button: "Choose your password",
     },
     reset: {
       subject: `Choose a new password for the ${studio} portal`,
-      lines: [`Hi ${user.name.split(" ")[0]},`, "Here’s your link to choose a new password. It works once, within an hour."],
+      lines: [`Hi ${first},`, "Here’s your link to choose a new password. It works once, within an hour."],
       button: "Choose a new password",
     },
     signin: {
-      subject: `Your sign-in link for the ${studio} portal`,
-      lines: [`Hi ${user.name.split(" ")[0]},`, "Here’s your link to sign in. It works once, within 15 minutes."],
-      button: "Sign in to the portal",
+      subject: `Your login link for the ${studio} portal`,
+      lines: [`Hi ${first},`, "Here’s your link to log in. It works once, within 15 minutes."],
+      button: "Log in to the portal",
     },
   }[purpose];
-  const html = layout({ studio, eyebrow: "Client portal", lines: copy.lines, button: { label: copy.button, href: link },
+  const html = layout({ studio, eyebrow: "Portal", lines: copy.lines, button: { label: copy.button, href: link },
     footer: "If you didn’t expect this email, you can ignore it. Nobody can use the portal without the link." });
   return sendEmail({ to: user.email, subject: copy.subject, html });
+}
+
+/**
+ * Sign-up emails. kind:
+ *   confirm   prove the address is theirs (link, one hour)
+ *   exists    they already have an account: a login link instead (or a password link if login links are off)
+ *   declined  the studio said no, kindly
+ */
+export async function emailSignup(kind, to, name, link) {
+  const s = await getSettings();
+  const studio = s.brand.studio;
+  const first = String(name || "").split(" ")[0] || "there";
+  const copy = {
+    confirm: {
+      subject: `Confirm your email for the ${studio} portal`,
+      lines: [`Hi ${first},`, `Confirm this is your email address to finish creating your account with ${studio}. The link works once, within an hour.`],
+      button: "Confirm my email",
+    },
+    exists: {
+      subject: `You already have a ${studio} portal account`,
+      lines: [`Hi ${first},`, "Someone, probably you, tried to create an account with this email address. You already have one, so here’s a link to get in instead. It works once."],
+      button: "Open the portal",
+    },
+    declined: {
+      subject: `About your ${studio} portal request`,
+      lines: [`Hi ${first},`, `Thanks for asking to join the ${studio} portal. The studio couldn’t give you access this time.`, `If you think that’s a mistake, write to ${s.brand.support}.`],
+      button: null,
+    },
+  }[kind];
+  const html = layout({ studio, eyebrow: "Portal", lines: copy.lines, button: copy.button ? { label: copy.button, href: link } : undefined,
+    footer: "If you didn’t ask for this, you can ignore it. Nothing happens without the link." });
+  return sendEmail({ to, subject: copy.subject, html });
 }
 
 // ---------- throttle ----------

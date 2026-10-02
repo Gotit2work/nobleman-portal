@@ -44,7 +44,7 @@ const local = (url) => String(url).replace(/^https?:\/\/[^/]+/, B);
 async function signIn(page, email, password = PASS) {
   await page.locator('input[name="email"]').fill(email);
   await page.locator('input[name="password"]').fill(password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.getByRole("button", { name: "Log in", exact: true }).click();
 }
 async function as(email, path = "/", opts) {
   const page = await newPage(opts);
@@ -81,9 +81,10 @@ const dana = await newPage();
 {
   const page = dana;
   await page.goto(B + "/review");
-  check("signed out, the portal shows the screening-room sign-in", await waitText(page, "screening room") && await visible(page.getByRole("heading", { name: "Sign in" })));
-  check("the sign-in screen carries its Murphy’s Law", await waitText(page, "The one frame nobody checked is the one everyone sees."));
-  check("emailed sign-in links are offered", await visible(page.getByRole("button", { name: "Email me a sign-in link instead" })));
+  check("logged out, everyone sees the same login (not a client login)", await waitText(page, "screening room") && await visible(page.getByRole("heading", { name: "Log in" })) && !(await waitText(page, /client portal|client login/i, 500)));
+  check("the login offers creating an account", await visible(page.getByRole("tab", { name: "Create an account" })));
+  check("the login screen carries its Murphy’s Law", await waitText(page, "The one frame nobody checked is the one everyone sees."));
+  check("emailed login links are offered", await visible(page.getByRole("button", { name: "Email me a login link instead" })));
   await signIn(page, "dana@harbor.test", "wrong-password-here");
   check("a wrong password says so", await waitText(page, /email and password don’t match/));
   await signIn(page, "dana@harbor.test");
@@ -243,13 +244,13 @@ const dana = await newPage();
 
   await tab(page, "Settings").click();
   check("Settings opens with a system check", await waitText(page, "System check"));
-  const law = page.locator("section.card", { has: page.getByText("Sign-in screen", { exact: true }) });
+  const law = page.locator("section.card", { has: page.getByText("Login screen", { exact: true }) });
   await law.getByLabel("The law").fill("Anything that can go wrong in the edit will show up in the final cut.");
   await law.getByRole("button", { name: "Save", exact: true }).click();
   await waitText(page, "Saved.");
   const out = await newPage();
   await out.goto(B + "/");
-  check("the sign-in screen's law changes without code", await waitText(out, "Anything that can go wrong in the edit will show up in the final cut."));
+  check("the login screen's law changes without code", await waitText(out, "Anything that can go wrong in the edit will show up in the final cut."));
   await out.context().close();
 
   await tab(page, "Activity").click();
@@ -257,6 +258,62 @@ const dana = await newPage();
   await page.getByRole("button", { name: "Clients", exact: true }).click();
   check("…and filters by who did it", await waitText(page, "Dana Whitfield"));
   await page.context().close();
+}
+
+// ---------- 4b. Creating an account ----------
+{
+  const page = await newPage();
+  await page.goto(B + "/signup");
+  check("/signup opens on Create an account", await waitText(page, "Create your account") && (await page.getByRole("tab", { name: "Create an account" }).getAttribute("aria-selected")) === "true");
+  check("…with three steps, the first one lit", (await page.locator(".stepline li.now").innerText()).includes("Your details"));
+  await page.locator('input[name="name"]').fill("Kim Lowell");
+  await page.locator('input[name="email"]').fill("kim@lowellmarine.test");
+  await page.locator('input[name="company"]').fill("Lowell Marine");
+  await page.getByRole("button", { name: "Add a note for the studio" }).click();
+  await page.locator("textarea").fill("A boat launch film in May.");
+  await page.getByRole("button", { name: "Create my account" }).click();
+  check("then it asks them to confirm their email", await waitText(page, "We sent a link to") && (await page.locator(".stepline li.now").innerText()).includes("Confirm your email"));
+  await page.waitForTimeout(400);
+  const link = linkIn((await mails()).reverse().find((m) => [].concat(m.to).includes("kim@lowellmarine.test")));
+  await page.goto(local(link));
+  check("confirming puts them on the list, with what happens next", await waitText(page, "You’re on the list, Kim.") && await waitText(page, "we’ll email you a link to choose your password"));
+  await page.context().close();
+
+  const staff = await as("alexis@gotit2work.com");
+  check("staff home leads with who's asking to join", await waitText(staff, "Someone is asking to join."));
+  await staff.getByRole("link", { name: /Review the request/ }).click();
+  check("Studio → People lists the request with their note", await waitText(staff, "Asking to join") && await waitText(staff, "A boat launch film in May."));
+  await staff.getByRole("button", { name: "Let them in…" }).click();
+  const dlg = staff.getByRole("dialog");
+  check("letting them in suggests a new client named after their company", (await dlg.locator('input[placeholder="For example: Meridian"]').inputValue()) === "Lowell Marine");
+  await dlg.getByRole("button", { name: "Let them in and send the invitation" }).click();
+  check("approving invites them by email", await waitText(staff, "Kim Lowell is invited") && await waitText(staff, "We emailed it to kim@lowellmarine.test."));
+  await staff.getByRole("button", { name: "Done" }).click();
+  check("…and the request is gone from the list", !(await waitText(staff, "Asking to join", 1200)));
+
+  // A client's email domain lets their people straight in.
+  await tab(staff, "Clients").click();
+  await staff.getByRole("row", { name: /Harbor Labs/ }).getByRole("button", { name: "Edit" }).click();
+  await staff.getByRole("dialog").getByLabel("Their email domain (optional)").fill("harbor.test");
+  await staff.getByRole("dialog").getByRole("button", { name: "Save" }).click();
+  check("a client's email domain is saved and shown", await waitText(staff, "Joins by email: @harbor.test"));
+  await staff.context().close();
+
+  const lee = await newPage();
+  await lee.goto(B + "/signup");
+  await lee.locator('input[name="name"]').fill("Lee Harbor");
+  await lee.locator('input[name="email"]').fill("lee@harbor.test");
+  await lee.locator('input[name="company"]').fill("Harbor Labs");
+  await lee.getByRole("button", { name: "Create my account" }).click();
+  await waitText(lee, "We sent a link to");
+  await lee.waitForTimeout(400);
+  await lee.goto(local(linkIn((await mails()).reverse().find((m) => [].concat(m.to).includes("lee@harbor.test")))));
+  check("someone at the client's domain goes straight to choosing a password, told which company", await waitText(lee, "Choose your password") && await waitText(lee, "You’re joining Harbor Labs."));
+  await lee.locator('input[name="new-password"]').fill("lee-own-password-1");
+  await lee.locator('input[name="again"]').fill("lee-own-password-1");
+  await lee.getByRole("button", { name: "Save and open the portal" }).click();
+  check("…and lands in their company's portal, as a client", await waitText(lee, hello("Lee")) && !(await visible(nav(lee, "Studio"))));
+  await lee.context().close();
 }
 
 // ---------- 5. An editor's Studio is limited to their role ----------
@@ -269,26 +326,26 @@ const dana = await newPage();
   await page.context().close();
 }
 
-// ---------- 6. Two-step sign-in for staff ----------
+// ---------- 6. Two-step verification for staff ----------
 {
   const page = await as("pat@studio.test", "/account");
-  await waitText(page, "Two-step sign-in");
-  await page.getByRole("button", { name: "Set up two-step sign-in" }).click();
-  await page.getByRole("button", { name: "Turn on two-step sign-in" }).click();
+  await waitText(page, "Two-step verification");
+  await page.getByRole("button", { name: "Set up two-step verification" }).click();
+  await page.getByRole("button", { name: "Turn on two-step verification" }).click();
   await page.locator("code.key").waitFor();
   const secret = (await page.locator("code.key").innerText()).replace(/\s/g, "");
   await page.locator(".qr svg").waitFor({ timeout: 4000 }).catch(() => {});
   check("setup shows a QR code and the key", await visible(page.locator(".qr svg")) && secret.length >= 32, secret);
   await page.getByLabel("The six-digit code your app shows now").fill(totpCode(secret, totpStep()));
   await page.getByRole("button", { name: "Check the code and turn it on" }).click();
-  check("turning it on shows recovery codes once", await waitText(page, "Two-step sign-in is on.") && (await page.locator(".codes code").count()) >= 8);
+  check("turning it on shows recovery codes once", await waitText(page, "Two-step verification is on.") && (await page.locator(".codes code").count()) >= 8);
   await page.getByRole("button", { name: "I’ve saved them" }).click();
-  await page.getByRole("button", { name: "Sign out" }).click();
-  await page.getByRole("heading", { name: "Sign in" }).waitFor();
+  await page.getByRole("button", { name: "Log out" }).click();
+  await page.getByRole("heading", { name: "Log in" }).waitFor();
   await signIn(page, "pat@studio.test");
   check("signing in now asks for the code", await waitText(page, "One more step"));
   await page.locator('input[name="code"]').fill(totpCode(secret, totpStep() + 1));
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.getByRole("button", { name: "Log in", exact: true }).click();
   check("the right code opens the portal", await waitText(page, hello("Pat")));
   await page.context().close();
 }
@@ -304,8 +361,8 @@ const dana = await newPage();
   await waitText(page, "Harbor Summit Recap");
   check("with downloads off, the film has no Download card", !(await waitText(page, "Original file", 1500)));
   await page.locator("nav.rail").getByRole("link", { name: /Your account/ }).click();
-  await page.getByRole("button", { name: "Sign out" }).click();
-  check("signing out returns to the sign-in screen", await page.getByRole("heading", { name: "Sign in" }).waitFor().then(() => true, () => false));
+  await page.getByRole("button", { name: "Log out" }).click();
+  check("logging out returns to the login screen", await page.getByRole("heading", { name: "Log in" }).waitFor().then(() => true, () => false));
   await page.context().close();
 }
 
@@ -345,8 +402,23 @@ const PHONE = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch:
   await page.getByRole("button", { name: "Approve Version 3" }).click();
   await page.getByRole("button", { name: "Yes, approve Version 3" }).click();
   check("demo actions say plainly that nothing was sent", await waitText(page, /Demo only:/));
+  check("the demo shows the client's view first, with a switch to the studio's", (await page.locator(".demo-switch button[aria-pressed=true]").first().innerText()).includes("Client") && !(await visible(nav(page, "Studio"))));
+  await page.locator(".demo-switch").first().getByRole("button", { name: "Studio’s view" }).click();
+  check("the studio's view adds Studio and leads with who's asking to join", await waitText(page, "Someone is asking to join.") && await visible(nav(page, "Studio")));
+  await page.getByRole("link", { name: /Review the request/ }).click();
+  check("demo Studio shows the management side with sample data", await waitText(page, "Asking to join") && await waitText(page, "Kim Lowell") && await waitText(page, "Jonathan Reyes"));
+  await page.getByRole("button", { name: "Let them in…" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Let them in and send the invitation" }).click();
+  check("…and refuses changes, saying it's the demo", await waitText(page, /Demo only: nothing here is saved/));
+  await page.keyboard.press("Escape");
+  for (const t of ["Projects", "Connections", "Settings", "Activity"]) {
+    await page.locator(".studio-tabs").getByRole("link", { name: t, exact: true }).click();
+    check(`demo Studio ${t} opens`, await waitText(page, t === "Projects" ? "Meridian Campaign" : t === "Connections" ? "Video sources" : t === "Settings" ? "System check" : "Asked to join|Watched Campaign Film".split("|")[1]));
+  }
+  await page.goto(DEMO + "/studio/projects");
+  check("reloading a Studio page in the demo keeps the studio's view", await waitText(page, "Meridian Campaign") && await visible(nav(page, "Studio")));
   await page.goto(DEMO + "/signin");
-  check("/signin still reaches the real sign-in in demo mode", await page.getByRole("heading", { name: "Sign in" }).waitFor().then(() => true, () => false));
+  check("/signin still reaches the real login in demo mode", await page.getByRole("heading", { name: "Log in" }).waitFor().then(() => true, () => false));
   await page.goto(B + "/demo");
   check("/demo works on the live portal too", await waitText(page, /Jonathan/));
   await page.context().close();

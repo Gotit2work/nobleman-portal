@@ -115,17 +115,17 @@ export const MORE_GETS = {
     ]);
     const checks = [
       { label: "Database", ok: true, detail: `Connected. Schema version ${SCHEMA_VERSION}.` },
-      { label: "Sign-in key", ok: (process.env.SESSION_SECRET || "").length >= 32, detail: (process.env.SESSION_SECRET || "").length >= 32 ? "SESSION_SECRET is set." : "SESSION_SECRET is missing or shorter than 32 characters." },
+      { label: "Login key", ok: (process.env.SESSION_SECRET || "").length >= 32, detail: (process.env.SESSION_SECRET || "").length >= 32 ? "SESSION_SECRET is set." : "SESSION_SECRET is missing or shorter than 32 characters." },
       { label: "Stored-credential key", ok: true, detail: process.env.PORTAL_ENCRYPTION_KEY ? "PORTAL_ENCRYPTION_KEY is set." : "Derived from SESSION_SECRET. Changing SESSION_SECRET means reconnecting every connection. Set PORTAL_ENCRYPTION_KEY to keep them independent." },
       { label: "Setup code", ok: !process.env.BOOTSTRAP_SECRET ? true : "warn", detail: process.env.BOOTSTRAP_SECRET ? "BOOTSTRAP_SECRET is still set. Setup is done: delete it in Vercel and redeploy." : "Removed after setup, as it should be." },
-      { label: "Public demo at the front door", ok: process.env.PORTAL_MODE === "demo" ? "warn" : true, detail: process.env.PORTAL_MODE === "demo" ? "PORTAL_MODE=demo: visitors see the sample project at / instead of sign-in. Delete it to go live." : "Off: visitors see sign-in. The sample stays at /demo." },
+      { label: "Public demo at the front door", ok: process.env.PORTAL_MODE === "demo" ? "warn" : true, detail: process.env.PORTAL_MODE === "demo" ? "PORTAL_MODE=demo: visitors see the sample project at / instead of login. Delete it to go live." : "Off: visitors see login. The sample stays at /demo." },
       { label: "File storage", ok: !!process.env.BLOB_READ_WRITE_TOKEN, detail: process.env.BLOB_READ_WRITE_TOKEN ? "A Vercel Blob store is connected." : "No Blob store: files can’t be uploaded. Vercel → Storage → Create → Blob (private) → connect." },
-      { label: "Email", ok: (await emailReady()) ? true : "warn", detail: (await emailReady()) ? "Connected: invitations, sign-in links, reminders, receipts, and updates go out." : "Not connected: invitations are copied by hand and nobody gets updates. Studio → Connections → Email." },
+      { label: "Email", ok: (await emailReady()) ? true : "warn", detail: (await emailReady()) ? "Connected: invitations, login links, reminders, receipts, and updates go out." : "Not connected: invitations are copied by hand and nobody gets updates. Studio → Connections → Email." },
       { label: "Daily job", ok: process.env.CRON_SECRET ? true : "warn", detail: process.env.CRON_SECRET ? "CRON_SECRET is set: reminders, Notion catch-up, and Frame.io sign-in refresh run daily." : "Set CRON_SECRET in Vercel so the daily job (reminders, Notion catch-up, Frame.io refresh) can run." },
       ...conns.filter((c) => PROVIDERS[c.provider] && PROVIDERS[c.provider].meta.kind === "video").map((c) => ({ label: c.name, ok: c.status === "ok" ? true : false, detail: c.status === "ok" ? `${PROVIDERS[c.provider].meta.name}: working${c.env ? " (from Vercel settings)" : ""}.` : `${PROVIDERS[c.provider].meta.name}: ${c.lastError || "not working"}` })),
       { label: "Notion", ok: !s.notion.dataSourceId ? "warn" : s.notion.lastError ? false : true, detail: !s.notion.dataSourceId ? "Not set up." : s.notion.lastError ? `Last sync failed: ${s.notion.lastError}` : `Syncing to ${s.notion.title || "your database"}${s.notion.lastSync ? ", last at " + iso(s.notion.lastSync) : ""}.` },
       { label: "Owners", ok: owners[0].n >= 2 ? true : "warn", detail: owners[0].n >= 2 ? `${owners[0].n} owners.` : "Only one owner. Make a second person an owner so the studio is never locked out." },
-      { label: "Staff two-step sign-in", ok: staffNo2[0].n === 0 ? true : "warn", detail: staffNo2[0].n === 0 ? "Every staff account uses it." : `${staffNo2[0].n} staff ${staffNo2[0].n === 1 ? "account doesn’t" : "accounts don’t"} use two-step sign-in. Settings → Security can require it.` },
+      { label: "Staff two-step verification", ok: staffNo2[0].n === 0 ? true : "warn", detail: staffNo2[0].n === 0 ? "Every staff account uses it." : `${staffNo2[0].n} staff ${staffNo2[0].n === 1 ? "account doesn’t" : "accounts don’t"} use two-step verification. Settings → Security can require it.` },
     ];
     return res.status(200).json({ checks });
   },
@@ -158,6 +158,9 @@ const CLEAN = {
   security: (v, cur) => ({
     staffTwoStep: bool(v.staffTwoStep, cur.staffTwoStep), signinLinks: bool(v.signinLinks, cur.signinLinks),
     sessionDays: int(v.sessionDays, 1, 30, cur.sessionDays), clientTeams: bool(v.clientTeams, cur.clientTeams),
+    signup: ["off", "request"].includes(v.signup) ? v.signup : cur.signup,
+    domainJoin: bool(v.domainJoin, cur.domainJoin),
+    domainRole: ["approver", "reviewer", "viewer"].includes(v.domainRole) ? v.domainRole : cur.domainRole,
   }),
   reminders: (v, cur) => ({ enabled: bool(v.enabled, cur.enabled), daysBefore: int(v.daysBefore, 0, 14, cur.daysBefore) }),
 };
@@ -171,7 +174,7 @@ export const MORE_ACTIONS = {
     if (!CLEAN[section]) return res.status(400).json({ error: "Unknown settings section." });
     const value = CLEAN[section](b.value || {}, s[section]);
     if (section === "security" && value.staffTwoStep && !s.security.staffTwoStep && !u.totp_enabled) {
-      return res.status(400).json({ error: "Turn on two-step sign-in for yourself first (your account page), so requiring it can’t lock you out." });
+      return res.status(400).json({ error: "Turn on two-step verification for yourself first (your account page), so requiring it can’t lock you out." });
     }
     await saveSection(section, value);
     await audit(req, u, "settings", `Changed settings: ${section}`);
@@ -230,7 +233,7 @@ export const MORE_ACTIONS = {
     const prov = PROVIDERS[conn.provider];
     const { creds, config, missing } = splitFields(prov.meta, b.values || {}, conn.creds || {});
     if (missing.length) return res.status(400).json({ error: `Fill in: ${missing.join(", ")}.` });
-    // Changing how Frame.io signs in starts its sign-in over.
+    // Changing how Frame.io signs in starts its login over.
     const resetAuth = conn.provider === "frameio" && (creds.auth !== conn.creds.auth || creds.clientId !== conn.creds.clientId);
     await updateConnection(conn.id, { name: text(b.name, 80) || conn.name, creds: resetAuth ? { ...creds, accessToken: null, refreshToken: null, expiresAt: null } : { ...conn.creds, ...creds }, config });
     const result = await runTest(conn.id);
@@ -243,7 +246,7 @@ export const MORE_ACTIONS = {
     return res.status(200).json({ test: await runTest(b.id) });
   },
 
-  /** Frame.io: which account to use, when the sign-in can see several. */
+  /** Frame.io: which account to use, when the login can see several. */
   async connectionAccount(req, res, u, b, s, deny) {
     if (deny("connections.manage")) return;
     const conn = await getConnection(b.id);

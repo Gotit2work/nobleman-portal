@@ -10,9 +10,11 @@ const dueText = (p) => (p.reviewDue ? ` Please review by ${fmtDay(p.reviewDue)}.
 export function nextStep(data) {
   const admin = isStaff(data.user);
   const ps = data.projects;
+  // People waiting to be let in come first: they're standing at the door.
+  if (admin && data.signups) return { title: `${data.signups === 1 ? "Someone is" : data.signups + " people are"} asking to join.`, text: "They created an account and confirmed their email. Choose their company and role, or decline.", btn: data.signups === 1 ? "Review the request" : "Review the requests", to: "/studio/people" };
   if (!ps.length) {
     return admin
-      ? { title: "Add your first project.", text: "Create a client, choose where its videos come from, and set what they can do. They see it the moment they sign in.", btn: "Open Studio", to: "/studio/projects" }
+      ? { title: "Add your first project.", text: "Create a client, choose where its videos come from, and set what they can do. They see it the moment they log in.", btn: "Open Studio", to: "/studio/projects" }
       : { title: "Your project is being set up.", text: "The studio is getting it ready. It appears here as soon as it’s set up; you don’t need to do anything yet." };
   }
   if (admin) {
@@ -125,8 +127,10 @@ export function ProjectCard({ p, admin }) {
 function describe(a) {
   const staff = a.role === "admin";
   if (a.log) {
-    const to = a.projectId ? (/^(approved|changes|note|watched)/.test(a.type) ? `/review/${a.projectId}` : a.type === "downloaded" ? `/films/${a.projectId}` : a.type.startsWith("message") ? `/messages/${a.projectId}` : `/projects/${a.projectId}`) : "/studio/activity";
-    return { icon: "send", line: `${a.who}: ${a.text}`, text: "", to };
+    const to = a.projectId ? (/^(approved|changes|note|watched)/.test(a.type) ? `/review/${a.projectId}` : a.type === "downloaded" ? `/films/${a.projectId}` : a.type.startsWith("message") ? `/messages/${a.projectId}` : `/projects/${a.projectId}`)
+      : /^signup/.test(a.type) ? "/studio/people" : "/studio/activity";
+    // Things the portal did by itself (a sign-up arriving, a reminder) read as plain sentences.
+    return { icon: "send", line: a.who && a.who !== "Portal" ? `${a.who}: ${a.text}` : a.text, text: "", to };
   }
   switch (a.type) {
     case "comment": return { icon: "play", line: `${a.who} left a note`, text: a.text, to: `/review/${a.projectId}` };
