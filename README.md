@@ -107,7 +107,7 @@ Today the portal runs with `PORTAL_MODE=demo` and nothing else. In order:
 2. **File storage.** Storage → **Create** → Blob → access **Private** → connect to the project. *Result:* `BLOB_READ_WRITE_TOKEN` appears.
 3. **Secrets.** Add `SESSION_SECRET` and `BOOTSTRAP_SECRET` (Sensitive, Production and Preview).
 4. **Vimeo.** Jean creates the token (scopes above) and adds it as `VIMEO_ACCESS_TOKEN` (Sensitive).
-5. **Email (optional).** `RESEND_API_KEY` (the website's key works, since `gotit2work.com` is verified there) and `PORTAL_EMAIL_FROM`.
+5. **Email (optional).** Needs a Resend account with `gotit2work.com` verified (website runbook, Phase 5; the same key can serve the website's contact form). Then add `RESEND_API_KEY` (Sensitive) and `PORTAL_EMAIL_FROM`.
 6. **Go live.** Delete `PORTAL_MODE`, then Deployments → latest → **Redeploy**.
 7. **First staff account.** Open the portal. It shows **Set up the portal**: enter the `BOOTSTRAP_SECRET` value as the setup code, your name, email, and a password. You're signed in. It only works while no staff account exists. Then delete `BOOTSTRAP_SECRET` and redeploy.
 8. **Set up.** Studio → Vimeo & connections: every scope ticked. Studio → People: add Jean and Justin as Staff. Studio → Projects → **New project** for each client (create the client in the same step), pick its Vimeo folder, set the switches.
