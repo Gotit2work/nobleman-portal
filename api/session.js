@@ -5,7 +5,7 @@ import {
   signSession, setSessionCookie, clearSessionCookie, signTicket, readTicket, needsTwoStepSetup,
 } from "./_auth.js";
 import { sameText, seal, open, totpSecret, totpUri, verifyTotp, recoveryCodes, hashToken } from "./_crypto.js";
-import { getSettings } from "./_settings.js";
+import { getSettings, DEFAULTS } from "./_settings.js";
 import { emailReady, originOf } from "./_notify.js";
 import { createLink, redeemLink, emailLink, throttled, recordAttempt, clearAttempts } from "./_links.js";
 import { audit, clientIp } from "./_audit.js";
@@ -61,14 +61,17 @@ export default async function handler(req, res) {
   }
 }
 
+// The sign-in screen's wording: saved settings, or the defaults when there's no database yet (so the
+// Murphy's Law and studio name show before go-live too).
+const DEFAULT_SCREEN = { brand: DEFAULTS.brand, signin: DEFAULTS.signin, signinLinks: false };
 async function screen() {
   const s = await getSettings().catch(() => null);
-  return s ? { brand: s.brand, signin: s.signin, signinLinks: !!s.security.signinLinks } : {};
+  return s ? { brand: s.brand, signin: s.signin, signinLinks: !!s.security.signinLinks } : DEFAULT_SCREEN;
 }
 
 async function status(req, res) {
   const base = { demoAtRoot: DEMO_MODE };
-  if (!dbConfigured()) return res.status(200).json({ ...base, user: null, db: false, setup: false });
+  if (!dbConfigured()) return res.status(200).json({ ...base, ...DEFAULT_SCREEN, user: null, db: false, setup: false });
   try {
     await ready();
     const [user, sc, email] = await Promise.all([currentUser(req), screen(), emailReady()]);
