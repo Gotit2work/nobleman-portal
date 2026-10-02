@@ -48,19 +48,37 @@ function App() {
   }, []);
 
   // The demo shows the client's view, or the studio's (?view=studio): same portal, different person logged in.
-  const loadDemo = useCallback(async (base, view) => {
-    const studio = view ? view === "studio" : new URLSearchParams(location.search).get("view") === "studio" || /^(\/demo)?\/studio(\/|$)/.test(location.pathname);
-    setDemoMode(true);
-    const data = await api("/api/portal?demo=" + (studio ? "studio" : "1"));
-    setSt({ phase: "app", demo: true, demoView: studio ? "studio" : "client", base, data, session: null });
+  // Both views load together, so the switch is instant.
+  const demoCache = useRef({});
+  const demoData = useCallback((view) => {
+    const c = demoCache.current;
+    if (!c[view]) c[view] = api("/api/portal?demo=" + (view === "studio" ? "studio" : "1")).catch((e) => { delete c[view]; throw e; });
+    return c[view];
   }, []);
-  const demoView = useCallback(async (view) => {
-    await loadDemo(st.base, view);
-    history.replaceState(null, "", (st.base || "") + "/" + (view === "studio" ? "?view=studio" : ""));
-    setPath(location.pathname);
-    window.scrollTo(0, 0);
-    toast(view === "studio" ? "You’re seeing what the studio sees: every version, and Studio for running it all." : "You’re seeing what a client sees.");
-  }, [st.base, loadDemo]);
+  const loadDemo = useCallback(async (base) => {
+    const view = new URLSearchParams(location.search).get("view") === "studio" || /^(\/demo)?\/studio(\/|$)/.test(location.pathname) ? "studio" : "client";
+    setDemoMode(true);
+    const data = await demoData(view);
+    demoData(view === "studio" ? "client" : "studio").catch(() => {});
+    setSt({ phase: "app", demo: true, demoView: view, base, data, session: null });
+  }, []);
+  const switchDemo = useCallback(async (view) => {
+    if (view === st.demoView) return;
+    // The switch moves at once; the page follows as soon as that view's sample data is in (it usually already is).
+    setSt((x) => ({ ...x, demoView: view }));
+    try {
+      const data = await demoData(view);
+      const route = routeOf(location.pathname, st.base);
+      const leave = view === "client" && route[0] === "studio";
+      const to = leave ? (st.base || "") + "/" : location.pathname;
+      history.replaceState(null, "", to + (view === "studio" ? "?view=studio" : ""));
+      setSt((x) => (x.demoView === view ? { ...x, data } : x));
+      if (leave) { setPath(location.pathname); window.scrollTo(0, 0); }
+    } catch (e) {
+      setSt((x) => ({ ...x, demoView: view === "studio" ? "client" : "studio" }));
+      toast(e.message, { err: true });
+    }
+  }, [st.base, st.demoView]);
 
   const loadPortal = useCallback(async (session, next) => {
     setDemoMode(false);
@@ -150,7 +168,7 @@ function App() {
       <${Toasts} items=${toasts} />`;
   }
 
-  const ctx = { ...st, user: st.data.user, go, toast, say, reload, setData, signOut, openHelp: () => setHelp(true), path, demoView };
+  const ctx = { ...st, user: st.data.user, go, toast, say, reload, setData, signOut, openHelp: () => setHelp(true), path, switchDemo };
   return html`<${AppCtx.Provider} value=${ctx}>
     <${Shell} route=${routeOf(path, st.base)} more=${more} setMore=${setMore} />
     ${help ? html`<${Help} onClose=${() => setHelp(false)} />` : null}
@@ -258,9 +276,10 @@ function Shell({ route, more, setMore }) {
 function DemoSwitch() {
   const app = R.useContext(AppCtx);
   const studio = app.demoView === "studio";
-  return html`<div class="demo-switch" role="group" aria-label="Whose view of the demo">
-    <button aria-pressed=${!studio} onClick=${() => studio && app.demoView("client")}>Client’s view</button>
-    <button aria-pressed=${studio} onClick=${() => !studio && app.demoView("studio")}>Studio’s view</button>
+  return html`<div class="demo-switch" data-on=${studio ? "2" : "1"} role="group" aria-label="Whose view of the demo">
+    <i class="thumb" aria-hidden="true"></i>
+    <button aria-pressed=${!studio} onClick=${() => app.switchDemo("client")}>Client’s view</button>
+    <button aria-pressed=${studio} onClick=${() => app.switchDemo("studio")}>Studio’s view</button>
   </div>`;
 }
 

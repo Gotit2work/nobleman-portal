@@ -3,6 +3,7 @@
 import { html, useApp, useState, useEffect, useRef, api, Head, Empty, Link, Player, Avatar, Confirm, Modal, Field, tc, fmtAgo, fmtDate, fmtDay, plural, isStaff } from "./ui.js";
 
 const decisionLabel = (d) => (d.decision === "approved" ? (d.note ? "Approved with small fixes" : "Approved") : "Changes asked");
+const dot = (x, latest) => (x.decision ? (x.decision.decision === "approved" ? "var(--green)" : "var(--amber)") : x.n === latest.n ? "var(--red)" : "var(--line-2)");
 
 export function Review({ pid, cut, n }) {
   const app = useApp();
@@ -39,7 +40,7 @@ export function Review({ pid, cut, n }) {
   </div>`;
 }
 
-/** Player, version chips, decision, and the notes panel for one version. Keyed by video, so it resets per version. */
+/** Player, which version (one at a time), decision, and the notes panel for one version. Keyed by video, so it resets per version. */
 function Stage({ p, c, v, latest }) {
   const app = useApp();
   const { user, demo, go, toast, say, reload, setData, data } = app;
@@ -119,13 +120,16 @@ function Stage({ p, c, v, latest }) {
     <div class="review">
       <div class="stack" style=${{ gap: "18px", minWidth: 0 }}>
         <${Player} video=${v.video} apiRef=${player} onTime=${setTime} vertical=${v.video.vertical} source=${{ project: p.id }} onPlay=${seen} mark=${"Preview · Version " + v.n} />
-        <div class="row" style=${{ justifyContent: "space-between" }}>
-          ${many ? html`<div class="versions" role="group" aria-label="Versions">
-            ${c.versions.map((x) => html`<button key=${x.n} class="vchip" aria-pressed=${x.n === v.n} onClick=${() => go(`/review/${p.id}/${encodeURIComponent(c.key)}/${x.n}`)}
-              title=${x.decision ? decisionLabel(x.decision) : x.n === latest.n ? "Waiting for a decision" : "Older version"}>
-              <span class="st" style=${{ background: x.decision ? (x.decision.decision === "approved" ? "var(--green)" : "var(--amber)") : x.n === latest.n ? "var(--red)" : "var(--line-2)" }}></span>
-              Version ${x.n}</button>`)}
-          </div>` : html`<div class="stack" style=${{ gap: "2px" }}><b>Version ${v.n}</b>${c.total > 1 ? html`<span class="faint small">The newest version. It replaces Version ${v.n - 1}${c.total > 2 ? " and earlier" : ""}.</span>` : null}</div>`}
+        <div class="vhead">
+          <div class="stack" style=${{ gap: "4px", minWidth: 0 }}>
+            ${many ? html`<label class="vpick">
+              <span class="st" aria-hidden="true" style=${{ background: dot(v, latest) }}></span>
+              <select aria-label="Version" value=${String(v.n)} onChange=${(e) => go(`/review/${p.id}/${encodeURIComponent(c.key)}/${e.target.value}`)}>
+                ${[...c.versions].reverse().map((x) => html`<option key=${x.n} value=${String(x.n)}>Version ${x.n}${x.n === latest.n ? " (newest)" : x.decision ? " · " + decisionLabel(x.decision) : ""}</option>`)}
+              </select>
+            </label>` : html`<b>Version ${v.n}</b>`}
+            ${isLatest && c.total > 1 ? html`<span class="faint small">The newest version${admin ? (p.clientCaps && p.clientCaps.history ? "; clients can open earlier ones too" : ", and the only one clients see") : `. It replaces Version ${v.n - 1}${c.total > 2 ? " and earlier" : ""}`}.</span>` : null}
+          </div>
           <span class="muted small">${v.video.durationLabel}${v.video.created ? " · shared " + fmtDate(v.video.created) : ""}</span>
         </div>
         ${v.video.description ? html`<p class="muted" style=${{ margin: 0, lineHeight: 1.6 }}>${v.video.description}</p>` : null}

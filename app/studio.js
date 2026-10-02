@@ -11,6 +11,8 @@ import { Clients, People } from "./studio-people.js";
 import { Connections } from "./studio-connect.js";
 import { Settings, Activity } from "./studio-settings.js";
 
+const R = window.React;
+
 const TABS = [
   { key: "projects", label: "Projects", icon: "camera", any: [] },
   { key: "clients", label: "Clients", icon: "anchor", any: ["clients.manage", "data.export"] },
@@ -346,6 +348,19 @@ function Progress({ f, setF, src, d, may, admin }) {
   </section>`;
 }
 
+/** Groups a source's videos so each film's versions sit together, newest first. */
+function groupVersions(vs) {
+  const out = [], by = new Map();
+  for (const v of vs) {
+    if (v.kind !== "version") { out.push({ one: v }); continue; }
+    const k = String(v.baseTitle || v.title).toLowerCase();
+    if (!by.has(k)) { const g = { key: k, vs: [] }; by.set(k, g); out.push(g); }
+    by.get(k).vs.push(v);
+  }
+  for (const g of by.values()) g.vs.sort((a, b) => (b.version || 0) - (a.version || 0));
+  return out;
+}
+
 /** Every video at the project's source, with what the client sees: hide, rename, or mark as a finished film. */
 function Videos({ p, admin }) {
   const { run, busy } = useRun(admin);
@@ -355,6 +370,7 @@ function Videos({ p, admin }) {
   const [adding, setAdding] = useState(false);
   const [link, setLink] = useState({ url: "", title: "", description: "" });
   const [removing, setRemoving] = useState(null);
+  const [shown, setShown] = useState({});
   const may = admin.can("projects.videos");
   const load = async (fresh) => {
     setErr("");
@@ -365,6 +381,22 @@ function Videos({ p, admin }) {
   const links = p.source && p.source.conn === "links";
   const kindPill = (v) => v.kind === "client" ? html`<span class="pill">From the client</span>`
     : v.kind === "version" ? html`<span class="pill amber">Version ${v.version}</span>` : html`<span class="pill green">Finished film</span>`;
+  // One row per video; versions of the same film sit together, newest first, with earlier ones folded away.
+  const row = (v, { newest, earlier } = {}) => html`<div class=${"li vrow" + (earlier ? " earlier" : "")} key=${v.id} style=${{ opacity: v.hidden ? 0.6 : 1 }}>
+          <div class="vthumb" style=${{ backgroundImage: v.thumbnail ? `url('${v.thumbnail}')` : "none" }}></div>
+          <div class="grow" style=${{ minWidth: "200px" }}>
+            <div class="name">${v.title}</div>
+            <div class="meta row" style=${{ gap: "6px" }}>${kindPill(v)}${newest ? html`<span class="faint">newest</span>` : null}${v.hidden ? html`<span class="pill">Hidden from the client</span>` : null}${v.forcedFilm ? html`<span class="faint">marked as a film</span>` : null}
+              <span>${[v.durationLabel, v.created ? fmtDate(v.created) : "", v.ready === false ? "still processing" : ""].filter(Boolean).join(" · ")}</span></div>
+          </div>
+          ${may ? html`<div class="row" style=${{ gap: "6px" }}>
+            <button class="btn ghost sm" disabled=${busy} onClick=${() => set(v, { hidden: !v.hidden }, v.hidden ? "The client can see it again." : "Hidden from the client.")}>${v.hidden ? "Show" : "Hide"}</button>
+            <button class="btn ghost sm" onClick=${() => setRenaming({ v, title: v.title })}>Rename</button>
+            ${v.kind === "version" || v.forcedFilm ? html`<button class="btn ghost sm" disabled=${busy} onClick=${() => set(v, { kind: v.forcedFilm ? "auto" : "film" }, v.forcedFilm ? "Its name decides again." : "It’s now a finished film.")}>${v.forcedFilm ? "Go by its name" : "Make it a finished film"}</button>` : null}
+            ${v.linkId ? html`<button class="btn ghost sm" onClick=${() => setRemoving(v)}>Remove</button>` : null}
+            ${v.manage ? html`<a class="btn ghost sm" href=${v.manage} target="_blank" rel="noopener" aria-label=${"Open " + v.title + " at the source"}>↗</a>` : null}
+          </div>` : null}
+        </div>`;
   return html`<section class="card pad stack section" style=${{ gap: "14px", marginTop: "16px" }}>
     <div class="row" style=${{ justifyContent: "space-between" }}>
       <div class="h3">Videos</div>
@@ -376,21 +408,14 @@ function Videos({ p, admin }) {
     ${err ? html`<div class="alert">${err}</div>` : null}
     ${vs == null ? html`<span class="muted small">Loading videos…</span>`
       : !vs.length ? html`<p class="muted" style=${{ margin: 0 }}>${links ? "No videos yet. Add one by pasting its link." : "No videos at the source yet. New uploads appear within a couple of minutes, or press Refresh."}</p>`
-      : html`<div class="list">${vs.map((v) => html`<div class="li vrow" key=${v.id} style=${{ opacity: v.hidden ? 0.6 : 1 }}>
-          <div class="vthumb" style=${{ backgroundImage: v.thumbnail ? `url('${v.thumbnail}')` : "none" }}></div>
-          <div class="grow" style=${{ minWidth: "200px" }}>
-            <div class="name">${v.title}</div>
-            <div class="meta row" style=${{ gap: "6px" }}>${kindPill(v)}${v.hidden ? html`<span class="pill">Hidden from the client</span>` : null}${v.forcedFilm ? html`<span class="faint">marked as a film</span>` : null}
-              <span>${[v.durationLabel, v.created ? fmtDate(v.created) : "", v.ready === false ? "still processing" : ""].filter(Boolean).join(" · ")}</span></div>
-          </div>
-          ${may ? html`<div class="row" style=${{ gap: "6px" }}>
-            <button class="btn ghost sm" disabled=${busy} onClick=${() => set(v, { hidden: !v.hidden }, v.hidden ? "The client can see it again." : "Hidden from the client.")}>${v.hidden ? "Show" : "Hide"}</button>
-            <button class="btn ghost sm" onClick=${() => setRenaming({ v, title: v.title })}>Rename</button>
-            ${v.kind === "version" || v.forcedFilm ? html`<button class="btn ghost sm" disabled=${busy} onClick=${() => set(v, { kind: v.forcedFilm ? "auto" : "film" }, v.forcedFilm ? "Its name decides again." : "It’s now a finished film.")}>${v.forcedFilm ? "Go by its name" : "Make it a finished film"}</button>` : null}
-            ${v.linkId ? html`<button class="btn ghost sm" onClick=${() => setRemoving(v)}>Remove</button>` : null}
-            ${v.manage ? html`<a class="btn ghost sm" href=${v.manage} target="_blank" rel="noopener" aria-label=${"Open " + v.title + " at the source"}>↗</a>` : null}
-          </div>` : null}
-        </div>`)}</div>`}
+      : html`<div class="list">${groupVersions(vs).map((g) => !g.vs ? row(g.one)
+        : html`<${R.Fragment} key=${g.key}>
+          ${row(g.vs[0], { newest: g.vs.length > 1 })}
+          ${g.vs.length > 1 ? html`<button type="button" class="li vmore" aria-expanded=${!!shown[g.key]} onClick=${() => setShown({ ...shown, [g.key]: !shown[g.key] })}>
+            <span class="muted small">${shown[g.key] ? "Hide earlier versions" : `${plural(g.vs.length - 1, "earlier version")} of ${g.vs[0].baseTitle || g.vs[0].title}`}</span><span aria-hidden="true">${shown[g.key] ? "▴" : "▾"}</span>
+          </button>` : null}
+          ${shown[g.key] ? g.vs.slice(1).map((v) => row(v, { earlier: true })) : null}
+        <//>`)}</div>`}
     ${renaming ? html`<${Modal} title="Rename for the client" onClose=${() => setRenaming(null)}>
       <${Field} label="Name the client sees" hint="Keep “V2”, “V3” at the end for versions. Empty = the name at the source. Nothing changes at the source.">
         <input class="input" value=${renaming.title} onInput=${(e) => setRenaming({ ...renaming, title: e.target.value })} />

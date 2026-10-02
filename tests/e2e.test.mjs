@@ -84,14 +84,15 @@ const dana = await newPage();
   check("logged out, everyone sees the same login (not a client login)", await waitText(page, "screening room") && await visible(page.getByRole("heading", { name: "Log in" })) && !(await waitText(page, /client portal|client login/i, 500)));
   check("the login offers creating an account", await visible(page.getByRole("tab", { name: "Create an account" })));
   check("the login screen carries its Murphy’s Law", await waitText(page, "The one frame nobody checked is the one everyone sees."));
-  check("emailed login links are offered", await visible(page.getByRole("button", { name: "Email me a login link instead" })));
+  check("emailed login links are offered", await visible(page.getByRole("button", { name: "Email me a login link" })));
+  check("the login is a camera still, not a video", (await page.locator(".screen iframe").count()) === 0 && /login-camera\.jpg/.test(await page.locator(".screen .poster").evaluate((e) => getComputedStyle(e).backgroundImage)));
   await signIn(page, "dana@harbor.test", "wrong-password-here");
   check("a wrong password says so", await waitText(page, /email and password don’t match/));
   await signIn(page, "dana@harbor.test");
   check("after signing in, the link they followed opens (Review)", await waitText(page, /Review Harbor Spot/) && new URL(page.url()).pathname.startsWith("/review"));
   check("desktop: the side capsule is shown and the bottom bar isn't", await visible(page.locator("nav.rail")) && !(await visible(page.locator("nav.bottombar"))));
 
-  check("the client sees only the newest version: no version picker", !(await visible(page.locator(".versions"))));
+  check("the client sees only the newest version: no version picker", !(await visible(page.locator(".vpick"))));
   check("…and is told it replaces the earlier ones", await waitText(page, "It replaces Version 2 and earlier."));
   check("the version under review is marked as a preview", (await page.locator(".player-mark").first().textContent().catch(() => "") || "").includes("Version 3"));
 
@@ -264,7 +265,7 @@ const dana = await newPage();
 {
   const page = await newPage();
   await page.goto(B + "/signup");
-  check("/signup opens on Create an account", await waitText(page, "Create your account") && (await page.getByRole("tab", { name: "Create an account" }).getAttribute("aria-selected")) === "true");
+  check("/signup opens on Create an account", await page.getByRole("heading", { name: "Create an account" }).waitFor({ state: "attached" }).then(() => true, () => false) && (await page.getByRole("tab", { name: "Create an account" }).getAttribute("aria-selected")) === "true");
   check("…with three steps, the first one lit", (await page.locator(".stepline li.now").innerText()).includes("Your details"));
   await page.locator('input[name="name"]').fill("Kim Lowell");
   await page.locator('input[name="email"]').fill("kim@lowellmarine.test");
@@ -404,7 +405,21 @@ const PHONE = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch:
   check("demo actions say plainly that nothing was sent", await waitText(page, /Demo only:/));
   check("the demo shows the client's view first, with a switch to the studio's", (await page.locator(".demo-switch button[aria-pressed=true]").first().innerText()).includes("Client") && !(await visible(nav(page, "Studio"))));
   await page.locator(".demo-switch").first().getByRole("button", { name: "Studio’s view" }).click();
+  check("switching keeps the page: the same review, from the studio's side", await page.locator(".vpick select").first().waitFor().then(() => true, () => false) && /\/review\//.test(new URL(page.url()).pathname));
+  await nav(page, "Home").click();
   check("the studio's view adds Studio and leads with who's asking to join", await waitText(page, "Someone is asking to join.") && await visible(nav(page, "Studio")));
+  check("…and the switch moves to the studio's side", (await page.locator(".demo-switch").first().getAttribute("data-on")) === "2" && (await page.locator(".demo-switch button[aria-pressed=true]").first().innerText()).includes("Studio"));
+  await nav(page, "Review").click();
+  const picks = page.locator(".vpick select");
+  check("the studio sees one version at a time, with the earlier ones in a picker", await visible(picks.first()) && (await page.locator(".vchip").count()) === 0 && (await picks.first().locator("option").count()) === 3 && (await picks.first().inputValue()) === "3");
+  await picks.first().selectOption("1");
+  check("…and picking an earlier one opens just that one", await page.waitForURL(/\/1$/, { timeout: 5000 }).then(() => true, () => false) && (await page.locator(".player-mark").first().textContent().catch(() => "") || "").includes("Version 1") && await waitText(page, "Shorter opening, and more of the boat."));
+  await page.locator(".demo-switch").first().getByRole("button", { name: "Client’s view" }).click();
+  check("switching back to the client's view works", await page.waitForFunction(() => document.querySelector(".demo-switch")?.dataset.on === "1").then(() => true, () => false) && await page.waitForFunction(() => ![...document.querySelectorAll("nav.rail .rail-item")].some((a) => /Studio/.test(a.textContent))).then(() => true, () => false));
+  check("…the client's side shows only the newest version", !(await visible(page.locator(".vpick"))) && await waitText(page, "It replaces Version 2 and earlier."));
+  await page.locator(".demo-switch").first().getByRole("button", { name: "Studio’s view" }).click();
+  await nav(page, "Home").click();
+  check("…and to the studio's again", await waitText(page, "Someone is asking to join."));
   await page.getByRole("link", { name: /Review the request/ }).click();
   check("demo Studio shows the management side with sample data", await waitText(page, "Asking to join") && await waitText(page, "Kim Lowell") && await waitText(page, "Jonathan Reyes"));
   await page.getByRole("button", { name: "Let them in…" }).click();
