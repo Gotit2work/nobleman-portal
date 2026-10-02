@@ -44,7 +44,7 @@ export function Account() {
   return html`<div class="page">
     <${Head} eyebrow="Account" title="Your account">Your details, how the studio reaches you, and how you log in.<//>
     <div class="grid c2">
-      <section class="card pad stack" style=${{ gap: "18px" }} data-reveal="card">
+      <section class="card pad stack" style=${{ gap: "18px" }}>
         <div class="row"><${Avatar} name=${user.name} size=${52} /><div><div class="h3">${user.name}</div>
           <div class="muted small">${[user.email, user.clientName || (staff ? studio : ""), user.roleLabel].filter(Boolean).join(" · ")}</div></div></div>
         <${Field} label="Your name"><input class="input" value=${name} onInput=${(e) => setName(e.target.value)} autoComplete="name" /><//>
@@ -56,7 +56,7 @@ export function Account() {
         </div>` : null}
         <div><button class="btn primary" disabled=${busy || !name.trim() || !dirty} onClick=${save}>${busy ? "Saving…" : "Save my details"}</button></div>
       </section>
-      <section class="card pad stack" style=${{ gap: "18px" }} data-reveal="card">
+      <section class="card pad stack" style=${{ gap: "18px" }}>
         <div class="h3">Password</div>
         <form class="stack" style=${{ gap: "16px" }} onSubmit=${change}>
           <input type="email" autoComplete="username" value=${user.email || ""} readOnly hidden />
@@ -106,7 +106,7 @@ function TwoStep() {
   const [codes, setCodes] = useState(null);
   const on = user.twoStep;
   const set = (v) => setData((x) => ({ ...x, user: { ...x.user, twoStep: v } }));
-  return html`<section class="card pad stack section" style=${{ gap: "14px" }} data-reveal="card">
+  return html`<section class="card pad stack section" style=${{ gap: "14px" }}>
     <div class="row" style=${{ justifyContent: "space-between" }}>
       <div class="h3">Two-step verification</div>
       <span class=${"pill " + (on ? "green" : "")}>${on ? "On" : "Off"}</span>
@@ -164,7 +164,7 @@ function Team() {
   if (err) return html`<section class="section"><div class="alert">${err}</div></section>`;
   if (!t) return null;
   const label = (k) => (t.roles.find((r) => r.key === k) || {}).label || k;
-  return html`<section class="card pad stack section" style=${{ gap: "14px" }} data-reveal="card">
+  return html`<section class="card pad stack section" style=${{ gap: "14px" }}>
     <div class="row" style=${{ justifyContent: "space-between" }}>
       <div class="h3">Your team at ${user.clientName}</div>
       ${t.canInvite ? html`<button class="btn ghost sm" onClick=${() => setAdding(true)}>Add a teammate</button>` : null}

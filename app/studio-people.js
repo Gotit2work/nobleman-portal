@@ -25,8 +25,8 @@ export function Clients({ admin }) {
         <td><div class="row" style=${{ gap: "12px", flexWrap: "nowrap" }}>
           ${c.logo ? html`<span class="client-logo sm" style=${{ backgroundImage: `url('${c.logo}')` }} aria-hidden="true"></span>` : null}
           <div><b>${c.name}</b>${c.domains && c.domains.length ? html`<div class="faint small">Joins by email: ${c.domains.map((x) => "@" + x).join(", ")}</div>` : null}${c.notes ? html`<div class="muted small clip">${c.notes}</div>` : null}</div></div></td>
-        <td>${admin.can("people.manage") ? html`<${Link} to=${"/studio/people?client=" + c.id} cls="link">${c.people}<//>` : c.people}</td>
-        <td>${c.projects}</td><td class="muted small">${fmtDate(c.created)}</td>
+        <td data-label="People">${admin.can("people.manage") ? html`<${Link} to=${"/studio/people?client=" + c.id} cls="link">${c.people}<//>` : c.people}</td>
+        <td data-label="Projects">${c.projects}</td><td class="muted small" data-label="Added">${fmtDate(c.created)}</td>
         <td style=${{ textAlign: "right", whiteSpace: "nowrap" }}>
           ${may ? html`<button class="btn ghost sm" onClick=${() => setEdit({ id: c.id, name: c.name, logo: c.logo, notes: c.notes, domains: (c.domains || []).join(", ") })}>Edit</button>` : null}
           ${admin.can("data.export") && !d.demo ? html`<a class="btn ghost sm" href=${"/api/admin?export=client&id=" + c.id} download title="Everything the portal holds about this client, as a file">Export data</a>` : null}
@@ -227,7 +227,7 @@ export function People({ admin, view }) {
       <tbody>${list.map((p) => html`<tr key=${p.id}>
         <td><b>${p.name}</b>${p.id === user.id ? html` <span class="faint small">(you)</span>` : null}<div class="muted small">${p.email}${p.title ? " · " + p.title : ""}</div></td>
         <td><span class="pill">${p.roleLabel}</span>${p.clientName ? html` <span class="small">${p.clientName}</span>` : null}</td>
-        <td class="small">${p.invited ? html`<span class="pill amber">Invited, not logged in yet</span>` : p.lastLogin ? fmtAgo(p.lastLogin) : html`<span class="muted">Never</span>`}${p.twoStep ? html` <span class="pill green" title="Two-step verification is on">2-step</span>` : null}</td>
+        <td class="small" data-label="Last login">${p.invited ? html`<span class="pill amber">Invited, not logged in yet</span>` : p.lastLogin ? fmtAgo(p.lastLogin) : html`<span class="muted">Never</span>`}${p.twoStep ? html` <span class="pill green" title="Two-step verification is on">2-step</span>` : null}</td>
         <td style=${{ textAlign: "right", whiteSpace: "nowrap" }}>
           ${p.id === user.id ? html`<${Link} to="/account" cls="btn ghost sm">My account<//>`
           : mayFor(p) ? html`

@@ -120,7 +120,7 @@ export function Files({ pid }) {
     <//>
     ${eligible.length > 1 ? html`<div class="tabs" style=${{ marginBottom: "24px" }}>${eligible.map((x) => html`<${Link} key=${x.id} to=${"/files/" + x.id} cls="tab-btn" current=${x.id === p.id}>${admin ? x.clientName + " · " : ""}${x.title}<//>`)}</div>` : null}
 
-    ${p.caps.upload ? html`<div class="card pad" data-reveal=""
+    ${p.caps.upload ? html`<div class="card pad"
         onDragOver=${(e) => { e.preventDefault(); setOver(true); }} onDragLeave=${() => setOver(false)}
         onDrop=${(e) => { e.preventDefault(); setOver(false); send(e.dataTransfer.files); }}
         style=${{ borderStyle: "dashed", borderColor: over ? "var(--ink)" : "var(--line-2)", background: over ? "var(--card-2)" : "var(--card)", textAlign: "center", padding: "36px 24px", marginBottom: "12px" }}>

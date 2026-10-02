@@ -9,7 +9,7 @@ The runbook for both Nobleman sites (Vercel, DNS at GoDaddy, validation, rollbac
 | Part | What | Where |
 |---|---|---|
 | Front end | React 18 + [htm](https://github.com/developit/htm), plain ES modules, no build step | `index.html`, `app/*.js`, `app/portal.css` |
-| Look | The website's type and motion (`assets/np.css`, `assets/np.js`, copied; bump `?v=`), maritime icons in `media/icons/` | |
+| Look | The website's type (`assets/np.css`, copied; bump `?v=`), maritime icons in `media/icons/`. Not the website's scroll motion: the portal is an app, so screens just fade in | |
 | API | Eight Vercel functions (Hobby allows 12) | `api/session.js`, `portal.js`, `media.js`, `files.js`, `admin.js`, `share.js`, `connect.js`, `cron.js` |
 | Data | Postgres (Neon now; any Postgres works). The schema applies itself | `api/_schema.js`, `api/_db.js` |
 | Video | One module per provider behind a common interface; keys stored encrypted | `api/_providers/`, `api/_sources.js`, `api/_video.js` |
@@ -20,9 +20,9 @@ The runbook for both Nobleman sites (Vercel, DNS at GoDaddy, validation, rollbac
 
 Pages are client-side routes served by one `index.html` (rewrite in `vercel.json`): `/` Home, `/review`, `/films`, `/files`, `/messages`, `/account`, `/studio/…` (staff), `/watch/<token>` (share pages, no login), `/link/<token>` (emailed invitations, login links, and sign-up confirmations), `/signin` or `/login` (the login), `/signup` (create an account), `/demo/…` (the public sample), `/signin`.
 
-**Navigation.** On desktop (960 px and wider) a floating capsule on the left: Home, Review, Films, Files, Messages, Studio (staff), then Help and Account. On phones it becomes a bottom bar (a **More** tab holds the rest when there are more than five). Every tab and button appears only when the project and the person's role allow it.
+**Navigation.** On desktop (960 px and wider) a floating capsule on the left: Home, Review, Films, Files, Messages, Studio (staff), then Help and Account. On phones it's an app: a plain bar on top (logo, Help, Account) and a flat tab bar at the bottom (a **More** tab holds the rest when there are more than five), with underlined tabs, squarer corners, and shorter pages (Home's long lists show the newest few; Studio's page intros are left out). Every tab and button appears only when the project and the person's role allow it.
 
-**One login for everyone.** Clients, staff, and owners log in at the same door; what they see next depends on who they are. Clients get their own company's projects; staff also get the studio's side (the staff board on Home, Studio, every version, the activity log), as far as their role allows. The door is the "screening room": a still of a camera at work at night (`media/login-camera.jpg`) behind a REC frame, the studio's Murphy's Law under the title ("The one frame nobody checked is the one everyone sees." Editable in Studio → Settings → Login screen; on phones it sits under the form), and a short login beside it. No video plays on the login, so it loads fast and asks nothing of Vimeo before anyone logs in. People log in with a password, or with an emailed login link when email is set up; "Forgot your password?" emails a reset link. A **Create an account** tab sits next to **Log in** (see "Creating an account").
+**One login for everyone.** Clients, staff, and owners log in at the same door; what they see next depends on who they are. Clients get their own company's projects; staff also get the studio's side (the staff board on Home, Studio, every version, the activity log), as far as their role allows. The door is the "screening room": a photo behind a REC frame (a camera at work at night, `media/login-camera.jpg`, unless staff choose another or upload their own in Studio → Settings → Login screen), the studio's Murphy's Law under the title ("The one frame nobody checked is the one everyone sees." Editable in Studio → Settings → Login screen; on phones it sits under the form), and a short login beside it. No video plays on the login, so it loads fast and asks nothing of Vimeo before anyone logs in. People log in with a password, or with an emailed login link when email is set up; "Forgot your password?" emails a reset link. A **Create an account** tab sits next to **Log in** (see "Creating an account").
 
 ## What clients see
 
@@ -91,10 +91,10 @@ Each project has its own switches (Studio → Projects → a project → "What <
 | **Clients** | owners, producers | Add and edit companies (name, logo shown in their portal, email domain for joining by sign-up, private notes); **Export data** (everything the portal holds about a client, as JSON, for access requests or offboarding); delete |
 | **People** | owners, producers | **Asking to join**: let people who created an account in (company and role) or decline them. Invite people (an emailed one-time link to choose a password, also shown to copy); change role, company, or email; resend an invitation or send a reset link; log someone out everywhere; turn off two-step verification for a lost phone; remove. **What roles can do** is the roles table |
 | **Connections** | owners | Add, test, change, and remove video accounts (Vimeo, Frame.io, YouTube, Wistia), Notion, and email. Keys are encrypted and never shown again |
-| **Settings** | owners | Studio name, help email, addresses, the line above Messages; the login screen's Murphy's Law; the first-visit welcome; a notice for everyone; project stages (names, progress, order); defaults for new projects; security (require two-step verification for staff, emailed login links, how long logins last, client teams, who can create an account, joining by email domain); review reminders; **System check** |
+| **Settings** | owners | A short list of sections, each with a one-line summary; one opens at a time. Studio name, help email, addresses, the line above Messages; the login screen's photo (one of the studio's, or an upload, resized in the browser to 2400 px and served by `GET /api/session?loginImage=<id>`; a replaced upload is deleted) and its Murphy's Law; the first-visit welcome; a notice for everyone; project stages (names, progress, order); defaults for new projects; security (require two-step verification for staff, emailed login links, how long logins last, client teams, who can create an account, joining by email domain); review reminders; **System check** |
 | **Activity** | owners, producers | Who did what and when (logins, sign-ups, views, downloads, approvals, Studio changes), filtered by kind of person, client, project, or word; export to a spreadsheet. Kept about 13 months |
 
-**System check** (top of Settings) lists anything that needs attention: missing secrets, the setup code still set, the demo still on, file storage, email, the daily job, each connection, Notion, fewer than two owners, staff without two-step verification.
+**System check** (first in Settings) lists anything that needs attention: missing secrets, the setup code still set, the demo still on, file storage, email, the daily job, each connection, Notion, fewer than two owners, staff without two-step verification.
 
 ## Video sources
 
@@ -257,7 +257,7 @@ The data layer is plain Postgres. To move: create the Supabase project; copy the
 
 ```bash
 npm ci && (cd tests && npm ci)
-cd tests && npm test        # 253 API checks, then 110 browser checks (desktop and phone)
+cd tests && npm test        # 265 API checks, then 124 browser checks (desktop and phone)
 npm run shots               # screenshots of every screen in tests/.work/shots
 ```
 

@@ -91,7 +91,7 @@ export function Eyebrow({ children, dot }) {
 export function Head({ eyebrow, title, children, actions }) {
   return html`<header class="head">
     <div class="t">
-      ${eyebrow ? html`<${Eyebrow} dot>${eyebrow}<//>` : null}
+      ${eyebrow ? html`<${Eyebrow}>${eyebrow}<//>` : null}
       <h1 class="h1">${title}</h1>
       ${children ? html`<p>${children}</p>` : null}
     </div>
@@ -100,7 +100,7 @@ export function Head({ eyebrow, title, children, actions }) {
 }
 
 export function Empty({ icon = "anchor", title, children, action }) {
-  return html`<div class="empty" data-reveal="">
+  return html`<div class="empty">
     <${Icon} name=${icon} size=${40} />
     <h3>${title}</h3>
     <p>${children}</p>

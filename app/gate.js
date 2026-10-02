@@ -15,6 +15,14 @@ function Law({ law, cls }) {
   </figure>`;
 }
 
+/** Where the login photo comes from: one of the portal's own, or the one staff uploaded (served by the API). */
+export function loginPhoto(law) {
+  const i = (law && law.image) || "/media/login-camera.jpg";
+  const m = /^upload:brand\/login-([0-9a-f-]{36})\.jpg$/.exec(i);
+  return m ? "/api/session?loginImage=" + m[1] : i;
+}
+export const FOCUS = { left: ["12%", "0%"], center: ["50%", "50%"], right: ["96%", "100%"] };
+
 function Screen({ law }) {
   const tc = useRef(null);
   useEffect(() => {
@@ -27,7 +35,7 @@ function Screen({ law }) {
     return () => clearInterval(iv);
   }, []);
   return html`<section class="screen" aria-label="Nobleman Productions">
-    <div class="poster" aria-hidden="true"></div>
+    <div class="poster" aria-hidden="true" style=${{ backgroundImage: `url('${loginPhoto(law)}')`, "--x": (FOCUS[law && law.focus] || FOCUS.right)[0], "--xm": (FOCUS[law && law.focus] || FOCUS.right)[1] }}></div>
     <div class="grain" aria-hidden="true"></div>
     <div class="frame" aria-hidden="true"></div>
     <div class="hud" aria-hidden="true"><span class="rec"><i></i>REC</span><span ref=${tc}>00:00:00:00</span></div>
@@ -284,7 +292,7 @@ function Setup({ ready, onDone, session }) {
   };
   return html`<${Door} brand=${session && session.brand}>
     <div class="stack" style=${{ gap: "10px" }}>
-      <span class="eyebrow"><span>First-time setup</span><span class="dot"></span></span>
+      <span class="eyebrow">First-time setup</span>
       <h2 class="h2">Set up the portal</h2>
       <p class="muted" style=${{ margin: 0, lineHeight: 1.6 }}>This creates the first owner account. You add the rest of the team and your clients from Studio afterwards.</p>
     </div>
@@ -316,7 +324,7 @@ function NewPassword({ user, onDone, onSignOut, session }) {
   };
   return html`<${Door} brand=${session && session.brand} law=${session && session.signin}>
     <div class="stack" style=${{ gap: "10px" }}>
-      <span class="eyebrow"><span>Welcome${user && user.name ? ", " + user.name.split(" ")[0] : ""}</span><span class="dot"></span></span>
+      <span class="eyebrow">Welcome${user && user.name ? ", " + user.name.split(" ")[0] : ""}</span>
       <h2 class="h2">Choose your password</h2>
       <p class="muted" style=${{ margin: 0, lineHeight: 1.6 }}>${user && user.clientName ? html`You’re joining <b style=${{ color: "var(--ink)" }}>${user.clientName}</b>. ` : null}One only you know, of at least 10 characters. A short phrase is easy to remember and hard to guess.</p>
     </div>
@@ -334,7 +342,7 @@ function NewPassword({ user, onDone, onSignOut, session }) {
 function TwoStepRequired({ session, onDone, onSignOut, toast }) {
   return html`<${Door} brand=${session && session.brand}>
     <div class="stack" style=${{ gap: "10px" }}>
-      <span class="eyebrow"><span>Before you continue</span><span class="dot"></span></span>
+      <span class="eyebrow">Before you continue</span>
       <h2 class="h2">Turn on two-step verification</h2>
       <p class="muted" style=${{ margin: 0, lineHeight: 1.6 }}>The studio requires it for every staff account. It takes about a minute.</p>
     </div>
