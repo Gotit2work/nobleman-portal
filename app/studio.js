@@ -2,9 +2,9 @@
 // when the person's role allows it (api/_roles.js); the server checks again on every action.
 //   Projects     each client project: progress, video source, videos, what the client can do
 //   Clients      companies: logo, notes, data export          (studio-people.js)
-//   People       accounts, roles, sign-in help, the roles table (studio-people.js)
+//   People       accounts, roles, login help, the roles table (studio-people.js)
 //   Connections  video sources, Notion, email, file storage     (studio-connect.js)
-//   Settings     brand, sign-in screen, stages, defaults, security, reminders, system check (studio-settings.js)
+//   Settings     brand, login screen, stages, defaults, security, reminders, system check (studio-settings.js)
 //   Activity     who did what, filterable, exportable           (studio-settings.js)
 import { html, useApp, useState, useEffect, api, Head, Empty, Link, Field, Toggle, Modal, Icon, fmtDate, fmtAgo, fmtDay, plural, can } from "./ui.js";
 import { Clients, People } from "./studio-people.js";
@@ -40,7 +40,7 @@ export function useRun(admin) {
       if (refresh) { await admin.load(); reload(); }
       if (done) toast(typeof done === "function" ? done(r) : done);
       return r || {};
-    } catch (e) { toast(e.message, { err: true }); return null; }
+    } catch (e) { toast(e.message, { err: !e.demo }); return null; }
     finally { setBusy(false); }
   };
   return { busy, run };
@@ -145,12 +145,12 @@ function Projects({ admin }) {
   const list = d.projects.filter((p) => (showArchived || !p.archived) && (!find || (p.title + " " + p.clientName + " " + p.type).toLowerCase().includes(find)));
   return html`
     <${Head} eyebrow="Studio" title="Projects" actions=${html`<div class="row">
-      ${admin.can("data.export") && d.projects.length ? html`<a class="btn ghost" href="/api/admin?export=projects" download>Export to a spreadsheet</a>` : null}
+      ${admin.can("data.export") && d.projects.length && !d.demo ? html`<a class="btn ghost" href="/api/admin?export=projects" download>Export to a spreadsheet</a>` : null}
       ${admin.can("projects.create") ? html`<button class="btn primary" onClick=${() => setCreating(true)}>New project</button>` : null}</div>`}>
       Each project belongs to a client, plays from one video source, and has its own switches for what the client can do.
     <//>
     ${!d.projects.length ? html`<${Empty} icon="camera" title="No projects yet." action=${admin.can("projects.create") ? html`<button class="btn primary" onClick=${() => setCreating(true)}>Create the first project</button>` : null}>
-      Create one, choose where its videos come from, and add the client’s people. They see it the moment they sign in.<//>`
+      Create one, choose where its videos come from, and add the client’s people. They see it the moment they log in.<//>`
     : html`
     ${d.projects.length > 6 ? html`<div class="row" style=${{ marginBottom: "14px" }}><input class="input" style=${{ maxWidth: "340px" }} type="search" placeholder="Find a project or client" aria-label="Find a project or client" value=${q} onInput=${(e) => setQ(e.target.value)} /></div>` : null}
     <table class="table">

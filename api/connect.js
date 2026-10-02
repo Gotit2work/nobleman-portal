@@ -10,7 +10,7 @@ import { getSettings } from "./_settings.js";
 
 /**
  * "Sign in with Adobe" for a Frame.io connection (Studio → Connections).
- *   GET /api/connect?start=<connection>   sends the staff member to Adobe's sign-in
+ *   GET /api/connect?start=<connection>   sends the staff member to Adobe's login
  *   GET /api/connect?code=…&state=…       Adobe sends them back here; the portal stores the tokens (encrypted)
  * The redirect URI to register in the Adobe Developer Console is https://<portal>/api/connect.
  */
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
   const st = await readState(q.state);
   if (!st) return back("The sign-in took too long or didn’t come from this portal. Try again.");
   const u = await currentUser(req).catch(() => null);
-  if (!u || u.id !== st.u || !can(u, "connections.manage", await getSettings())) return back("Sign in to the portal as the person who started this, then try again.");
+  if (!u || u.id !== st.u || !can(u, "connections.manage", await getSettings())) return back("Log in to the portal as the person who started this, then try again.");
   if (q.error) return back(`Adobe said: ${String(q.error_description || q.error).slice(0, 200)}`);
   const conn = await getConnection(st.c);
   if (!conn || conn.provider !== "frameio") return back("That Frame.io connection was removed.");

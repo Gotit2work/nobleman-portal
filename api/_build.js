@@ -185,6 +185,8 @@ export async function buildPortal(user) {
     stages: names,
     projects: out,
     activity: staff ? await staffActivity() : await clientActivity(user, out),
+    // People waiting for the studio to let them in (staff who can approve them only).
+    ...(staff && permsOf(user, s)["people.manage"] ? { signups: (await sql`select count(*)::int as n from signup_requests where status = 'waiting'`)[0].n } : {}),
   };
 }
 

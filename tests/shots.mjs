@@ -35,6 +35,13 @@ for (const [tag, vp, mobile] of [["d", { width: 1440, height: 900 }, false], ["m
   const anon = await ctxFor(vp, mobile);
   await shoot(anon, "/", tag + "-signin", 1500);
   await shoot(anon, "/demo", tag + "-demo-home", 1500);
+  await shoot(anon, "/demo?view=studio", tag + "-demo-studio-home", 1800);
+  await shoot(anon, "/demo/studio/people", tag + "-demo-studio-people", 1800);
+  await shoot(anon, "/signup", tag + "-signup", 1500);
+  await shoot(anon, "/signup", tag + "-signup-sent", 1500, async (p) => {
+    await p.locator('input[name="name"]').fill("Kim Lowell"); await p.locator('input[name="email"]').fill("kim@lowellmarine.test");
+    await p.locator('input[name="company"]').fill("Lowell Marine"); await p.getByRole("button", { name: "Create my account" }).click(); await p.waitForTimeout(1500);
+  });
   await shoot(anon, "/link/not-a-real-link-0000000000000000000000", tag + "-link-bad", 1500);
   await anon.close();
   const dana = await ctxFor(vp, mobile); await login(dana, "dana@harbor.test");

@@ -1,4 +1,4 @@
-// Turning on two-step sign-in: scan a QR code with an authenticator app (Google Authenticator, 1Password,
+// Turning on two-step verification: scan a QR code with an authenticator app (Google Authenticator, 1Password,
 // Microsoft Authenticator…), type the six-digit code it shows, then keep the recovery codes somewhere safe.
 // Used on the account page, and on the screen staff see when the studio requires it.
 import { html, useState, useEffect, useRef, api, Field, copy, saveText } from "./ui.js";
@@ -50,7 +50,7 @@ export function TwoStepSetup({ toast, onDone }) {
     return html`<div class="stack" style=${{ gap: "14px" }}>
       <p class="muted" style=${{ margin: 0, lineHeight: 1.6 }}>After your password, the portal asks for a six-digit code from an app on your phone. Someone who learns your password still can’t get in.</p>
       ${err ? html`<div class="alert" role="alert">${err}</div>` : null}
-      <div><button class="btn primary" disabled=${busy} onClick=${begin}>${busy ? "One moment…" : "Turn on two-step sign-in"}</button></div>
+      <div><button class="btn primary" disabled=${busy} onClick=${begin}>${busy ? "One moment…" : "Turn on two-step verification"}</button></div>
     </div>`;
   }
   if (step === "scan") {
@@ -75,7 +75,7 @@ export function TwoStepSetup({ toast, onDone }) {
     </form>`;
   }
   return html`<div class="stack" style=${{ gap: "14px" }}>
-    <div class="alert info"><b>Two-step sign-in is on.</b> Keep these recovery codes somewhere safe, like a password manager. Each one works once if you lose your phone. They won’t be shown again.</div>
+    <div class="alert info"><b>Two-step verification is on.</b> Keep these recovery codes somewhere safe, like a password manager. Each one works once if you lose your phone. They won’t be shown again.</div>
     <div class="codes">${codes.map((c) => html`<code key=${c}>${c}</code>`)}</div>
     <div class="row">
       <button class="btn ghost" onClick=${() => copy(codes.join("\n"), toast, "Recovery codes")}>Copy the codes</button>

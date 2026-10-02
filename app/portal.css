@@ -112,7 +112,7 @@ img { display: block; max-width: 100%; }
 .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .grow { flex: 1; min-width: 0; }
 .section { margin-top: 56px; }
-.section > .sh { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+.sh { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
 .ic { display: inline-block; flex: none; background-color: currentColor; -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; }
 .pill { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 20px; font-size: 11.5px; font-weight: 600; letter-spacing: .04em; border: 1px solid var(--line-2); white-space: nowrap; }
 .pill.red { border-color: rgba(229, 50, 45, .6); background: rgba(229, 50, 45, .14); }
@@ -441,3 +441,28 @@ span.client-logo, div.client-logo { display: inline-block; background: center / 
 .check.warn i { background: var(--amber); color: var(--bg); }
 .health .check { align-items: flex-start; line-height: 1.5; }
 .health .check i { flex: 0 0 18px; margin-top: 2px; }
+
+/* ---------- the door: log in / create an account ---------- */
+.doortabs { display: grid; grid-template-columns: 1fr 1fr; padding: 4px; border-radius: 30px; border: 1px solid var(--line-2); background: rgba(244, 244, 242, .04); }
+.doortabs button { height: 40px; border: 0; border-radius: 26px; background: none; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--mute); transition: background .25s var(--ease), color .25s ease; }
+.doortabs button[aria-selected="true"] { background: var(--ink); color: var(--bg); }
+.doortabs button:not([aria-selected="true"]):hover { color: var(--ink); }
+.signup { display: flex; flex-direction: column; gap: 18px; animation: pIn .5s var(--ease) both; }
+.stepline { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.stepline li { position: relative; display: flex; flex-direction: column; gap: 8px; font-size: 12px; letter-spacing: .02em; color: var(--faint); }
+.stepline li::before { content: ""; height: 2px; border-radius: 2px; background: var(--line-2); }
+.stepline li.done::before, .stepline li.now::before { background: var(--red); }
+.stepline li.now::before { background: linear-gradient(90deg, var(--red) 50%, var(--line-2) 50%); background-size: 200% 100%; animation: fill 1.4s var(--ease) both; }
+.stepline li i { display: none; }
+.stepline li.done, .stepline li.now { color: var(--ink); }
+@keyframes fill { from { background-position: 100% 0; } to { background-position: 0 0; } }
+.bottle { width: 76px; height: 76px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid var(--line-2); background: rgba(244, 244, 242, .05); animation: bob 3.2s ease-in-out infinite; }
+@keyframes bob { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-6px) rotate(4deg); } }
+@media (prefers-reduced-motion: reduce) { .bottle, .stepline li.now::before, .signup { animation: none; } }
+.requests { border-color: rgba(240, 180, 90, .4); }
+
+/* The demo's view switch: the client's view or the studio's. */
+.demo-switch { display: inline-grid; grid-auto-flow: column; padding: 3px; border-radius: 22px; border: 1px solid var(--line-2); background: rgba(4, 27, 33, .86); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.demo-switch button { height: 30px; padding: 0 12px; border: 0; border-radius: 18px; background: none; cursor: pointer; font-size: 12.5px; color: var(--mute); white-space: nowrap; }
+.demo-switch button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.modal .demo-switch { align-self: flex-start; }

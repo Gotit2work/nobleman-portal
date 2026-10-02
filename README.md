@@ -1,6 +1,6 @@
 # Nobleman Productions — Client Portal
 
-`portal.noblemanproductions.gotit2work.com`. Clients sign in to watch the newest version of their film, leave notes pinned to a moment, approve it (with small fixes if they like) or ask for changes, download and share finished films, swap files, and message the studio. Staff run everything from **Studio** without touching code: projects, clients, people and roles, video sources (Vimeo, Frame.io, YouTube, Wistia, or pasted links), Notion tracking, email, settings, and the activity log. Code changes are only needed to add or remove a capability (see "Changing what the portal can do").
+`portal.noblemanproductions.gotit2work.com`. Clients log in to watch the newest version of their film, leave notes pinned to a moment, approve it (with small fixes if they like) or ask for changes, download and share finished films, swap files, and message the studio. Staff run everything from **Studio** without touching code: projects, clients, people and roles, video sources (Vimeo, Frame.io, YouTube, Wistia, or pasted links), Notion tracking, email, settings, and the activity log. Code changes are only needed to add or remove a capability (see "Changing what the portal can do").
 
 The runbook for both Nobleman sites (Vercel, DNS at GoDaddy, validation, rollback) is `docs/DEPLOYMENT.md` in `Gotit2work/nobleman-website`. This README covers what is specific to the portal.
 
@@ -18,11 +18,11 @@ The runbook for both Nobleman sites (Vercel, DNS at GoDaddy, validation, rollbac
 | Email | Resend (optional), set up in Studio or by environment variables | `api/_notify.js`, `api/_links.js` |
 | Vendored | React 18.3.1, htm 3.1.1, `@vercel/blob` 2.8.0 browser client, qrcode-generator 1.4.4 (MIT) | `vendor/` (immutable cache) |
 
-Pages are client-side routes served by one `index.html` (rewrite in `vercel.json`): `/` Home, `/review`, `/films`, `/files`, `/messages`, `/account`, `/studio/…` (staff), `/watch/<token>` (share pages, no sign-in), `/link/<token>` (emailed invitations and sign-in links), `/demo/…` (the public sample), `/signin`.
+Pages are client-side routes served by one `index.html` (rewrite in `vercel.json`): `/` Home, `/review`, `/films`, `/files`, `/messages`, `/account`, `/studio/…` (staff), `/watch/<token>` (share pages, no login), `/link/<token>` (emailed invitations, login links, and sign-up confirmations), `/signin` or `/login` (the login), `/signup` (create an account), `/demo/…` (the public sample), `/signin`.
 
 **Navigation.** On desktop (960 px and wider) a floating capsule on the left: Home, Review, Films, Files, Messages, Studio (staff), then Help and Account. On phones it becomes a bottom bar (a **More** tab holds the rest when there are more than five). Every tab and button appears only when the project and the person's role allow it.
 
-**Sign-in** is the "screening room": the reel plays behind a REC frame on desktop, with the sign-in door beside it and a Murphy's Law under the form ("The one frame nobody checked is the one everyone sees." Editable in Studio → Settings → Sign-in screen). People sign in with a password, or with an emailed link when email is set up; "Forgot your password?" emails a reset link.
+**One login for everyone.** Clients, staff, and owners log in at the same door; what they see next depends on who they are. Clients get their own company's projects; staff also get the studio's side (the staff board on Home, Studio, every version, the activity log), as far as their role allows. The door is the "screening room": the reel plays behind a REC frame on desktop, with the login beside it and a Murphy's Law under the form ("The one frame nobody checked is the one everyone sees." Editable in Studio → Settings → Login screen). People log in with a password, or with an emailed login link when email is set up; "Forgot your password?" emails a reset link. A **Create an account** tab sits next to **Log in** (see "Creating an account").
 
 ## What clients see
 
@@ -37,8 +37,18 @@ The goal: a busy executive opens an email, presses one button, and approves a fi
 - **Share links.** A finished film can be sent to people outside the portal as a page (`/watch/…`) with just that film and the studio's name. Links last 7, 30, or 90 days or until turned off, count views, and can be turned off at any time.
 - **Their own team.** Decision makers invite colleagues (who get an emailed link), change their roles, and remove them. The studio is told each time.
 - **Quiet email.** Emails link straight to the thing they're about, and nobody is emailed about activity while they're using the portal (active in the last 3 minutes).
-- **Two-step sign-in** (optional for clients, can be required for staff), with recovery codes.
+- **Two-step verification** (optional for clients, can be required for staff), with recovery codes.
 - **Milestone confirmation.** Staff can ask the client to confirm the next milestone (a filming day, a delivery); the client gets a **Confirm** button and staff are told.
+
+## Creating an account
+
+Three short steps, from the **Create an account** tab (or `/signup`):
+
+1. **Your details:** name, work email, company, and an optional note for the studio.
+2. **Confirm your email:** the portal emails a link that works once, for an hour. Nothing is created until it's used, so a typo or someone else's address goes nowhere.
+3. **You're in:** if the email's domain is listed on a client (Studio → Clients → their email domain, for example `harborlabs.com`), they join that client straight away with the role set in Settings (Reviewer unless you change it), choose a password, and land in their company's projects; the studio and the client's decision makers are told. Otherwise they see "You're on the list", and the studio gets an email and a **Someone is asking to join** step on Home. In Studio → People → **Asking to join**, choose their company (a new one is suggested from what they typed) and role and press **Let them in**: they're emailed a link to choose a password. Or **Decline**, with an optional polite email.
+
+Someone who already has an account and tries to sign up gets a way in by email instead; the screen gives the same answer either way, so nobody can learn which addresses have accounts. Free email services (Gmail, Outlook, iCloud…) can't be listed as a client's domain. Studio → Settings → Security chooses **who can create an account** (anyone, with the studio letting them in; or only people the studio invites), turns joining by domain on or off, and sets the role they join with. Sign-up needs email: without it the tab doesn't appear. Before go-live (no database yet) the tab shows the steps as a labelled preview, and nothing is sent or saved. Unconfirmed requests are deleted after a day, handled ones after 30 days.
 
 ## Roles
 
@@ -78,13 +88,13 @@ Each project has its own switches (Studio → Projects → a project → "What <
 | Tab | Who (by default) | What you do there |
 |---|---|---|
 | **Projects** | all staff | Create projects; set stage, progress, next milestone (and ask the client to confirm it), the review-by date, and send a reminder; choose the video source; see every video at the source and **hide**, **rename**, or **make it a finished film**; add videos by link; switch capabilities; archive or delete. Export all projects to a spreadsheet |
-| **Clients** | owners, producers | Add and edit companies (name, logo shown in their portal, private notes); **Export data** (everything the portal holds about a client, as JSON, for access requests or offboarding); delete |
-| **People** | owners, producers | Invite people (an emailed one-time link to choose a password, also shown to copy); change role, company, or email; resend an invitation or send a reset link; sign someone out everywhere; turn off two-step sign-in for a lost phone; remove. **What roles can do** is the roles table |
+| **Clients** | owners, producers | Add and edit companies (name, logo shown in their portal, email domain for joining by sign-up, private notes); **Export data** (everything the portal holds about a client, as JSON, for access requests or offboarding); delete |
+| **People** | owners, producers | **Asking to join**: let people who created an account in (company and role) or decline them. Invite people (an emailed one-time link to choose a password, also shown to copy); change role, company, or email; resend an invitation or send a reset link; log someone out everywhere; turn off two-step verification for a lost phone; remove. **What roles can do** is the roles table |
 | **Connections** | owners | Add, test, change, and remove video accounts (Vimeo, Frame.io, YouTube, Wistia), Notion, and email. Keys are encrypted and never shown again |
-| **Settings** | owners | Studio name, help email, addresses, the line above Messages; the sign-in Murphy's Law; the first-visit welcome; a notice for everyone; project stages (names, progress, order); defaults for new projects; security (require two-step for staff, emailed sign-in links, how long sign-ins last, client teams); review reminders; **System check** |
-| **Activity** | owners, producers | Who did what and when (sign-ins, views, downloads, approvals, Studio changes), filtered by kind of person, client, project, or word; export to a spreadsheet. Kept about 13 months |
+| **Settings** | owners | Studio name, help email, addresses, the line above Messages; the login screen's Murphy's Law; the first-visit welcome; a notice for everyone; project stages (names, progress, order); defaults for new projects; security (require two-step verification for staff, emailed login links, how long logins last, client teams, who can create an account, joining by email domain); review reminders; **System check** |
+| **Activity** | owners, producers | Who did what and when (logins, sign-ups, views, downloads, approvals, Studio changes), filtered by kind of person, client, project, or word; export to a spreadsheet. Kept about 13 months |
 
-**System check** (top of Settings) lists anything that needs attention: missing secrets, the setup code still set, the demo still on, file storage, email, the daily job, each connection, Notion, fewer than two owners, staff without two-step sign-in.
+**System check** (top of Settings) lists anything that needs attention: missing secrets, the setup code still set, the demo still on, file storage, email, the daily job, each connection, Notion, fewer than two owners, staff without two-step verification.
 
 ## Video sources
 
@@ -144,7 +154,7 @@ Every project is added at once. After that, changes go across within seconds, an
 
 Set up in Studio → Connections → **Connect email** (Resend: an API key with sending access, and a "Send from" address on a domain verified in Resend), or with `RESEND_API_KEY` + `PORTAL_EMAIL_FROM` in Vercel. **Send a test email** checks it end to end. With email on, the portal sends:
 
-- invitations, sign-in links, and password resets (one-time links: invitations 14 days, resets 1 hour, sign-in links 15 minutes);
+- invitations, account confirmations, login links, and password resets (one-time links: invitations 14 days, confirmations and resets 1 hour, login links 15 minutes);
 - updates: staff hear about client notes, decisions, messages, uploads, team changes, and confirmations; clients hear about new versions, films, files, and messages (each person can switch updates off under Account);
 - approval receipts and review reminders.
 
@@ -160,7 +170,7 @@ Documents and client files live in a **private** Vercel Blob store: nothing in i
 
 ## Demo mode
 
-`PORTAL_MODE=demo` opens the portal at `/` to anyone as a sample client ("Jonathan Reyes, Meridian"), with nothing saved: every action says "Demo only: …". It's a server setting, never a fallback: if the API fails, the sign-in screen shows the problem. The sample is always at `/demo` too, so the website can link to it after go-live. In demo mode, `/signin` still reaches the real sign-in.
+`PORTAL_MODE=demo` opens the portal at `/` to anyone as a sample client ("Jonathan Reyes, Meridian"), with nothing saved: every action says "Demo only: …". A **Client's view / Studio's view** switch (top right on desktop; in the Demo help on phones) shows the same sample as the studio sees it: the staff board, every version, someone asking to join, and all of Studio with sample clients, people, connections, settings, and activity. Studio's changes are refused with "Demo only". Link to it with `?view=studio`. It's a server setting, never a fallback: if the API fails, the login screen shows the problem. The sample is always at `/demo` too, so the website can link to it after go-live. In demo mode, `/signin` still reaches the real sign-in.
 
 ## Environment variables
 
@@ -187,8 +197,8 @@ Today the portal runs with `PORTAL_MODE=demo` and nothing else. In order:
 2. **File storage.** Storage → **Create** → Blob → access **Private** → connect to the project. *Result:* `BLOB_READ_WRITE_TOKEN` appears.
 3. **Secrets.** Add `SESSION_SECRET`, `PORTAL_ENCRYPTION_KEY`, `CRON_SECRET`, and `BOOTSTRAP_SECRET` (Sensitive, Production and Preview). Generate each with `openssl rand -base64 48` on your own computer; never paste them into chat or email.
 4. **Go live.** Delete `PORTAL_MODE`, then Deployments → latest → **Redeploy**.
-5. **First owner.** Open the portal. It shows **Set up the portal**: enter the `BOOTSTRAP_SECRET` value as the setup code, your name, email, and a password. You're signed in as the owner. It only works while no staff account exists. Then delete `BOOTSTRAP_SECRET` and redeploy.
-6. **Two-step for yourself.** Account → **Set up two-step sign-in**. Save the recovery codes in your password manager.
+5. **First owner.** Open the portal. It shows **Set up the portal**: enter the `BOOTSTRAP_SECRET` value as the setup code, your name, email, and a password. You're logged in as the owner. It only works while no staff account exists. Then delete `BOOTSTRAP_SECRET` and redeploy.
+6. **Two-step for yourself.** Account → **Set up two-step verification**. Save the recovery codes in your password manager.
 7. **Connections.** Studio → Connections: connect email (Resend), Vimeo (Jean's token, or have Jean do it), and Frame.io, YouTube, or Wistia if used. **Test it** on each. Connect Notion if you want tracking there.
 8. **People.** Studio → People → **Invite a person**: Jean and Justin as Owner or Producer. Make a second **Owner**, so the studio is never locked out. Once everyone on staff has two-step sign-in, Settings → Security → require it.
 9. **Projects and clients.** Studio → Projects → **New project** for each client (create the client in the same step), choose the video source, check the switches. Then invite the client's decision maker; they can add their own colleagues.
@@ -202,14 +212,15 @@ Today the portal runs with `PORTAL_MODE=demo` and nothing else. In order:
 
 - **Sessions:** a signed JWT (HS256, `SESSION_SECRET`) in the `np_session` cookie (httpOnly, Secure, SameSite=Lax; 7 days by default, 1 to 30 in Settings). Every request re-reads the person and checks the session version, so removal, a reset, a role or email change, or "Sign out everywhere" takes effect at once.
 - **Passwords:** bcrypt (cost 10), at least 10 characters. Unknown emails are checked against a real dummy hash so timing doesn't reveal accounts. Nobody else ever sets or sees a person's password: invitations and resets are one-time links, stored only as SHA-256 hashes, and a newer link replaces older ones.
-- **Two-step sign-in:** TOTP (RFC 6238, 30-second codes, one step either side), a code can't be used twice, and ten single-use recovery codes stored hashed. The step between password and code is a 5-minute signed ticket. Owners can require it for staff.
+- **Two-step verification:** TOTP (RFC 6238, 30-second codes, one step either side), a code can't be used twice, and ten single-use recovery codes stored hashed. The step between password and code is a 5-minute signed ticket. Owners can require it for staff.
 - **Throttling** per email and per IP: passwords 8 / 30 per 15 minutes, codes 6 / 30 per 15 minutes, emailed links 5 / 20 per hour.
 - **Roles and scoping:** every Studio action checks the role's permission on the server (`api/_roles.js`). Clients only ever reach their own company's non-archived projects (`projectFor`), and every capability is checked server-side as the project's switch and the role's permission together.
 - **Stored keys:** connection credentials are encrypted with AES-256-GCM (`api/_crypto.js`); the page never receives them, and secret fields are never pre-filled.
 - **Share links:** 24-byte random tokens, looked up by hash, revocable, optional expiry. The page shows one finished film and the studio's name, nothing about the client or project.
 - **Cross-origin:** POSTs a browser sends from another origin are refused (403). SameSite alone isn't enough because every `*.gotit2work.com` host counts as the same site.
 - **Headers:** `X-Frame-Options: DENY`, `noindex`, `nosniff`, a strict referrer policy, camera/microphone/location off, and `no-store` on the API.
-- **Audit:** sign-ins, Studio changes, decisions, downloads, views (once a day per person and video), share links, and team changes go to the activity log with the time and IP.
+- **Sign-up:** nothing is created until the address is confirmed by a one-hour link (stored hashed); the answer is the same whether or not an account exists; requests share the emailed-link throttle; joining by domain only works for domains staff listed, never free email services.
+- **Audit:** logins, sign-ups, Studio changes, decisions, downloads, views (once a day per person and video), share links, and team changes go to the activity log with the time and IP.
 
 ## Changing what the portal can do
 
@@ -228,17 +239,17 @@ The data layer is plain Postgres. To move: create the Supabase project; copy the
 
 | Route | Who | |
 |---|---|---|
-| `GET /api/session` | anyone | Who's signed in; the sign-in screen's settings; whether setup or two-step setup is needed |
-| `POST /api/session` | anyone / signed in | `login`, `twoStep`, `requestLink`, `redeem`, `logout`, `setup`, `password`, `profile`, `twoStepBegin`, `twoStepEnable`, `twoStepDisable`, `recoveryCodes` |
-| `GET /api/portal` | signed in | Everything this person can see; `?demo=1` (anyone), `?thread=`, `?notes=&video=`, `?shares=`, `?team=1` |
-| `POST /api/portal` | signed in | `note`, `resolve`, `deleteNote`, `decide`, `message`, `deleteMessage`, `seen`, `downloaded`, `confirmNext`, `shareCreate`, `shareRevoke`, `teamAdd`, `teamUpdate`, `teamRemove` |
-| `GET /api/media` | signed in | Downloads, captions, chapters for one video; `&play=1` for a fresh playback address |
-| `POST /api/media` | signed in | `uploadStart`, `uploadDone`, `uploadCancel` (Vimeo) |
-| `GET/POST /api/files` | signed in | Signed download link; `start`, `done`, `cancel`, `delete` (Blob) |
+| `GET /api/session` | anyone | Who's logged in; the login screen's settings (including whether sign-up is on); whether setup or two-step setup is needed |
+| `POST /api/session` | anyone / logged in | `login`, `twoStep`, `requestLink`, `signup`, `redeem` (also confirms sign-ups), `logout`, `setup`, `password`, `profile`, `twoStepBegin`, `twoStepEnable`, `twoStepDisable`, `recoveryCodes` |
+| `GET /api/portal` | logged in | Everything this person can see; `?demo=1` or `?demo=studio` (anyone), `?thread=`, `?notes=&video=`, `?shares=`, `?team=1` |
+| `POST /api/portal` | logged in | `note`, `resolve`, `deleteNote`, `decide`, `message`, `deleteMessage`, `seen`, `downloaded`, `confirmNext`, `shareCreate`, `shareRevoke`, `teamAdd`, `teamUpdate`, `teamRemove` |
+| `GET /api/media` | logged in | Downloads, captions, chapters for one video; `&play=1` for a fresh playback address |
+| `POST /api/media` | logged in | `uploadStart`, `uploadDone`, `uploadCancel` (Vimeo) |
+| `GET/POST /api/files` | logged in | Signed download link; `start`, `done`, `cancel`, `delete` (Blob) |
 | `GET /api/share` | anyone with a link | One shared film; `&play=1` for a fresh playback address |
 | `GET /api/connect` | owners | Frame.io's Adobe sign-in (start and return) |
 | `GET /api/cron` | Vercel | The daily job (needs `CRON_SECRET`) |
-| `GET/POST /api/admin` | staff, by role | Overview, `?sources=`, `?videos=`, `?audit=`, `?export=`, `?notion=`, `?health=1`; client, person, project, video, connection, Notion, settings, and roles actions (`api/admin.js`, `api/_admin_more.js`) |
+| `GET/POST /api/admin` | staff, by role | Overview, `?demo=1` (sample data, anyone), `?sources=`, `?videos=`, `?audit=`, `?export=`, `?notion=`, `?health=1`; client, person, account request (`signupApprove`, `signupDecline`), project, video, connection, Notion, settings, and roles actions (`api/admin.js`, `api/_admin_more.js`) |
 
 ## Testing
 
@@ -246,7 +257,7 @@ The data layer is plain Postgres. To move: create the Supabase project; copy the
 
 ```bash
 npm ci && (cd tests && npm ci)
-cd tests && npm test        # 227 API checks, then 86 browser checks (desktop and phone)
+cd tests && npm test        # 253 API checks, then 110 browser checks (desktop and phone)
 npm run shots               # screenshots of every screen in tests/.work/shots
 ```
 

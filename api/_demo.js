@@ -1,6 +1,7 @@
 import { CAPABILITIES, STAGES } from "./_caps.js";
 import { DEFAULTS } from "./_settings.js";
-import { ROLE_DEFAULTS } from "./_roles.js";
+import { ROLE_DEFAULTS, STAFF_ROLES, CLIENT_ROLES, STAFF_PERMS, CLIENT_PERMS, rolePermissions } from "./_roles.js";
+import { providerList } from "./_providers/index.js";
 
 // The public sample portal (/demo, and / when PORTAL_MODE=demo). Same shape as buildPortal() in _build.js, so
 // the page renders it exactly like real data. Everything is made up; every film plays Nobleman's reel. Notes
@@ -115,5 +116,121 @@ export function demoPortal() {
       { type: "changes", projectId: "demo-meridian", projectTitle: "Meridian Campaign", who: "Jonathan Reyes", role: "client", text: "Music works. The middle section still feels long.", at: ago(8) },
       { type: "document", projectId: "demo-meridian", projectTitle: "Meridian Campaign", who: "Justin", role: "admin", text: "Shoot_Schedule_and_Call_Sheet.pdf", at: ago(24) },
     ],
+  };
+}
+
+// ---------- the studio's view of the demo ----------
+// The same sample, seen by the studio: every version, the management side (Studio), and someone asking to join.
+// Studio's own calls (GET /api/admin?demo=1…) are answered by demoAdmin(); the page refuses every change.
+const STUDIO_USER = { id: "demo-staff", email: "studio@nobleman.example", name: "Jean", title: "Founder", role: "admin", access: "owner", roleLabel: "Owner",
+  clientId: null, clientName: null, clientLogo: null, mustChangePassword: false, notifyEmail: true, twoStep: true, twoStepRequired: false };
+const SOURCE = { conn: "env-vimeo", provider: "vimeo", providerName: "Vimeo", connName: "Vimeo" };
+const REFS = { "demo-meridian": "1180001", "demo-social": "1180002" };
+
+export function demoStudioPortal() {
+  const d = demoPortal();
+  const all = Object.fromEntries(STAFF_PERMS.map((p) => [p.key, true]));
+  const v = (n, created, extra) => film(`demo-campaign-v${n}`, "Campaign Film", { durationLabel: "4:1" + n, duration: 250 + n, created: ago(created), thumbnail: "media/a00.jpg", ...extra });
+  const projects = d.projects.map((p) => {
+    const out = { ...p, clientCaps: p.caps, caps: { ...Object.fromEntries(Object.keys(p.caps).map((k) => [k, true])), team: false },
+      source: { ...SOURCE, ref: REFS[p.id] }, remindedAt: null,
+      files: p.files.map((f) => ({ ...f, mine: false })), thread: (p.thread || []).map((m) => ({ ...m, mine: m.author === "Jean" })) };
+    if (p.id === "demo-meridian") {
+      // Staff see every version and every decision.
+      out.cuts = p.cuts.map((c) => c.key !== "campaign film" ? c : { ...c, versions: [
+        { n: 1, video: v(1, 16), decision: { decision: "changes", note: "Shorter opening, and more of the boat.", by: "Jonathan Reyes", at: ago(14) }, comments: { total: 6, open: 0 } },
+        { n: 2, video: v(2, 9), decision: { decision: "changes", note: "Music works. The middle section still feels long.", by: "Jonathan Reyes", at: ago(8) }, comments: { total: 4, open: 0 } },
+        ...c.versions,
+      ] });
+    }
+    return out;
+  });
+  return {
+    ...d,
+    user: { ...STUDIO_USER, perms: all },
+    welcome: null,
+    projects,
+    signups: 1,
+    activity: STUDIO_LOG.slice(0, 8).map((e) => ({ type: e.action, projectId: e.projectId, projectTitle: e.project || "", who: e.who, role: e.kind === "staff" ? "admin" : "client", text: e.summary, at: e.at, log: true })),
+  };
+}
+
+const STUDIO_LOG = [
+  { who: "Portal", kind: "system", action: "signup.request", summary: "Kim Lowell (kim@lowellmarine.example, Lowell Marine) asked for an account", project: null, projectId: null, client: null, h: 3 },
+  { who: "Jonathan Reyes", kind: "client", action: "watched", summary: "Watched Campaign Film Version 3", project: "Meridian Campaign", projectId: "demo-meridian", client: "Meridian", h: 20 },
+  { who: "Jonathan Reyes", kind: "client", action: "note", summary: "Left a note on Campaign Film Version 3 at 0:12", project: "Meridian Campaign", projectId: "demo-meridian", client: "Meridian", h: 21 },
+  { who: "Priya Shah", kind: "client", action: "downloaded", summary: "Downloaded Vertical Social Video (HD 1080p)", project: "Meridian Campaign", projectId: "demo-meridian", client: "Meridian", h: 30 },
+  { who: "Justin", kind: "staff", action: "project.update", summary: "Updated Meridian Campaign: stage to Your review; review date set", project: "Meridian Campaign", projectId: "demo-meridian", client: "Meridian", h: 96 },
+  { who: "Justin", kind: "staff", action: "video.add", summary: "Campaign Film Version 3 arrived from Vimeo", project: "Meridian Campaign", projectId: "demo-meridian", client: "Meridian", h: 97 },
+  { who: "Jonathan Reyes", kind: "client", action: "share.create", summary: "Created a share link to Campaign Hero Film (30 days)", project: "Meridian Campaign", projectId: "demo-meridian", client: "Meridian", h: 120 },
+  { who: "Jonathan Reyes", kind: "client", action: "changes", summary: "Asked for changes on Campaign Film Version 2", project: "Meridian Campaign", projectId: "demo-meridian", client: "Meridian", h: 192 },
+  { who: "Jonathan Reyes", kind: "client", action: "team.add", summary: "Added Priya Shah (priya@meridian.example) as Reviewer", project: null, projectId: null, client: "Meridian", h: 240 },
+  { who: "Jean", kind: "staff", action: "project.create", summary: "Created project Social Content Package", project: "Social Content Package", projectId: "demo-social", client: "Meridian", h: 300 },
+  { who: "Jean", kind: "staff", action: "signin", summary: "Logged in (password, two-step)", project: null, projectId: null, client: null, h: 1 },
+].map((e, i) => ({ id: 1000 - i, at: ago(0, e.h), ip: e.kind === "system" ? null : "203.0.113." + (10 + i), ...e }));
+
+/** Studio's data for the demo: GET /api/admin?demo=1 (overview), &videos=, &sources=, &audit=, &health=, &notion=. */
+export function demoAdmin(q) {
+  const portal = demoStudioPortal();
+  if (q.videos) {
+    const p = portal.projects.find((x) => x.id === q.videos);
+    if (!p) return { source: null, videos: [] };
+    const versions = p.cuts.flatMap((c) => c.versions.map((x) => ({ id: x.video.id, title: c.title + (c.total > 1 || c.versions.length > 1 ? " V" + x.n : ""), thumbnail: x.video.thumbnail, durationLabel: x.video.durationLabel,
+      created: x.video.created, ready: true, hidden: false, kind: "version", version: x.n, baseTitle: c.title, forcedFilm: false, stacked: false, manage: null, link: null, linkId: null })));
+    const films = p.films.map((f) => ({ id: f.id, title: f.title, thumbnail: f.thumbnail, durationLabel: f.durationLabel, created: f.created, ready: true, hidden: false, kind: "film", version: null, forcedFilm: false, stacked: false, manage: null, link: null, linkId: null }));
+    const ups = (p.videoUploads || []).map((u) => ({ id: "up-" + u.id, title: `From Meridian: ${u.name}`, thumbnail: null, durationLabel: "", created: u.at, ready: true, hidden: false, kind: "client", version: null, forcedFilm: false, manage: null, link: null, linkId: null }));
+    return { source: { provider: "vimeo", name: "Vimeo" }, videos: [...versions, ...films, ...ups] };
+  }
+  if (q.sources) return { sources: [{ id: "1180001", name: "Meridian Campaign", count: 9, modified: ago(4) }, { id: "1180002", name: "Meridian Social", count: 0, modified: ago(6) }, { id: "1180003", name: "Reel 2026", count: 12, modified: ago(30) }] };
+  if (q.audit) {
+    const kind = ["staff", "client", "system"].includes(q.kind) ? q.kind : null;
+    const find = String(q.q || "").toLowerCase();
+    return { entries: STUDIO_LOG.filter((e) => (!kind || e.kind === kind) && (!q.project || e.projectId === q.project) && (!find || (e.summary + e.who).toLowerCase().includes(find))), more: false };
+  }
+  if (q.health) {
+    return { checks: [
+      { label: "This is the demo", ok: "warn", detail: "These checks are examples. In the real portal they show what’s set up and what needs attention." },
+      { label: "Database", ok: true, detail: "Connected." },
+      { label: "Login key", ok: true, detail: "SESSION_SECRET is set." },
+      { label: "File storage", ok: true, detail: "A private Vercel Blob store is connected." },
+      { label: "Email", ok: true, detail: "Connected: invitations, login links, reminders, receipts, and updates go out." },
+      { label: "Daily job", ok: true, detail: "Reminders, Notion catch-up, and Frame.io sign-in refresh run daily." },
+      { label: "Vimeo", ok: true, detail: "Vimeo: working." },
+      { label: "Owners", ok: "warn", detail: "Only one owner. Make a second person an owner so the studio is never locked out." },
+    ] };
+  }
+  if (q.notion) return { results: [] };
+  const people = [
+    { id: "demo-staff", name: "Jean", email: "studio@nobleman.example", title: "Founder", role: "admin", access: "owner", clientId: null, clientName: null, h: 1, twoStep: true },
+    { id: "demo-justin", name: "Justin", email: "justin@nobleman.example", title: "Founder", role: "admin", access: "manager", clientId: null, clientName: null, h: 5, twoStep: true },
+    { id: "demo-sam", name: "Sam Rivera", email: "sam@nobleman.example", title: "Editor", role: "admin", access: "editor", clientId: null, clientName: null, h: 30, twoStep: false },
+    { id: "demo-user", name: "Jonathan Reyes", email: "jonathan@meridian.example", title: "Marketing Director", role: "client", access: "approver", clientId: "demo-client", clientName: "Meridian", h: 20, twoStep: false },
+    { id: "demo-priya", name: "Priya Shah", email: "priya@meridian.example", title: "Brand Manager", role: "client", access: "reviewer", clientId: "demo-client", clientName: "Meridian", h: 30, twoStep: false },
+    { id: "demo-ceo", name: "Alex Moreno", email: "alex@meridian.example", title: "CEO", role: "client", access: "viewer", clientId: "demo-client", clientName: "Meridian", h: null, twoStep: false },
+  ].map((p) => ({ ...p, roleLabel: [...STAFF_ROLES, ...CLIENT_ROLES].find((r) => r.key === p.access).label, lastLogin: p.h ? ago(0, p.h) : null, invited: !p.h, mustChangePassword: !p.h, created: ago(40) }));
+  return {
+    me: { id: STUDIO_USER.id, access: "owner", perms: portal.user.perms },
+    clients: [{ id: "demo-client", name: "Meridian", logo: "", notes: "Billing: accounts@meridian.example. Logo only on the end card.", domains: ["meridian.example"], people: 3, projects: 2, created: ago(40) }],
+    people,
+    signups: [{ id: "demo-req-1", name: "Kim Lowell", email: "kim@lowellmarine.example", company: "Lowell Marine", note: "A boat launch film in May.", created: ago(0, 3), confirmed: ago(0, 3), match: null }],
+    projects: portal.projects.map((p) => ({
+      id: p.id, title: p.title, type: p.type, summary: p.summary, clientId: p.clientId, clientName: p.clientName, stage: p.stage, pct: p.pct, next: p.next,
+      reviewDue: p.reviewDue, remindedAt: null, source: { conn: SOURCE.conn, ref: REFS[p.id], provider: "vimeo", connName: "Vimeo" },
+      imageUrl: "", caps: p.clientCaps, archived: false, notion: true, updated: p.updated,
+    })),
+    capabilities: CAPABILITIES,
+    stages: STAGES,
+    roles: { staff: STAFF_ROLES, client: CLIENT_ROLES, staffPerms: STAFF_PERMS, clientPerms: CLIENT_PERMS, permissions: rolePermissions(DEFAULTS) },
+    providers: providerList(),
+    connections: [
+      { id: "env-vimeo", provider: "vimeo", name: "Vimeo", env: false, status: "ok", lastError: null, checked: ago(0, 2), config: { account: "Nobleman Productions" } },
+      { id: "demo-resend", provider: "resend", name: "Email (Resend)", env: false, status: "ok", lastError: null, checked: ago(0, 2), config: { from: "Nobleman Productions <portal@nobleman.example>", account: "Nobleman Productions <portal@nobleman.example>" } },
+      { id: "demo-notion", provider: "notion", name: "Notion", env: false, status: "ok", lastError: null, checked: ago(0, 2), config: { account: "Nobleman HQ" } },
+    ],
+    settings: { ...DEFAULTS, notion: { ...DEFAULTS.notion, connectionId: "demo-notion", dataSourceId: "demo", title: "Nobleman Productions projects", lastSync: ago(0, 1) } },
+    email: true,
+    blob: true,
+    redirectUri: "https://portal.noblemanproductions.gotit2work.com/api/connect",
+    demo: true,
   };
 }

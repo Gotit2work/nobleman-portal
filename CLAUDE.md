@@ -2,7 +2,7 @@
 
 Client portal for Nobleman Productions at `portal.noblemanproductions.gotit2work.com`. Operated by Alexis / GotIT2Work. The marketing site is `Gotit2work/nobleman-website`; its `docs/DEPLOYMENT.md` is the runbook for both. README.md explains the product, roles, capabilities, Studio, video sources, Notion, env vars, and the go-live steps.
 
-**Staff run everything from Studio; code changes are only for adding or removing capabilities** (README, "Changing what the portal can do"). Anything an admin would want to change (wording on the sign-in screen, stages, defaults, roles, connections) belongs in Settings or Connections, not in code.
+**Staff run everything from Studio; code changes are only for adding or removing capabilities** (README, "Changing what the portal can do"). Anything an admin would want to change (wording on the login screen, who can create an account, stages, defaults, roles, connections) belongs in Settings or Connections, not in code.
 
 ## Ownership and infrastructure
 
@@ -14,7 +14,7 @@ Client portal for Nobleman Productions at `portal.noblemanproductions.gotit2work
 
 ## Architecture
 
-- No build step. `index.html` loads vendored React, then `app/main.js` as an ES module. Components are written with `htm` (`html\`<${Comp} prop=${x} />\``), not JSX. One file per area: `gate.js` (sign-in, setup, links, two-step), `home.js`, `review.js`, `films.js`, `files.js`, `messages.js`, `account.js`, `watch.js` (share pages), `twostep.js`, and Studio in `studio.js` (shell, projects) + `studio-people.js` + `studio-connect.js` + `studio-settings.js`; shared pieces in `ui.js` (including the one `Player` for every video kind).
+- No build step. `index.html` loads vendored React, then `app/main.js` as an ES module. Components are written with `htm` (`html\`<${Comp} prop=${x} />\``), not JSX. One file per area: `gate.js` (the one login for everyone, creating an account, setup, links, two-step), `home.js`, `review.js`, `films.js`, `files.js`, `messages.js`, `account.js`, `watch.js` (share pages), `twostep.js`, and Studio in `studio.js` (shell, projects) + `studio-people.js` + `studio-connect.js` + `studio-settings.js`; shared pieces in `ui.js` (including the one `Player` for every video kind).
 - Routing is `history.pushState` through `go()` in `main.js`; use `<${Link} to=…>` for internal links. `vercel.json` rewrites every dot-less path outside `api/ app/ assets/ media/ vendor/` to `/index` (not `/index.html`: with `cleanUrls` the page is served at `/index`, and a rewrite to `/index.html` is a 404 on Vercel even though the local test server accepts it). Check deep links such as `/review/x`, `/watch/x`, `/link/x` on the preview.
 - `app/` is served `max-age=0, must-revalidate`. `assets/` and `media/` cache 7 days: bump `?v=` in `index.html` for `np.css`/`np.js`, and give a changed image a new name. `vendor/` is immutable: versioned file names only.
 - Shared server code lives in `api/_*.js` and `api/_providers/` (underscore paths aren't functions; confirm with `vercel build`). `_build.js` assembles everything a person sees in one `GET /api/portal`; screens re-read it with `reload()` after an action. `GET /api/admin` is Studio's equivalent.
@@ -33,11 +33,13 @@ Client portal for Nobleman Productions at `portal.noblemanproductions.gotit2work
 - POST handlers call `rejectCrossOrigin` (via `requireUser`) and `readBody`; validate ids with `isUuid`; keep multi-row writes in one statement.
 - Provider tokens and the Blob read-write token stay server-side. Browsers get a tus upload link for one video, or a client token for one Blob pathname. Blob downloads are signed links that expire in ten minutes.
 - `/api/cron` refuses to run without `CRON_SECRET`.
-- Demo is explicit (`PORTAL_MODE=demo`, or the `/demo` path). Never fall back to it because an API call failed.
-- Audit what matters (`audit()` in `_audit.js`): sign-ins, Studio changes, decisions, views, downloads, shares, team changes.
+- Demo is explicit (`PORTAL_MODE=demo`, or the `/demo` path). Never fall back to it because an API call failed. Its studio view reads `GET /api/portal?demo=studio` and `GET /api/admin?demo=1` (sample data, answered before any login check, never touching the database); `api()` in `ui.js` refuses every Studio change while the demo is on.
+- Sign-up creates nothing until the email is confirmed (`signup_requests`, `_signup.js`); the answer must be the same whether or not an account exists. Joining by email domain only uses domains staff listed on a client, never free email services (`FREE_MAIL`).
+- Audit what matters (`audit()` in `_audit.js`): logins, sign-ups, Studio changes, decisions, views, downloads, shares, team changes.
 
 ## Conventions — keep these when changing the UI
 
+- One door for everyone: the login never says "client". Say "log in" / "log out" / "login link" and "two-step verification" (Adobe's own "Sign in with Adobe" stays).
 - Every word a client sees follows `docs/WRITING.md`: plain words, buttons named for the action, no promise that isn't always true, confirmation before anything hard to undo (`Confirm`; typed name for deletes). Say "the studio", not a person's name; the name lives in settings (`brand`).
 - Demo actions go through `say(real, demo)`, which shows "Demo only: …". Never let the demo call the API's write actions.
 - Home leads with **Your next step** (`nextStep` in `home.js`): one clear action.
@@ -48,4 +50,4 @@ Client portal for Nobleman Productions at `portal.noblemanproductions.gotit2work
 
 ## Verifying changes
 
-`cd tests && npm test` (README, "Testing") starts three local servers with PGlite and fakes for every provider, then runs 227 API checks and 86 browser checks on desktop and phone. `npm run shots` captures every screen (desktop 1440, phone 390) into `tests/.work/shots`. Look at the screenshots after any visual change; fonts from Google may be missing in a sandbox. Before shipping, `npx vercel build` with a hand-written `.vercel/project.json` (`{"projectId":"x","orgId":"y","settings":{"framework":null}}`), confirm 8 functions and the cron in `.vercel/output/config.json`, then delete `.vercel/`.
+`cd tests && npm test` (README, "Testing") starts three local servers with PGlite and fakes for every provider, then runs 253 API checks and 110 browser checks on desktop and phone. `npm run shots` captures every screen (desktop 1440, phone 390) into `tests/.work/shots`. Look at the screenshots after any visual change; fonts from Google may be missing in a sandbox. Before shipping, `npx vercel build` with a hand-written `.vercel/project.json` (`{"projectId":"x","orgId":"y","settings":{"framework":null}}`), confirm 8 functions and the cron in `.vercel/output/config.json`, then delete `.vercel/`.

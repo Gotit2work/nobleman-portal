@@ -10,17 +10,19 @@ import { VIDEO, LINKS_ID, providerList } from "./_providers/index.js";
 import { parseLink, lookup } from "./_providers/links.js";
 import { projectVideos, sourceOf, forgetSource } from "./_sources.js";
 import { emailReady, originOf, notify } from "./_notify.js";
-import { createLink, emailLink } from "./_links.js";
+import { createLink, emailLink, emailSignup } from "./_links.js";
 import { randomToken } from "./_crypto.js";
 import { audit } from "./_audit.js";
 import { later } from "./_later.js";
 import { syncProject, trashProjectRow } from "./_notion.js";
 import { MORE_GETS, MORE_ACTIONS } from "./_admin_more.js";
+import { cleanDomains, domainOf } from "./_signup.js";
+import { demoAdmin } from "./_demo.js";
 
 /**
  * Studio: staff only. Each action checks the person's role (_roles.js).
  *
- * GET  /api/admin                       clients, people, projects, roles, connections, settings, status
+ * GET  /api/admin                       clients, people, account requests, projects, roles, connections, settings, status
  * GET  /api/admin?sources=<connection>  folders, projects, or playlists in a video connection
  * GET  /api/admin?videos=<project>      every video in a project's source, with staff choices (hidden, renamed)
  * GET  /api/admin?audit=1 | ?health=1 | ?export=… | ?notion=…   see _admin_more.js
@@ -32,6 +34,8 @@ const day = (d) => (d ? new Date(d).toISOString().slice(0, 10) : null);
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "private, no-store");
+  // The demo's studio view: sample data only, no sign-in, nothing read from or written to the database.
+  if (req.method === "GET" && req.query && req.query.demo) return res.status(200).json(demoAdmin(req.query));
   if (!dbConfigured()) return res.status(503).json({ error: "The portal isn’t connected to its database yet." });
   try { await ready(); } catch (err) { console.error("db not ready", err); return res.status(500).json({ error: TROUBLE }); }
   const u = await requireStaff(req, res);
@@ -61,8 +65,8 @@ export default async function handler(req, res) {
 }
 
 async function overview(req, res, u, s) {
-  const [clients, people, projects, conns] = await Promise.all([
-    sql`select c.id, c.name, c.logo_url, c.notes, c.created_at,
+  const [clients, people, projects, conns, signups] = await Promise.all([
+    sql`select c.id, c.name, c.logo_url, c.notes, c.domains, c.created_at,
                (select count(*)::int from users x where x.client_id = c.id) as people,
                (select count(*)::int from projects x where x.client_id = c.id and not x.archived) as projects
         from clients c order by lower(c.name)`,
@@ -72,12 +76,20 @@ async function overview(req, res, u, s) {
     sql`select p.*, c.name as client_name from projects p join clients c on c.id = p.client_id
         order by p.archived, p.updated_at desc`,
     listConnections({ withCreds: true }),
+    can(u, "people.manage", s) ? sql`select * from signup_requests where status = 'waiting' order by created_at` : [],
   ]);
   const names = stageNames(s);
   const connName = new Map(conns.map((c) => [c.id, c]));
   return res.status(200).json({
     me: { id: u.id, access: accessOf(u), perms: permsOf(u, s) },
-    clients: clients.map((c) => ({ id: c.id, name: c.name, logo: c.logo_url || "", notes: c.notes || "", people: c.people, projects: c.projects, created: iso(c.created_at) })),
+    clients: clients.map((c) => ({ id: c.id, name: c.name, logo: c.logo_url || "", notes: c.notes || "", domains: Array.isArray(c.domains) ? c.domains : [], people: c.people, projects: c.projects, created: iso(c.created_at) })),
+    // People who created an account and are waiting for the studio. `match` suggests the client they belong to.
+    signups: signups.map((r) => {
+      const byName = clients.find((c) => c.name.trim().toLowerCase() === String(r.company || "").trim().toLowerCase());
+      const byDomain = clients.find((c) => Array.isArray(c.domains) && c.domains.includes(domainOf(r.email)));
+      const match = byDomain || byName || null;
+      return { id: r.id, name: r.name, email: r.email, company: r.company || "", note: r.note || "", created: iso(r.created_at), confirmed: iso(r.verified_at), match: match ? { id: match.id, name: match.name } : null };
+    }),
     people: people.map((p) => ({
       id: p.id, name: p.name, email: p.email, title: p.title || "", role: p.role, access: accessOf(p), roleLabel: roleLabel(p),
       clientId: p.client_id, clientName: p.client_name || null, lastLogin: iso(p.last_login_at), twoStep: !!p.totp_enabled,
@@ -98,7 +110,7 @@ async function overview(req, res, u, s) {
     stages: names,
     roles: { staff: STAFF_ROLES, client: CLIENT_ROLES, staffPerms: STAFF_PERMS, clientPerms: CLIENT_PERMS, permissions: rolePermissions(s) },
     providers: providerList(),
-    // Never the credentials themselves: only which way Frame.io signs in, and whether that sign-in is done.
+    // Never the credentials themselves: only which way Frame.io signs in, and whether that login is done.
     connections: conns.map((c) => ({
       id: c.id, provider: c.provider, name: c.name, env: c.env, status: c.status, lastError: c.lastError, checked: c.checked, config: safeConfig(c.config),
       ...(c.provider === "frameio" ? { auth: (c.creds && c.creds.auth) || "oauth", signedIn: !!(c.creds && (c.creds.auth !== "oauth" || c.creds.refreshToken)) } : {}),
@@ -196,7 +208,8 @@ const ACTIONS = {
     if (deny("clients.manage")) return;
     const name = text(b.name, 120);
     if (!name) return res.status(400).json({ error: "Enter the client’s name." });
-    const [c] = await sql`insert into clients (name, logo_url, notes) values (${name}, ${httpsUrl(b.logo)}, ${longText(b.notes, 2000) || null}) returning id`;
+    const domains = await cleanDomains(b.domains, null);
+    const [c] = await sql`insert into clients (name, logo_url, notes, domains) values (${name}, ${httpsUrl(b.logo)}, ${longText(b.notes, 2000) || null}, ${JSON.stringify(domains)}::jsonb) returning id`;
     await audit(req, u, "client.create", `Added client ${name}`, { clientId: c.id });
     return res.status(201).json({ id: c.id });
   },
@@ -208,8 +221,9 @@ const ACTIONS = {
     if (!cur) return res.status(404).json({ error: "That client was removed." });
     const name = b.name === undefined ? cur.name : text(b.name, 120);
     if (!name) return res.status(400).json({ error: "Enter the client’s name." });
+    const domains = b.domains === undefined ? (Array.isArray(cur.domains) ? cur.domains : []) : await cleanDomains(b.domains, cur.id);
     await sql`update clients set name = ${name}, logo_url = ${b.logo === undefined ? cur.logo_url : httpsUrl(b.logo)},
-              notes = ${b.notes === undefined ? cur.notes : longText(b.notes, 2000) || null} where id = ${cur.id}`;
+              notes = ${b.notes === undefined ? cur.notes : longText(b.notes, 2000) || null}, domains = ${JSON.stringify(domains)}::jsonb where id = ${cur.id}`;
     await audit(req, u, "client.update", name !== cur.name ? `Renamed client ${cur.name} to ${name}` : `Updated client ${name}`, { clientId: cur.id });
     return res.status(200).json({ ok: true });
   },
@@ -268,7 +282,7 @@ const ACTIONS = {
     if (!EMAIL_RE.test(email)) return res.status(400).json({ error: "Enter a valid email." });
     const clientId = role === "client" ? (await clientFrom(b)) || cur.client_id : null;
     if (role === "client" && !clientId) return res.status(400).json({ error: "Choose which client this person belongs to." });
-    // Changing what someone can see or how they sign in restarts their sessions.
+    // Changing what someone can see or how they log in restarts their sessions.
     const bump = role !== cur.role || access !== accessOf(cur) || clientId !== cur.client_id || email !== cur.email;
     await sql`update users set name = ${name}, title = ${title}, email = ${email}, role = ${role}, access = ${access}, client_id = ${clientId},
               session_version = session_version + ${bump ? 1 : 0} where id = ${cur.id}`;
@@ -277,7 +291,7 @@ const ACTIONS = {
     return res.status(200).json({ ok: true });
   },
 
-  /** A fresh invite (never signed in) or password-reset link, shown to staff and emailed if they choose. */
+  /** A fresh invite (never logged in) or password-reset link, shown to staff and emailed if they choose. */
   async personInvite(req, res, u, b, s) {
     const p = isUuid(b.id) && (await sql`select * from users where id = ${b.id}`)[0];
     if (!p) return res.status(404).json({ error: "That person was removed." });
@@ -307,7 +321,7 @@ const ACTIONS = {
     if (!can(u, p.role === "admin" ? "staff.manage" : "people.manage", s)) return res.status(403).json({ error: "Your role doesn’t allow that." });
     if (p.id === u.id) return res.status(400).json({ error: "Ask another owner to do this for you." });
     await sql`update users set totp_enabled = false, totp_secret = null, recovery_codes = '[]'::jsonb, session_version = session_version + 1 where id = ${p.id}`;
-    await audit(req, u, "person.twostep", `Turned off two-step sign-in for ${p.name} (lost device)`, { clientId: p.client_id });
+    await audit(req, u, "person.twostep", `Turned off two-step verification for ${p.name} (lost device)`, { clientId: p.client_id });
     return res.status(200).json({ ok: true });
   },
 
@@ -321,6 +335,41 @@ const ACTIONS = {
     await sql`delete from users where id = ${p.id}`;
     await audit(req, u, "person.delete", `Removed ${p.name} (${p.email})`, { clientId: p.client_id });
     return res.status(200).json({ ok: true });
+  },
+
+  // ---------- account requests (sign-up) ----------
+  /** Lets someone who asked in: puts them in a client with a role and emails their invitation. */
+  async signupApprove(req, res, u, b, s, deny) {
+    if (deny("people.manage")) return;
+    const r = isUuid(b.id) && (await sql`select * from signup_requests where id = ${b.id}`)[0];
+    if (!r || r.status !== "waiting") return res.status(404).json({ error: "That request was already handled." });
+    const access = validAccess("client", b.access) ? b.access : "approver";
+    const clientId = await clientFrom(b);
+    if (!clientId) return res.status(400).json({ error: "Choose which client they belong to, or type a new client’s name." });
+    if ((await sql`select 1 from users where email = ${r.email}`)[0]) {
+      await sql`update signup_requests set status = 'joined', decided_by = ${u.name}, decided_at = now() where id = ${r.id}`;
+      return res.status(409).json({ error: `${r.email} already has an account.` });
+    }
+    const [p] = await sql`
+      insert into users (email, name, role, access, client_id, password_hash, must_change_password)
+      values (${r.email}, ${r.name}, 'client', ${access}, ${clientId}, ${await bcrypt.hash(randomToken(), 10)}, true)
+      returning *`;
+    await sql`update signup_requests set status = 'approved', client_id = ${clientId}, user_id = ${p.id}, decided_by = ${u.name}, decided_at = now() where id = ${r.id}`;
+    const link = await createLink(p.id, "invite", originOf(req));
+    const emailed = (await emailReady()) ? await emailLink(p, "invite", link, u.name) : false;
+    const c = (await sql`select name from clients where id = ${clientId}`)[0];
+    await audit(req, u, "signup.approve", `Approved ${r.name} (${r.email}) into ${c.name} as ${roleLabel(p)}`, { clientId });
+    return res.status(200).json({ id: p.id, inviteLink: link, emailed });
+  },
+
+  async signupDecline(req, res, u, b, s, deny) {
+    if (deny("people.manage")) return;
+    const r = isUuid(b.id) && (await sql`select * from signup_requests where id = ${b.id}`)[0];
+    if (!r || r.status !== "waiting") return res.status(404).json({ error: "That request was already handled." });
+    await sql`update signup_requests set status = 'declined', decided_by = ${u.name}, decided_at = now() where id = ${r.id}`;
+    const told = b.tell !== false && (await emailReady()) ? await emailSignup("declined", r.email, r.name) : false;
+    await audit(req, u, "signup.decline", `Declined ${r.name} (${r.email})${told ? ", and told them" : ""}`);
+    return res.status(200).json({ ok: true, told });
   },
 
   // ---------- projects ----------

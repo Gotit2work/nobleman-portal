@@ -16,7 +16,7 @@ export function Clients({ admin }) {
     if (ok) setEdit(null);
   };
   return html`
-    <${Head} eyebrow="Studio" title="Clients" actions=${may ? html`<button class="btn primary" onClick=${() => setEdit({ name: "", logo: "", notes: "" })}>Add a client</button>` : null}>
+    <${Head} eyebrow="Studio" title="Clients" actions=${may ? html`<button class="btn primary" onClick=${() => setEdit({ name: "", logo: "", notes: "", domains: "" })}>Add a client</button>` : null}>
       Each client is a company. Its people see only its own projects, with its logo at the top of their portal.
     <//>
     ${!d.clients.length ? html`<${Empty} icon="anchor" title="No clients yet.">Add one here, or create it while making its first project.<//>`
@@ -24,12 +24,12 @@ export function Clients({ admin }) {
       <tbody>${d.clients.map((c) => html`<tr key=${c.id}>
         <td><div class="row" style=${{ gap: "12px", flexWrap: "nowrap" }}>
           ${c.logo ? html`<span class="client-logo sm" style=${{ backgroundImage: `url('${c.logo}')` }} aria-hidden="true"></span>` : null}
-          <div><b>${c.name}</b>${c.notes ? html`<div class="muted small clip">${c.notes}</div>` : null}</div></div></td>
+          <div><b>${c.name}</b>${c.domains && c.domains.length ? html`<div class="faint small">Joins by email: ${c.domains.map((x) => "@" + x).join(", ")}</div>` : null}${c.notes ? html`<div class="muted small clip">${c.notes}</div>` : null}</div></div></td>
         <td>${admin.can("people.manage") ? html`<${Link} to=${"/studio/people?client=" + c.id} cls="link">${c.people}<//>` : c.people}</td>
         <td>${c.projects}</td><td class="muted small">${fmtDate(c.created)}</td>
         <td style=${{ textAlign: "right", whiteSpace: "nowrap" }}>
-          ${may ? html`<button class="btn ghost sm" onClick=${() => setEdit({ id: c.id, name: c.name, logo: c.logo, notes: c.notes })}>Edit</button>` : null}
-          ${admin.can("data.export") ? html`<a class="btn ghost sm" href=${"/api/admin?export=client&id=" + c.id} download title="Everything the portal holds about this client, as a file">Export data</a>` : null}
+          ${may ? html`<button class="btn ghost sm" onClick=${() => setEdit({ id: c.id, name: c.name, logo: c.logo, notes: c.notes, domains: (c.domains || []).join(", ") })}>Edit</button>` : null}
+          ${admin.can("data.export") && !d.demo ? html`<a class="btn ghost sm" href=${"/api/admin?export=client&id=" + c.id} download title="Everything the portal holds about this client, as a file">Export data</a>` : null}
           ${admin.can("clients.delete") ? html`<button class="btn ghost sm" onClick=${() => { setConfirmText(""); setDel(c); }}>Delete…</button>` : null}
         </td>
       </tr>`)}</tbody></table>`}
@@ -39,6 +39,9 @@ export function Clients({ admin }) {
         <input class="input" type="url" value=${edit.logo} onInput=${(e) => setEdit({ ...edit, logo: e.target.value })} placeholder="https://…" />
       <//>
       ${edit.logo && /^https:\/\//.test(edit.logo) ? html`<div class="client-logo lg" style=${{ backgroundImage: `url('${edit.logo}')` }} aria-label="Logo preview" role="img"></div>` : null}
+      <${Field} label="Their email domain (optional)" hint=${`For example harborlabs.com. Anyone who creates an account with an address there joins ${edit.name || "this client"} as soon as they confirm their email${d.settings.security ? `, as a ${roleName(d, d.settings.security.domainRole)}` : ""}. Free email services can’t be used.`}>
+        <input class="input" value=${edit.domains} onInput=${(e) => setEdit({ ...edit, domains: e.target.value })} placeholder="harborlabs.com" autoCapitalize="none" spellCheck="false" />
+      <//>
       <${Field} label="Notes for the studio (optional)" hint="Only staff see these: billing contact, brand rules, anything worth remembering.">
         <textarea class="textarea" rows="3" value=${edit.notes} onInput=${(e) => setEdit({ ...edit, notes: e.target.value })}></textarea>
       <//>
@@ -54,6 +57,56 @@ export function Clients({ admin }) {
 
 // ---------- people ----------
 const roleList = (d, kind) => (kind === "admin" ? d.roles.staff : d.roles.client);
+const roleName = (d, key) => ((d.roles.client.find((r) => r.key === key) || {}).label || "reviewer").toLowerCase();
+
+/** People who created an account and are waiting: approve them into a client with a role, or decline. */
+function Requests({ admin, onLink }) {
+  const { d } = admin;
+  const { run, busy } = useRun(admin);
+  const [approving, setApproving] = useState(null);
+  const [declining, setDeclining] = useState(null);
+  const [tell, setTell] = useState(true);
+  if (!d.signups || !d.signups.length) return null;
+  const open = (r) => setApproving({ r, clientId: r.match ? r.match.id : "__new", clientName: r.match ? "" : r.company, access: r.match ? "reviewer" : "approver" });
+  const approve = async () => {
+    const a = approving;
+    const body = { action: "signupApprove", id: a.r.id, access: a.access, ...(a.clientId === "__new" ? { clientName: a.clientName } : { clientId: a.clientId }) };
+    const res = await run(body, null);
+    if (res) { setApproving(null); onLink({ person: { name: a.r.name, email: a.r.email }, link: res.inviteLink, purpose: "invite", emailed: res.emailed }); }
+  };
+  return html`<section class="card pad stack requests" style=${{ gap: "12px", marginBottom: "24px" }}>
+    <div class="row" style=${{ justifyContent: "space-between" }}><div class="h3">Asking to join</div><span class="pill amber">${d.signups.length} waiting</span></div>
+    <span class="muted small" style=${{ lineHeight: 1.55 }}>They created an account and confirmed their email. Choose their company and role to let them in; they’re emailed a link to choose a password.</span>
+    <div class="list">${d.signups.map((r) => html`<div class="li" key=${r.id} style=${{ flexWrap: "wrap" }}>
+      <div class="grow" style=${{ minWidth: "220px" }}><div class="name">${r.name} <span class="faint small">· ${r.company || "no company given"}</span></div>
+        <div class="meta">${r.email} · asked ${fmtAgo(r.created)}${r.match ? ` · looks like ${r.match.name}` : ""}</div>
+        ${r.note ? html`<div class="muted small" style=${{ marginTop: "4px", whiteSpace: "pre-wrap" }}>“${r.note}”</div>` : null}</div>
+      <div class="row" style=${{ gap: "6px" }}>
+        <button class="btn primary sm" onClick=${() => open(r)}>Let them in…</button>
+        <button class="btn ghost sm" onClick=${() => { setTell(true); setDeclining(r); }}>Decline</button>
+      </div>
+    </div>`)}</div>
+    ${approving ? html`<${Modal} title=${`Let ${approving.r.name} in`} onClose=${() => setApproving(null)} wide>
+      <p class="muted small" style=${{ margin: 0, lineHeight: 1.6 }}>${approving.r.email} said they’re from <b style=${{ color: "var(--ink)" }}>${approving.r.company || "no company"}</b>.</p>
+      <${ClientPicker} clients=${d.clients} value=${approving} onChange=${(v) => setApproving({ ...approving, ...v })} />
+      <div class="stack" style=${{ gap: "8px" }}>
+        <span class="small" style=${{ fontWeight: 600 }}>Role</span>
+        <div class="roles" role="radiogroup" aria-label="Role">${d.roles.client.map((x) => html`<label key=${x.key} class=${"rolecard" + (approving.access === x.key ? " on" : "")}>
+          <input type="radio" name="req-access" value=${x.key} checked=${approving.access === x.key} onChange=${() => setApproving({ ...approving, access: x.key })} />
+          <b>${x.label}</b><span>${x.detail}</span></label>`)}</div>
+      </div>
+      <div class="row"><button class="btn primary" disabled=${busy || !(approving.clientId && (approving.clientId !== "__new" || String(approving.clientName || "").trim()))} onClick=${approve}>${busy ? "One moment…" : "Let them in and send the invitation"}</button>
+        <button class="btn ghost" onClick=${() => setApproving(null)}>Cancel</button></div>
+    <//>` : null}
+    ${declining ? html`<${Modal} title=${`Decline ${declining.name}?`} onClose=${() => setDeclining(null)}>
+      <p class="muted" style=${{ margin: 0, lineHeight: 1.6 }}>No account is made. They can ask again later.</p>
+      <div class="cap"><${Toggle} checked=${tell} onChange=${setTell} label="Tell them by email" />
+        <div><b>Tell them by email</b><span>A short, polite note that the studio couldn’t give them access, with your help email.</span></div></div>
+      <div class="row"><button class="btn solid-red" disabled=${busy} onClick=${async () => { if (await run({ action: "signupDecline", id: declining.id, tell }, `${declining.name} was declined${tell ? " and told" : ""}.`)) setDeclining(null); }}>Decline</button>
+        <button class="btn ghost" onClick=${() => setDeclining(null)}>Keep the request</button></div>
+    <//>` : null}
+  </section>`;
+}
 
 /** A one-time link to set a password (invite) or choose a new one (reset), to send however you reach them. */
 function LinkSent({ person, link, purpose, emailed, onClose }) {
@@ -61,9 +114,9 @@ function LinkSent({ person, link, purpose, emailed, onClose }) {
   const studio = (data.brand && data.brand.studio) || "the studio";
   const first = person.name.split(" ")[0];
   const msg = purpose === "invite"
-    ? `Hi ${first},\n\nYour ${studio} client portal is ready. Open this link to choose your password (it works once, for 14 days):\n${link}\n\nAfter that, sign in any time with ${person.email}.`
+    ? `Hi ${first},\n\nYour ${studio} client portal is ready. Open this link to choose your password (it works once, for 14 days):\n${link}\n\nAfter that, log in any time with ${person.email}.`
     : `Hi ${first},\n\nHere’s a link to choose a new password for the ${studio} portal. It works once, for the next hour:\n${link}`;
-  return html`<${Modal} title=${purpose === "invite" ? `${person.name} is invited` : `A new sign-in link for ${person.name}`} onClose=${onClose}>
+  return html`<${Modal} title=${purpose === "invite" ? `${person.name} is invited` : `A new login link for ${person.name}`} onClose=${onClose}>
     ${emailed ? html`<div class="alert info">We emailed it to ${person.email}. You can also copy it below.</div>`
       : html`<p class="muted" style=${{ margin: 0, lineHeight: 1.6 }}>Send this link to ${person.name} the way you normally reach them. ${purpose === "invite" ? "It works once, for 14 days." : "It works once, for an hour."} Anyone with it can set the password, so send it only to them.</p>`}
     <div class="copybox"><code class="clip">${link}</code><button class="btn ghost sm" onClick=${() => copy(link, toast, "Link")}>Copy</button></div>
@@ -99,7 +152,7 @@ function PersonForm({ admin, person, defaults, onClose, onLink }) {
     <form class="stack" style=${{ gap: "18px" }} onSubmit=${submit}>
       <div class="formgrid">
         <${Field} label="Name"><input class="input" required value=${f.name} onInput=${(e) => setF({ ...f, name: e.target.value })} /><//>
-        <${Field} label="Email" hint=${editing ? "Changing it signs them out; they then sign in with the new one." : "They sign in with this."}><input class="input" type="email" required value=${f.email} onInput=${(e) => setF({ ...f, email: e.target.value })} /><//>
+        <${Field} label="Email" hint=${editing ? "Changing it logs them out; they then log in with the new one." : "They log in with this."}><input class="input" type="email" required value=${f.email} onInput=${(e) => setF({ ...f, email: e.target.value })} /><//>
         <${Field} label="Job title (optional)"><input class="input" value=${f.title} onInput=${(e) => setF({ ...f, title: e.target.value })} /><//>
         <${Field} label="Kind of account" hint=${self ? "You can’t change your own." : ""}>
           <select class="select" value=${f.role} disabled=${self || !(mayStaff && mayClients)} onChange=${(e) => setF({ ...f, role: e.target.value, access: e.target.value === "admin" ? "editor" : "approver" })}>
@@ -146,22 +199,23 @@ export function People({ admin, view }) {
     if (kind === "link") {
       const r = await run({ action: "personInvite", id: p.id }, null);
       if (r) setLinkOut({ person: p, link: r.link, purpose: r.purpose, emailed: r.emailed });
-    } else if (kind === "signout") await run({ action: "personSignOut", id: p.id }, `${p.name} is signed out everywhere.`);
-    else if (kind === "twostep") await run({ action: "personTwoStepReset", id: p.id }, `Two-step sign-in is off for ${p.name}. They can turn it on again from their account.`);
-    else if (kind === "delete") await run({ action: "personDelete", id: p.id }, `${p.name} removed. Their sign-in stops working at once.`);
+    } else if (kind === "signout") await run({ action: "personSignOut", id: p.id }, `${p.name} is logged out everywhere.`);
+    else if (kind === "twostep") await run({ action: "personTwoStepReset", id: p.id }, `Two-step verification is off for ${p.name}. They can turn it on again from their account.`);
+    else if (kind === "delete") await run({ action: "personDelete", id: p.id }, `${p.name} removed. Their login stops working at once.`);
     setAsk(null);
   };
   const ASK = {
     link: (p) => [p.lastLogin ? `Send ${p.name} a password reset link?` : `Send ${p.name} a new invitation?`, p.lastLogin ? "Send the link" : "Send the invitation",
       p.lastLogin ? `They get a link to choose a new password${d.email ? " by email" : ""}, working for an hour. Their current password keeps working until they use it.` : `Any earlier invitation stops working. The new link works for 14 days${d.email ? " and is emailed to them" : ""}.`],
-    signout: (p) => [`Sign ${p.name} out everywhere?`, "Sign them out", "Every device they’re signed in on goes back to the sign-in screen. Their password doesn’t change."],
-    twostep: (p) => [`Turn off two-step sign-in for ${p.name}?`, "Turn it off", "For a lost phone. They sign in with just their password and can set two-step up again. Do this only after confirming it’s really them."],
-    delete: (p) => [`Remove ${p.name}?`, "Remove them", "Their sign-in stops working at once. Their notes and messages stay, under their name."],
+    signout: (p) => [`Log ${p.name} out everywhere?`, "Log them out", "Every device they’re logged in on goes back to the login screen. Their password doesn’t change."],
+    twostep: (p) => [`Turn off two-step verification for ${p.name}?`, "Turn it off", "For a lost phone. They log in with just their password and can set two-step up again. Do this only after confirming it’s really them."],
+    delete: (p) => [`Remove ${p.name}?`, "Remove them", "Their login stops working at once. Their notes and messages stay, under their name."],
   };
   return html`
     <${Head} eyebrow="Studio" title="People" actions=${admin.can("people.manage") || admin.can("staff.manage") ? html`<button class="btn primary" onClick=${() => setForm({ defaults: { clientId } })}>Invite a person</button>` : null}>
-      Everyone with a sign-in. New people get a link to choose their own password; nobody ever handles a password for them.
+      Everyone with a login. New people get a link to choose their own password; nobody ever handles a password for them.
     <//>
+    ${filter !== "roles" && admin.can("people.manage") ? html`<${Requests} admin=${admin} onLink=${setLinkOut} />` : null}
     <div class="row" style=${{ marginBottom: "18px", justifyContent: "space-between" }}>
       <div class="tabs">${[["all", "Everyone"], ["client", "Clients"], ["staff", "Staff"], ["roles", "What roles can do"]].map(([k, l]) => html`<button key=${k} class="tab-btn" aria-pressed=${filter === k} onClick=${() => setFilter(k)}>${l}</button>`)}</div>
       ${filter !== "roles" ? html`<div class="row">
@@ -169,17 +223,17 @@ export function People({ admin, view }) {
         <input class="input" style=${{ width: "220px" }} type="search" placeholder="Find a person" aria-label="Find a person" value=${q} onInput=${(e) => setQ(e.target.value)} /></div>` : null}
     </div>
     ${filter === "roles" ? html`<${Roles} admin=${admin} />` : html`
-    <table class="table"><thead><tr><th>Person</th><th>Role</th><th>Sign-in</th><th></th></tr></thead>
+    <table class="table"><thead><tr><th>Person</th><th>Role</th><th>Login</th><th></th></tr></thead>
       <tbody>${list.map((p) => html`<tr key=${p.id}>
         <td><b>${p.name}</b>${p.id === user.id ? html` <span class="faint small">(you)</span>` : null}<div class="muted small">${p.email}${p.title ? " · " + p.title : ""}</div></td>
         <td><span class="pill">${p.roleLabel}</span>${p.clientName ? html` <span class="small">${p.clientName}</span>` : null}</td>
-        <td class="small">${p.invited ? html`<span class="pill amber">Invited, not signed in yet</span>` : p.lastLogin ? fmtAgo(p.lastLogin) : html`<span class="muted">Never</span>`}${p.twoStep ? html` <span class="pill green" title="Two-step sign-in is on">2-step</span>` : null}</td>
+        <td class="small">${p.invited ? html`<span class="pill amber">Invited, not logged in yet</span>` : p.lastLogin ? fmtAgo(p.lastLogin) : html`<span class="muted">Never</span>`}${p.twoStep ? html` <span class="pill green" title="Two-step verification is on">2-step</span>` : null}</td>
         <td style=${{ textAlign: "right", whiteSpace: "nowrap" }}>
           ${p.id === user.id ? html`<${Link} to="/account" cls="btn ghost sm">My account<//>`
           : mayFor(p) ? html`
             <button class="btn ghost sm" onClick=${() => setForm({ person: p })}>Edit</button>
             <button class="btn ghost sm" onClick=${() => setAsk({ kind: "link", p })}>${p.lastLogin ? "Reset password" : "Resend invite"}</button>
-            <${More} items=${[["Sign out everywhere", () => setAsk({ kind: "signout", p })], p.twoStep && ["Turn off two-step (lost phone)", () => setAsk({ kind: "twostep", p })], ["Remove", () => setAsk({ kind: "delete", p })]].filter(Boolean)} />` : null}
+            <${More} items=${[["Log out everywhere", () => setAsk({ kind: "signout", p })], p.twoStep && ["Turn off two-step (lost phone)", () => setAsk({ kind: "twostep", p })], ["Remove", () => setAsk({ kind: "delete", p })]].filter(Boolean)} />` : null}
         </td>
       </tr>`)}</tbody></table>
     ${!list.length ? html`<p class="muted">Nobody matches.</p>` : null}`}

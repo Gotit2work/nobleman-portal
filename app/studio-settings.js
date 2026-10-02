@@ -12,7 +12,7 @@ export function Settings({ admin }) {
     <div class="stack" style=${{ gap: "16px" }}>
       <${Section} admin=${admin} section="brand" title="Studio details" value=${s.brand} render=${(v, set) => html`
         <div class="formgrid">
-          <${Field} label="Studio name" hint="In emails, the sign-in screen, and share pages."><input class="input" value=${v.studio} onInput=${(e) => set({ studio: e.target.value })} /><//>
+          <${Field} label="Studio name" hint="In emails, the login screen, and share pages."><input class="input" value=${v.studio} onInput=${(e) => set({ studio: e.target.value })} /><//>
           <${Field} label="Help email" hint="Shown to clients who get stuck."><input class="input" type="email" value=${v.support} onInput=${(e) => set({ support: e.target.value })} /><//>
           <${Field} label="Website"><input class="input" value=${v.website} onInput=${(e) => set({ website: e.target.value })} placeholder="https://" /><//>
           <${Field} label="Privacy page"><input class="input" value=${v.privacy} onInput=${(e) => set({ privacy: e.target.value })} placeholder="https://" /><//>
@@ -22,7 +22,7 @@ export function Settings({ admin }) {
           <input class="input" value=${v.replies || ""} onInput=${(e) => set({ replies: e.target.value })} />
         <//>`} />
 
-      <${Section} admin=${admin} section="signin" title="Sign-in screen" value=${s.signin} hint="A Murphy’s Law line beside the sign-in form: the risk, then how the portal handles it." render=${(v, set) => html`
+      <${Section} admin=${admin} section="signin" title="Login screen" value=${s.signin} hint="A Murphy’s Law line beside the login form: the risk, then how the portal handles it." render=${(v, set) => html`
         <${Field} label="Small heading"><input class="input" style=${{ maxWidth: "420px" }} value=${v.kicker} onInput=${(e) => set({ kicker: e.target.value })} /><//>
         <${Field} label="The law"><input class="input" value=${v.quote} onInput=${(e) => set({ quote: e.target.value })} /><//>
         <${Field} label="The answer"><input class="input" value=${v.answer} onInput=${(e) => set({ answer: e.target.value })} /><//>
@@ -32,11 +32,11 @@ export function Settings({ admin }) {
           ${v.answer ? html`<p>${v.answer}</p>` : null}
         </figure>`} />
 
-      <${Section} admin=${admin} section="welcome" title="Welcome for new clients" value=${s.welcome} hint="Shown once on a client’s home page, the first time they sign in." render=${(v, set) => html`
+      <${Section} admin=${admin} section="welcome" title="Welcome for new clients" value=${s.welcome} hint="Shown once on a client’s home page, the first time they log in." render=${(v, set) => html`
         <${Field} label="Heading"><input class="input" value=${v.title} onInput=${(e) => set({ title: e.target.value })} /><//>
         <${Field} label="Text"><textarea class="textarea" rows="3" value=${v.text} onInput=${(e) => set({ text: e.target.value })}></textarea><//>`} />
 
-      <${Section} admin=${admin} section="announcement" title="Notice for everyone" value=${s.announcement} hint="A line at the top of every page, for everyone signed in. Leave it empty for none." render=${(v, set) => html`
+      <${Section} admin=${admin} section="announcement" title="Notice for everyone" value=${s.announcement} hint="A line at the top of every page, for everyone logged in. Leave it empty for none." render=${(v, set) => html`
         <${Field} label="Notice"><input class="input" value=${v.text} onInput=${(e) => set({ text: e.target.value })} placeholder="For example: We’re filming offshore until Friday; replies may be slower." /><//>
         <div class="seg" role="group" aria-label="Tone">${[["info", "Information"], ["warning", "Important"]].map(([k, l]) => html`<button type="button" key=${k} aria-pressed=${v.tone === k} onClick=${() => set({ tone: k })}>${l}</button>`)}</div>`} />
 
@@ -59,14 +59,29 @@ export function Settings({ admin }) {
 
       <${Section} admin=${admin} section="security" title="Security" value=${s.security} render=${(v, set) => html`
         <div class="capgrid">
-          <div class="cap"><${Toggle} checked=${v.staffTwoStep} onChange=${(x) => set({ staffTwoStep: x })} label="Require two-step sign-in for staff" />
-            <div><b>Staff must use two-step sign-in</b><span>Staff without it are asked to set it up before they can do anything. Turn it on for yourself first (your account page).</span></div></div>
-          <div class="cap"><${Toggle} checked=${v.signinLinks} onChange=${(x) => set({ signinLinks: x })} label="Emailed sign-in links" />
-            <div><b>“Email me a sign-in link”</b><span>Lets people sign in from a link in their inbox instead of typing a password. Needs email. Two-step sign-in still applies.</span></div></div>
+          <div class="cap"><${Toggle} checked=${v.staffTwoStep} onChange=${(x) => set({ staffTwoStep: x })} label="Require two-step verification for staff" />
+            <div><b>Staff must use two-step verification</b><span>Staff without it are asked to set it up before they can do anything. Turn it on for yourself first (your account page).</span></div></div>
+          <div class="cap"><${Toggle} checked=${v.signinLinks} onChange=${(x) => set({ signinLinks: x })} label="Emailed login links" />
+            <div><b>“Email me a login link”</b><span>Lets people log in from a link in their inbox instead of typing a password. Needs email. Two-step verification still applies.</span></div></div>
           <div class="cap"><${Toggle} checked=${v.clientTeams} onChange=${(x) => set({ clientTeams: x })} label="Clients manage their own team" />
             <div><b>Decision makers manage their team</b><span>They can invite colleagues, change their roles, and remove them. You’re told each time.</span></div></div>
         </div>
-        <${Field} label="Stay signed in for (days)" hint="1 to 30. After that, everyone signs in again."><input class="input" style=${{ maxWidth: "140px" }} type="number" min="1" max="30" value=${v.sessionDays} onInput=${(e) => set({ sessionDays: Number(e.target.value) || 1 })} /><//>`} />
+        <div class="formgrid">
+          <${Field} label="Who can create an account" hint=${d.email ? "From the login screen. They confirm their email first." : "Needs email (Studio → Connections): accounts are confirmed by an emailed link."}>
+            <select class="select" value=${v.signup} onChange=${(e) => set({ signup: e.target.value })}>
+              <option value="request">Anyone, and the studio lets them in</option>
+              <option value="off">Only people the studio invites</option>
+            </select>
+          <//>
+          <${Field} label="People at a client’s email domain join as" hint="Add a client’s domain in Studio → Clients. Everyone else waits for the studio.">
+            <select class="select" disabled=${v.signup === "off" || !v.domainJoin} value=${v.domainRole} onChange=${(e) => set({ domainRole: e.target.value })}>
+              ${d.roles.client.map((r) => html`<option key=${r.key} value=${r.key}>${r.label}</option>`)}
+            </select>
+          <//>
+        </div>
+        <div class="cap" style=${{ maxWidth: "720px" }}><${Toggle} checked=${v.domainJoin} disabled=${v.signup === "off"} onChange=${(x) => set({ domainJoin: x })} label="Join by email domain" />
+          <div><b>Let people at a client’s email domain straight in</b><span>Someone at @harborlabs.com joins Harbor Labs as soon as they confirm their email. The studio and the client’s decision makers are told.</span></div></div>
+        <${Field} label="Stay logged in for (days)" hint="1 to 30. After that, everyone logs in again."><input class="input" style=${{ maxWidth: "140px" }} type="number" min="1" max="30" value=${v.sessionDays} onInput=${(e) => set({ sessionDays: Number(e.target.value) || 1 })} /><//>`} />
 
       <${Section} admin=${admin} section="reminders" title="Review reminders" value=${s.reminders} hint="For projects with a “Review by” date and a version still waiting. Sent to the client’s decision makers by the daily job." render=${(v, set) => html`
         <div class="cap" style=${{ maxWidth: "720px" }}><${Toggle} checked=${v.enabled} onChange=${(x) => set({ enabled: x })} label="Send automatic reminders" />
@@ -136,8 +151,8 @@ export function Activity({ admin }) {
   };
   useEffect(() => { setRows(null); const t = setTimeout(() => load(), f.q ? 300 : 0); return () => clearTimeout(t); }, [f.kind, f.project, f.client, f.q]);
   return html`
-    <${Head} eyebrow="Studio" title="Activity" actions=${html`<a class="btn ghost" href=${"/api/admin?audit=csv&" + qs()} download>Export to a spreadsheet</a>`}>
-      Who did what, and when: sign-ins, views, downloads, approvals, changes in Studio. Kept for about 13 months.
+    <${Head} eyebrow="Studio" title="Activity" actions=${d.demo ? null : html`<a class="btn ghost" href=${"/api/admin?audit=csv&" + qs()} download>Export to a spreadsheet</a>`}>
+      Who did what, and when: logins, views, downloads, approvals, changes in Studio. Kept for about 13 months.
     <//>
     <div class="row filters" style=${{ marginBottom: "16px" }}>
       <div class="tabs">${KINDS.map(([k, l]) => html`<button key=${k} class="tab-btn" aria-pressed=${f.kind === k} onClick=${() => setF({ ...f, kind: k })}>${l}</button>`)}</div>

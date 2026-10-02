@@ -8,7 +8,7 @@
 import { sql } from "./_db.js";
 import { firstOf } from "./_connections.js";
 import { getSettings } from "./_settings.js";
-import { effectiveCaps } from "./_roles.js";
+import { effectiveCaps, can } from "./_roles.js";
 import { capsOf } from "./_caps.js";
 
 const ACTIVE_MINUTES = 3;
@@ -64,21 +64,24 @@ export function originOf(req) {
  * Tells people about something on a project.
  *   audience "staff": every staff member; "client": the project's client people.
  *   need: a capability the recipient must have on this project to care ("messages", "files", "review").
+ *   staffPerm: for staff, a permission they must have to act on it ("people.manage").
  *   path: where the button goes ("/review/<project>"), button: its label.
  */
-export async function notify({ audience, project, actor, subject, lines, origin, path = "/", button = "Open the portal", need = null }) {
+export async function notify({ audience, project, actor, subject, lines, origin, path = "/", button = "Open the portal", need = null, staffPerm = null }) {
   try {
     if (!(await emailReady())) return;
     const s = await getSettings();
     const people = audience === "staff"
-      ? await sql`select id, email, name, role, access, client_id, last_seen_at from users where role = 'admin' and notify_email and id <> ${actor ? actor.id : null}`
+      ? await sql`select id, email, name, role, access, client_id, last_seen_at from users where role = 'admin' and notify_email
+                  and id is distinct from ${actor ? actor.id : null}::uuid`
       : await sql`select id, email, name, role, access, client_id, last_seen_at from users where role = 'client' and client_id = ${project.client_id}
-                  and notify_email and id <> ${actor ? actor.id : null}`;
+                  and notify_email and id is distinct from ${actor ? actor.id : null}::uuid`;
     const caps = capsOf(project.capabilities);
     const recent = Date.now() - ACTIVE_MINUTES * 60 * 1000;
     const to = people.filter((u) => {
       if (u.last_seen_at && Date.parse(u.last_seen_at) > recent) return false;
       if (need && !effectiveCaps(u, caps, s)[need]) return false;
+      if (staffPerm && !can(u, staffPerm, s)) return false;
       return true;
     });
     if (!to.length) return;

@@ -11,8 +11,8 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 export const isUuid = (v) => typeof v === "string" && UUID_RE.test(v);
 
 /**
- * PORTAL_MODE=demo shows the public sample portal at / to anyone who isn't signed in (the sample is always at
- * /demo as well). It is an explicit server setting, never a fallback: with it unset, / asks everyone to sign in.
+ * PORTAL_MODE=demo shows the public sample portal at / to anyone who isn't logged in (the sample is always at
+ * /demo as well). It is an explicit server setting, never a fallback: with it unset, / asks everyone to log in.
  */
 export const DEMO_MODE = process.env.PORTAL_MODE === "demo";
 
@@ -57,7 +57,7 @@ export function rejectCrossOrigin(req, res) {
   return !ok;
 }
 
-/** How long a sign-in lasts, in seconds (Studio → Settings → Security, 1 to 30 days). */
+/** How long a login lasts, in seconds (Studio → Settings → Security, 1 to 30 days). */
 async function maxAge() {
   try {
     const d = Number((await getSettings()).security.sessionDays) || DEFAULT_DAYS;
@@ -157,7 +157,7 @@ export const publicUser = (u) => ({
   mustChangePassword: !!u.must_change_password, notifyEmail: u.notify_email !== false, twoStep: !!u.totp_enabled,
 });
 
-/** Staff who must use two-step sign-in (Studio → Settings → Security) but haven't turned it on yet. */
+/** Staff who must use two-step verification (Studio → Settings → Security) but haven't turned it on yet. */
 export async function needsTwoStepSetup(u) {
   if (!isStaff(u) || u.totp_enabled) return false;
   try { return !!(await getSettings()).security.staffTwoStep; } catch { return false; }
@@ -179,7 +179,7 @@ export async function requireUser(req, res, opts = {}) {
   }
   if (!u) {
     if (readCookie(req, COOKIE)) clearSessionCookie(res);
-    res.status(401).json({ error: "You’re signed out. Sign in again to continue." });
+    res.status(401).json({ error: "You’re logged out. Log in again to continue." });
     return null;
   }
   if (u.must_change_password && !opts.allowMustChange) {
@@ -187,7 +187,7 @@ export async function requireUser(req, res, opts = {}) {
     return null;
   }
   if (!opts.allowTwoStepSetup && (await needsTwoStepSetup(u))) {
-    res.status(403).json({ error: "Turn on two-step sign-in first (your account page).", needsTwoStep: true });
+    res.status(403).json({ error: "Turn on two-step verification first (your account page).", needsTwoStep: true });
     return null;
   }
   return u;

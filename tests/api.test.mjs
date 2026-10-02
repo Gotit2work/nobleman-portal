@@ -483,7 +483,7 @@ r = await anon.post("/api/session", { action: "requestLink", email: "nobody@nowh
 check("an unknown email gets the same answer (no account fishing)", r.s === 200 && /on its way/.test(r.d.message));
 m = await mails();
 const signinMail = m.slice(before).filter((x) => x.to[0] === "dana@harbor.test");
-check("exactly one email: to the real account, none to the unknown one", m.length - before === 1 && signinMail.length === 1 && /sign-in link/.test(signinMail[0].subject), J(m.slice(before).map((x) => [x.to[0], x.subject])));
+check("exactly one email: to the real account, none to the unknown one", m.length - before === 1 && signinMail.length === 1 && /login link/.test(signinMail[0].subject), J(m.slice(before).map((x) => [x.to[0], x.subject])));
 const dana2 = new Agent();
 r = await dana2.post("/api/session", { action: "redeem", token: linkIn(signinMail[0]), next: `/review/${HARBOR}` });
 check("the link signs them straight in and returns them to the page they asked for", r.s === 200 && r.d.user.email === "dana@harbor.test" && r.d.next === `/review/${HARBOR}` && !r.d.user.mustChangePassword, J(r.d));
@@ -624,6 +624,95 @@ r = await admin.admin("personDelete", { id: ROB });
 check("staff remove a person", r.s === 200);
 r = await rob.get("/api/portal");
 check("their session stops at once", r.s === 401);
+
+// ================= sign-up =================
+// Each request comes from its own address, so these don't share the link throttle with the tests above.
+let mb = 0;
+const IP = (n) => ({ "x-forwarded-for": "203.0.113." + n });
+const newcomer = new Agent();
+r = await newcomer.get("/api/session");
+check("the login screen offers sign-up when email works", r.d.signup === true, J(r.d));
+r = await newcomer.post("/api/session", { action: "signup", name: "Zoe Newman", email: "zoe@newco.test" }, IP(1));
+check("sign-up needs a company", r.s === 400 && /company/.test(r.d.error), J(r.d));
+mb = (await mails()).length;
+r = await newcomer.post("/api/session", { action: "signup", name: "Zoe Newman", email: "Zoe@NewCo.test", company: "Newco", note: "Launch film for March." }, IP(1));
+m = await mails();
+const zoeMail = m.slice(mb).find((x) => x.to[0] === "zoe@newco.test");
+check("sign-up emails a link to confirm the address, and nothing else happens yet", r.s === 200 && /Check your email/.test(r.d.message) && zoeMail && /Confirm your email/.test(zoeMail.subject) && !!linkIn(zoeMail), J([r.d, m.slice(mb).map((x) => x.subject)]));
+r = await admin.get("/api/admin");
+check("an unconfirmed sign-up isn't an account or a request yet", !r.d.people.some((p) => p.email === "zoe@newco.test") && !r.d.signups.some((x) => x.email === "zoe@newco.test"));
+const zoeLink = linkIn(zoeMail);
+r = await newcomer.post("/api/session", { action: "redeem", token: zoeLink });
+check("confirming puts them on the studio's list (no matching company)", r.s === 200 && r.d.signup === "waiting" && r.d.name === "Zoe Newman" && !newcomer.cookie, J(r.d));
+r = await newcomer.post("/api/session", { action: "redeem", token: zoeLink });
+check("the confirmation link works once", r.s === 400, J(r.d));
+mb = (await mails()).length;
+r = await newcomer.post("/api/session", { action: "signup", name: "Zoe Newman", email: "zoe@newco.test", company: "Newco" }, IP(2));
+check("signing up again while waiting doesn't send more email", r.s === 200 && (await mails()).length === mb, J(r.d));
+r = await admin.get("/api/admin");
+const zoeReq = r.d.signups.find((x) => x.email === "zoe@newco.test");
+check("Studio lists the request with their company and note", !!zoeReq && zoeReq.company === "Newco" && zoeReq.note === "Launch film for March." && zoeReq.match === null && !!zoeReq.confirmed, J(r.d.signups));
+r = await admin.get("/api/portal");
+check("staff home counts who's waiting", r.d.signups >= 1, r.d.signups);
+r = await eddie.admin("signupApprove", { id: zoeReq.id, clientName: "Newco", access: "approver" });
+check("an editor can't approve requests", r.s === 403);
+r = await eddie.get("/api/admin");
+check("…and doesn't see them", Array.isArray(r.d.signups) && r.d.signups.length === 0);
+mb = (await mails()).length;
+r = await pat.admin("signupApprove", { id: zoeReq.id, clientName: "Newco", access: "approver" });
+check("a producer approves them into a new client, and they're emailed an invitation", r.s === 200 && /\/link\//.test(r.d.inviteLink) && r.d.emailed === true && (await mails()).slice(mb).some((x) => x.to[0] === "zoe@newco.test" && /portal is ready/.test(x.subject)), J(r.d));
+r = await pat.admin("signupApprove", { id: zoeReq.id, clientName: "Newco" });
+check("a request can't be approved twice", r.s === 404);
+r = await admin.get("/api/admin");
+const zoeP = r.d.people.find((p) => p.email === "zoe@newco.test");
+check("…as a decision maker at Newco, waiting to choose a password", zoeP && zoeP.clientName === "Newco" && zoeP.access === "approver" && zoeP.invited && !r.d.signups.some((x) => x.id === zoeReq.id), J(zoeP));
+
+// Declined.
+mb = (await mails()).length;
+await newcomer.post("/api/session", { action: "signup", name: "Yan Other", email: "yan@other.test", company: "Other Co" }, IP(3));
+const yanLink = linkIn((await mails()).slice(mb).find((x) => x.to[0] === "yan@other.test"));
+await newcomer.post("/api/session", { action: "redeem", token: yanLink });
+r = await admin.get("/api/admin");
+const yanReq = r.d.signups.find((x) => x.email === "yan@other.test");
+mb = (await mails()).length;
+r = await admin.admin("signupDecline", { id: yanReq.id });
+check("declining tells them kindly, and no account is made", r.s === 200 && r.d.told === true && (await mails()).slice(mb).some((x) => x.to[0] === "yan@other.test" && /About your/.test(x.subject)) && !(await admin.get("/api/admin")).d.people.some((p) => p.email === "yan@other.test"));
+
+// Joining by email domain.
+r = await admin.admin("clientUpdate", { id: HARBOR_LABS, domains: "gmail.com" });
+check("a client can't claim a free email service's domain", r.s === 400 && /free email/.test(r.d.error), J(r.d));
+r = await admin.admin("clientUpdate", { id: HARBOR_LABS, domains: "not a domain" });
+check("…or something that isn't a domain", r.s === 400, J(r.d));
+r = await admin.admin("clientUpdate", { id: HARBOR_LABS, domains: "@Harbor.test, harbor.test" });
+check("a client lists its email domain", r.s === 200);
+r = await admin.get("/api/admin");
+check("…cleaned up and shown in Studio", J(r.d.clients.find((c) => c.id === HARBOR_LABS).domains) === J(["harbor.test"]), J(r.d.clients.find((c) => c.id === HARBOR_LABS).domains));
+r = await admin.admin("clientUpdate", { id: DESERT_MOTO, domains: "harbor.test" });
+check("two clients can't share a domain", r.s === 400 && /already belongs to Harbor Labs/.test(r.d.error), J(r.d));
+mb = (await mails()).length;
+const max = new Agent();
+await max.post("/api/session", { action: "signup", name: "Max Harbor", email: "max@harbor.test", company: "Harbor" }, IP(4));
+r = await max.post("/api/session", { action: "redeem", token: linkIn((await mails()).slice(mb).find((x) => x.to[0] === "max@harbor.test")) });
+check("someone at a client's domain joins it straight away, as a reviewer, and chooses a password next", r.s === 200 && r.d.user && r.d.user.clientName === "Harbor Labs" && r.d.user.access === "reviewer" && r.d.user.mustChangePassword === true && !!max.cookie, J(r.d));
+r = await max.post("/api/session", { action: "password", next: "max-own-password-1" });
+r = await max.get("/api/portal");
+check("…and then sees their company's projects, with a reviewer's limits", r.s === 200 && r.d.projects.some((p) => p.id === HARBOR) && r.d.projects.find((p) => p.id === HARBOR).caps.approve === false, J(r.d && r.d.projects.map((p) => [p.title, p.caps.approve])));
+r = await admin.get("/api/admin?audit=1&q=email domain");
+check("joining by domain is in the activity log", r.d.entries.some((e) => e.action === "signup.joined"), J(r.d.entries.map((e) => e.summary)));
+
+// Someone who already has an account.
+mb = (await mails()).length;
+r = await newcomer.post("/api/session", { action: "signup", name: "Dana", email: "dana@harbor.test", company: "Harbor Labs" }, IP(5));
+const danaMail = (await mails()).slice(mb).find((x) => x.to[0] === "dana@harbor.test");
+check("signing up with an existing account gets the same answer, and a way in by email", r.s === 200 && /Check your email/.test(r.d.message) && danaMail && /already have/.test(danaMail.subject) && !!linkIn(danaMail), J(r.d));
+
+// Switched off.
+r = await admin.admin("settingsSave", { section: "security", value: { signup: "off" } });
+r = await newcomer.get("/api/session");
+check("with sign-up off, the login screen doesn't offer it", r.d.signup === false);
+r = await newcomer.post("/api/session", { action: "signup", name: "Ann", email: "ann@x.test", company: "X" }, IP(6));
+check("…and the server refuses it", r.s === 403, J(r.d));
+await admin.admin("settingsSave", { section: "security", value: { signup: "request" } });
 
 // ================= security edges =================
 r = await admin.post("/api/admin", { action: "clientCreate", name: "Evil" }, { origin: "https://evil.example" });
