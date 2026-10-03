@@ -115,7 +115,7 @@ function readCookie(req, name) {
   for (const part of raw.split(";")) {
     const i = part.indexOf("=");
     if (i < 0) continue;
-    if (part.slice(0, i).trim() === name) return decodeURIComponent(part.slice(i + 1));
+    if (part.slice(0, i).trim() === name) { try { return decodeURIComponent(part.slice(i + 1)); } catch { return null; } }   // garbled: logged out, not an error
   }
   return null;
 }

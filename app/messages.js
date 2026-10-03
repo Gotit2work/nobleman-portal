@@ -9,18 +9,23 @@ export function Messages({ pid }) {
   const ps = data.projects.filter((p) => p.caps.messages);
   const [thread, setThread] = useState(null);
   const [err, setErr] = useState("");
-  const [text, setText] = useState("");
+  const [drafts, setDrafts] = useState({});   // one draft per project, so a half-written message never goes to the wrong one
   const [busy, setBusy] = useState(false);
   const [del, setDel] = useState(null);
   const end = useRef(null);
   const p = ps.find((x) => x.id === pid) || ps.find((x) => x.messages && x.messages.unread) || ps[0];
+  const text = (p && drafts[p.id]) || "";
+  const setText = (t) => setDrafts((d) => ({ ...d, [p.id]: t }));
+  const shown = useRef(null); shown.current = p && p.id;
 
   useEffect(() => {
     if (!p) return;
     if (demo) { setThread(p.thread || []); return; }
     setThread(null);
-    api("/api/portal?thread=" + p.id).then((d) => { setThread(d.messages); setErr(""); if (p.messages && p.messages.unread) reload(); })
-      .catch((e) => { setErr(e.message); setThread([]); });
+    let live = true;   // a slow answer for the project just left must not fill this one
+    api("/api/portal?thread=" + p.id).then((d) => { if (!live) return; setThread(d.messages); setErr(""); if (p.messages && p.messages.unread) reload(); })
+      .catch((e) => { if (live) { setErr(e.message); setThread([]); } });
+    return () => { live = false; };
   }, [p && p.id]);
   useEffect(() => { if (end.current && thread && thread.length) end.current.scrollIntoView({ block: "end" }); }, [thread && thread.length]);
 
@@ -36,7 +41,7 @@ export function Messages({ pid }) {
         say("", "your message appears here, but isn’t sent to anyone.");
       } else {
         const d = await api("/api/portal", { method: "POST", body: { action: "message", projectId: p.id, body } });
-        setThread((t) => t.concat([d.message]));
+        if (shown.current === p.id) setThread((t) => t.concat([d.message]));
         reload();
       }
       setText("");

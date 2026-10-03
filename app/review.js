@@ -21,7 +21,7 @@ export function Review({ pid, cut, n }) {
   }
   const waiting = (p) => p.cuts.some((c) => !c.versions[c.versions.length - 1].decision);
   const p = ps.find((x) => x.id === pid) || ps.find(waiting) || ps[0];
-  const key = cut ? decodeURIComponent(cut) : null;
+  const key = cut || null;   // already decoded by the router: decoding again broke titles with a "%" in them
   const c = p.cuts.find((x) => x.key === key) || p.cuts.find((x) => !x.versions[x.versions.length - 1].decision) || p.cuts[0];
   const latest = c.versions[c.versions.length - 1];
   const v = c.versions.find((x) => String(x.n) === String(n)) || latest;

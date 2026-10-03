@@ -773,6 +773,7 @@ table.small { font-size: 7.9pt; }
       <tr><td>A connection says Not working</td><td>Change → paste a fresh key → Test it.</td></tr>
       <tr><td>A payment stays Due after paying</td><td>Set up the webhook (12c) with the secret from the same mode as the key. The return and the daily job also catch it.</td></tr>
       <tr><td>Every connection stopped working</td><td><code>PORTAL_ENCRYPTION_KEY</code> changed: put the old value back, or re-enter each key.</td></tr>
+      <tr><td>“This screen stopped working”</td><td>A fault in that screen’s code; the rest of the portal works. Reload. If it comes back, note the address and what was clicked, and promote the previous deployment until it’s fixed.</td></tr>
     </table>
   </div>
   <div class="hd"><span><img src="../../assets/Nobleman_Mark_Black.png" alt="">Client portal manual</span><span>Going live</span></div>

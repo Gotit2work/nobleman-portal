@@ -134,7 +134,7 @@ function helpers(res) {
 
 http.createServer(async (req, res) => {
   const url = new URL(req.url, ORIGIN);
-  const p = decodeURIComponent(url.pathname);
+  let p; try { p = decodeURIComponent(url.pathname); } catch { p = url.pathname; }   // a stray "%" mustn't stop the server
   const chunks = []; for await (const c of req) chunks.push(c);
   const raw = Buffer.concat(chunks);
 

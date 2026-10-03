@@ -287,9 +287,12 @@ The data layer is plain Postgres. To move: create the Supabase project; copy the
 
 ```bash
 npm ci && (cd tests && npm ci)
-cd tests && npm test        # 309 API checks, then 141 browser checks (desktop and phone)
+cd tests && npm test        # 310 API checks, then 148 browser checks (desktop and phone)
 npm run shots               # screenshots of every screen in tests/.work/shots
+./run.sh && node crawl.mjs http://localhost:4401 demo-studio   # clicks every link and button, looking for screens that break
 ```
+
+`crawl.mjs` opens every page it can reach and presses every control once, then wanders without reloading, which is where a screen that keeps the last one's state breaks. It skips anything that deletes, sends, saves, or logs out. Run it after changing a screen, as the demo's two views (`demo-studio`, `demo-client`) and as seeded people in different roles (`node crawl.mjs http://localhost:4400 dana@harbor.test 1` for a client on a phone). It exits 1 and prints the page and the clicks that led there if anything broke.
 
 Chromium: set `CHROMIUM_PATH`, or run `npx playwright install chromium` once (Claude Code's cloud containers already have it). Seeded accounts, all with the password `portal-test-pass`: staff `alexis@gotit2work.com` (owner), `pat@studio.test` (producer), `eddie@studio.test` (editor); Harbor Labs `dana@harbor.test` (decision maker), `rae@harbor.test` (reviewer), `vic@harbor.test` (viewer); Desert Moto `rob@moto.test` (decision maker).
 

@@ -907,6 +907,13 @@ m = await mails();
 check("emails go to the right people and never to whoever acted", m.every((x) => !(x.to[0] === "dana@harbor.test" && /Dana Whitfield (left|approved|asked)/.test(x.subject))), J(m.map((x) => [x.to[0], x.subject])));
 check("every email carries the studio's name and a button to the right page", m.every((x) => x.html.includes("Nobleman Productions")) && m.filter((x) => /left a note/.test(x.subject)).every((x) => x.html.includes("/review/")));
 
+// ================= a garbled session cookie =================
+{
+  const g = await fetch(B + "/api/session", { headers: { cookie: "np_session=%E0%A4%A" } });
+  const d = await g.json().catch(() => ({}));
+  check("a garbled session cookie reads as logged out, not a server error", g.status === 200 && !d.user, g.status);
+}
+
 // ================= first-run setup =================
 const f = new Agent(FRESH);
 r = await f.get("/api/session");
