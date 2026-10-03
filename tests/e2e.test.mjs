@@ -226,9 +226,11 @@ const dana = await newPage();
   check("the same link doesn't work twice", await waitText(again, "That link didn’t work"));
   await again.context().close();
 
-  await page.getByRole("button", { name: "What roles can do" }).click();
-  check("the roles table shows every role", await waitText(page, "Decision maker") && await waitText(page, "Producer"));
+  await page.getByRole("link", { name: "What roles can do" }).click();
+  check("the roles table shows every role, at its own address", await waitText(page, "Decision maker") && await waitText(page, "Producer") && new URL(page.url()).pathname === "/studio/people/roles");
   check("owners always keep every permission", await page.getByRole("checkbox", { name: "Change settings and roles: owner" }).isDisabled());
+  await tab(page, "People").click();
+  check("…and the People tab goes back to the list of people", await page.getByRole("heading", { name: "People", exact: true }).waitFor().then(() => true, () => false) && await visible(page.getByRole("link", { name: "What roles can do" })));
 
   await tab(page, "Connections").click();
   await page.getByRole("button", { name: "Add a connection" }).click();
@@ -275,6 +277,18 @@ const dana = await newPage();
   await law.getByRole("button", { name: "Camera at night" }).click();
   await law.getByRole("button", { name: "Save", exact: true }).click();
   await waitText(page, "Saved.");
+
+  // Every section after every other, without reloading. A section once showed the last one's values for a moment,
+  // and Project stages crashed on them, blanking the whole portal.
+  const keys = await page.locator(".setrow").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
+  const errs = pageErrors.length;
+  let opened = 0;
+  for (const href of [...keys, ...keys.slice().reverse()]) {
+    if (!(await page.locator(`.setrow[href="${href}"]`).click({ timeout: 4000 }).then(() => true, () => false))) break;   // the portal went blank
+    if (await page.waitForFunction((h) => location.pathname === h && document.querySelector(".setpane section.setcard"), href, { timeout: 4000 }).then(() => true, () => false)) opened++;
+  }
+  check("every settings section opens after any other, without reloading", opened === keys.length * 2 && pageErrors.length === errs, pageErrors.slice(errs).join("; "));
+  if (opened < keys.length * 2) await page.goto(B + "/studio/settings");
 
   await tab(page, "Activity").click();
   check("the activity log shows what clients did", await waitText(page, /Approved Harbor Spot/i) && await waitText(page, /Created a share link/));
@@ -481,6 +495,18 @@ const PHONE = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch:
   await page.goto(DEMO + "/");
   await waitText(page, "Your projects");
   check("Home: each project card shows one flag at most", (await page.locator(".pcard").evaluateAll((cs) => cs.map((c) => c.querySelectorAll(".pill").length))).every((n) => n <= 1));
+  await page.goto(DEMO + "/messages/demo-meridian");
+  const box = page.getByRole("textbox", { name: /^Message to/ });
+  await box.fill("Draft for Meridian");
+  await page.locator(".tabs").getByRole("link", { name: /Social Content Package/ }).click();
+  const empty = await page.waitForURL(/demo-social$/).then(async () => (await box.inputValue()) === "", () => false);
+  await page.locator(".tabs").getByRole("link", { name: /Meridian Campaign/ }).click();
+  check("Messages: a half-written message stays with its own project", empty && await page.waitForURL(/demo-meridian$/).then(async () => (await box.inputValue()) === "Draft for Meridian", () => false));
+  // Addresses are decoded once: a film title with a "%" in it, and a mistyped address, must still open.
+  await page.goto(DEMO + "/review/demo-meridian/" + encodeURIComponent("spring sale 20% off") + "/1");
+  check("Review opens for a film whose title has a % in it", await waitText(page, "Campaign Film"));
+  await page.goto(DEMO + "/review/%E0%A4%A");
+  check("…and a mistyped address with a stray % still opens the portal", await waitText(page, "Campaign Film"));
   await page.goto(DEMO + "/account");
   const pwHidden = !(await page.locator('input[autocomplete="current-password"]').count());
   await page.getByRole("button", { name: "Change my password" }).click();
@@ -498,6 +524,20 @@ const PHONE = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch:
   await page.route("**/app/films.js", (r) => r.abort());
   await page.goto(DEMO + "/");
   check("if a portal file doesn't arrive, the page says so and offers a reload", await waitText(page, /didn’t finish loading/) && await visible(page.getByRole("button", { name: "Reload the page" })));
+  await page.context().close();
+}
+{
+  // A fault in one screen's code: that screen says so in plain words, and the rest of the portal keeps working.
+  const page = await newPage();
+  await page.route("**/app/payments.js", async (r) => {
+    const res = await r.fetch();
+    r.fulfill({ response: res, body: (await res.text()).replace("export function Payments({ pid }) {", "$& throw new Error(\"test fault\");") });
+  });
+  await page.goto(DEMO + "/payments/demo-meridian");
+  check("a screen that breaks says so, not 'weak connection', and offers a reload", await waitText(page, "This screen stopped working.") && await waitText(page, "not your connection") && await visible(page.getByRole("button", { name: "Reload the page" })) && !(await page.getByText(/didn’t finish loading/).count()));
+  await nav(page, "Home").click();
+  check("…while the navigation still works, and the next screen opens fresh", await waitText(page, hello("Jonathan")) && !(await page.getByText("This screen stopped working.").count()));
+  for (let i = pageErrors.length - 1; i >= 0; i--) if (pageErrors[i] === "test fault") pageErrors.splice(i, 1);   // the planted fault, not a real one
   await page.context().close();
 }
 

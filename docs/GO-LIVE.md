@@ -222,6 +222,7 @@ On a phone and a laptop, as a test client:
 | Stripe says "Invalid API Key" | A test key with live mode, a publishable key (`pk_…`), or a typo | Use the **secret** key (`sk_…`) from the mode you're in |
 | Everyone was logged out | `SESSION_SECRET` changed | Expected. Don't change it again. |
 | Every connection stopped working | `PORTAL_ENCRYPTION_KEY` changed | Put the old value back from the password manager, or re-enter each key |
+| "This screen stopped working." | A fault in that screen's code (not the connection); the rest of the portal keeps working | Reload. If it comes back, note the address and what was clicked, and promote the previous deployment (below) until it's fixed |
 
 ## Rolling back
 

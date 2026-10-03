@@ -185,7 +185,7 @@ export function People({ admin, view }) {
   const { run, busy } = useRun(admin);
   const query = new URLSearchParams(location.search);
   const clientId = query.get("client") || "";
-  const [roles, setRoles] = useState(view === "roles");
+  const roles = view === "roles";   // /studio/people/roles: from the address, so the tab and Back always agree with it
   const [filter, setFilter] = useState(clientId ? "client" : "all");
   const [q, setQ] = useState(() => (d.clients.find((c) => c.id === clientId) || {}).name || "");
   const [form, setForm] = useState(null);
@@ -213,8 +213,8 @@ export function People({ admin, view }) {
     delete: (p) => [`Remove ${p.name}?`, "Remove them", "Their login stops working at once. Their notes and messages stay, under their name."],
   };
   return html`
-    <${Head} eyebrow="Studio" title=${roles ? "What roles can do" : "People"} actions=${roles ? html`<button class="btn ghost" onClick=${() => setRoles(false)}>← Everyone</button>` : html`
-      <button class="btn ghost" onClick=${() => setRoles(true)}>What roles can do</button>
+    <${Head} eyebrow="Studio" title=${roles ? "What roles can do" : "People"} actions=${roles ? html`<${Link} to="/studio/people" cls="btn ghost">← Everyone<//>` : html`
+      <${Link} to="/studio/people/roles" cls="btn ghost">What roles can do<//>
       ${admin.can("people.manage") || admin.can("staff.manage") ? html`<button class="btn primary" onClick=${() => setForm({ defaults: { clientId } })}>Invite a person</button>` : null}`}>
       ${roles ? "What staff and client people may do. A project’s own switches come first." : "Everyone with a login. New people get a link to choose their own password."}
     <//>

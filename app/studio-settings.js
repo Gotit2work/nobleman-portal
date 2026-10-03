@@ -128,7 +128,7 @@ export function Settings({ admin, section }) {
       <//>`)}</nav>
       <div class="setpane">
         <${Link} to="/studio/settings" cls="setback">‹ Settings<//>
-        ${pane()}
+        <div key=${cur}>${pane()}</div>
       </div>
     </div>
   `;
@@ -202,10 +202,11 @@ async function shrink(file) {
   } finally { URL.revokeObjectURL(src); }
 }
 
-/** One settings section with its own Save, Discard, and Reset. */
 /** Studio details as the form edits them: addresses left automatic show as empty, with the automatic one shown. */
 const brandForm = (b) => ({ studio: b.studio, support: b.support, portal: b.portal, website: b.auto && b.auto.website ? "" : b.website, privacy: b.auto && b.auto.privacy ? "" : b.privacy, replies: b.replies });
 
+/** One settings section with its own Save, Discard, and Reset. Settings remounts it for each section (key=${cur}):
+ *  a reused one would show the last section's values for a moment, and the stages list crashed on them. */
 function Section({ admin, section, title, hint, value, render, array }) {
   const { run, busy } = useRun(admin);
   const [v, setV] = useState(value);

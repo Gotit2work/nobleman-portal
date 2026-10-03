@@ -15,10 +15,41 @@ import { Payments } from "./payments.js";
 
 const R = window.React;
 
-/** Splits /review/<project>/<cut>/<n> into ["review", project, cut, n] (relative to the base). */
+/** When a screen breaks (a fault in the portal's code), say so plainly instead of leaving a blank page. In the shell
+ *  it replaces just that screen, so the navigation still works, and going to another address clears it (`at`).
+ *  It isn't keyed by the address: that would rebuild every screen on every click. Around the whole app it's the
+ *  last resort. */
+class Broke extends R.Component {
+  constructor(props) { super(props); this.state = { err: null, at: props.at }; }
+  static getDerivedStateFromError(err) { return { err }; }
+  static getDerivedStateFromProps(props, state) { return props.at !== state.at ? { err: null, at: props.at } : null; }
+  componentDidCatch(err, info) { console.error("Portal screen error:", err, info && info.componentStack); }
+  render() {
+    if (!this.state.err) return this.props.children;
+    const { support = "alexis@gotit2work.com", atHome, whole } = this.props;
+    const words = html`<p style=${{ margin: 0, lineHeight: 1.55, maxWidth: "440px" }}>That’s a fault in the portal, not your connection. Reload the page to try again${whole || atHome ? "" : ", or go to Home"}.</p>`;
+    const mail = html`<p class="small" style=${{ margin: 0, opacity: 0.75 }}>If it happens again, email <a href=${"mailto:" + support} style=${{ color: "inherit" }}>${support}</a> and say what you clicked.</p>`;
+    if (whole) return html`<div role="alert" style=${{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "18px", padding: "32px", textAlign: "center", color: "#f4f4f2", background: "#031e25" }}>
+      <img src="/assets/Nobleman_Mark_White.png" alt="" style=${{ height: "44px" }} />
+      <h1 class="h3" style=${{ margin: 0 }}>The portal stopped working.</h1>${words}
+      <button class="btn primary" onClick=${() => location.reload()}>Reload the page</button>${mail}
+    </div>`;
+    return html`<div class="page"><div class="empty" role="alert">
+      <h3>This screen stopped working.</h3>${words}
+      <div class="row" style=${{ justifyContent: "center" }}>
+        <button class="btn primary" onClick=${() => location.reload()}>Reload the page</button>
+        ${atHome ? null : html`<${Link} to="/" cls="btn ghost">Go to Home<//>`}
+      </div>${mail}
+    </div></div>`;
+  }
+}
+
+/** Splits /review/<project>/<cut>/<n> into ["review", project, cut, n] (relative to the base), decoded once here and
+ *  nowhere else. A mistyped address (a stray "%") stays as typed instead of throwing. */
+const decode = (s) => { try { return decodeURIComponent(s); } catch { return s; } };
 function routeOf(path, base) {
   const p = base && path.startsWith(base) ? path.slice(base.length) : path;
-  return p.split("/").filter(Boolean).map(decodeURIComponent);
+  return p.split("/").filter(Boolean).map(decode);
 }
 
 /** An old address sends people on to the portal's address (Studio → Settings → Studio details), the same page,
@@ -270,7 +301,7 @@ function Shell({ route, more, setMore }) {
     ${demo ? html`<${DemoRibbon} />` : null}
 
     ${data.announcement ? html`<div class=${"announce " + (data.announcement.tone === "warning" ? "warn" : "")} role="status">${data.announcement.text}</div>` : null}
-    <main id="main">${screen}</main>
+    <main id="main"><${Broke} at=${route.join("/")} atHome=${!top} support=${data.brand && data.brand.support}>${screen}<//></main>
 
     <nav class="bottombar" aria-label="Main">
       ${mobileItems.map((it) => html`<${Link} key=${it.key} to=${"/" + it.key} cls="tab" current=${isNavTop && it.key === (items[activeIdx] || {}).key}>
@@ -347,4 +378,4 @@ function Help({ onClose }) {
   <//>`;
 }
 
-window.ReactDOM.createRoot(document.getElementById("root")).render(html`<${App} />`);
+window.ReactDOM.createRoot(document.getElementById("root")).render(html`<${Broke} whole><${App} /><//>`);
