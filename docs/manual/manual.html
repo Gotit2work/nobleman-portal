@@ -245,7 +245,7 @@ table.small { font-size: 7.9pt; }
         <h3>Run without code</h3>
         <p>Wording, photos, stages, roles, connections, switches, and the portal’s address are settings in Studio. Code changes only add or remove what the portal can do.</p>
       </div>
-      <figure><img src="img/login.jpg" alt=""><figcaption>The login: one door, a short form, and the studio’s Murphy’s Law. The photo is chosen in Settings.</figcaption></figure>
+      <figure><img src="img/login.jpg" alt=""><figcaption>The login: one door and a short form. The photo is chosen in Settings.</figcaption></figure>
     </div>
     <h3 style="margin-top:2px">How a project moves</h3>
     <div class="flow">
@@ -604,7 +604,7 @@ table.small { font-size: 7.9pt; }
         <table>
           <tr><td>System check</td><td>Everything the portal needs, with what to do about anything that isn’t right.</td></tr>
           <tr><td>Studio details</td><td>Name, help email, the portal’s address (the website and privacy page follow it), the line above Messages.</td></tr>
-          <tr><td>Login screen</td><td>The photo (one of the studio’s or an upload), which side stays in view, and the Murphy’s Law.</td></tr>
+          <tr><td>Login screen</td><td>The photo (one of the studio’s or an upload) and which side stays in view.</td></tr>
           <tr><td>Notice for everyone</td><td>One line at the top of every page.</td></tr>
           <tr><td>Project stages</td><td>Names, order, and the progress each shows.</td></tr>
           <tr><td>New projects start with</td><td>The default switches.</td></tr>
@@ -900,7 +900,7 @@ table.small { font-size: 7.9pt; }
     <h3>If something goes wrong</h3>
     <table>
       <tr><th style="width:34%">What you see</th><th>What to do</th></tr>
-      <tr><td>“The portal is still being set up”</td><td>No database: step 1, then redeploy.</td></tr>
+      <tr><td>Log in says “The portal isn’t open yet.”</td><td>No database: step 1, then redeploy.</td></tr>
       <tr><td>“The portal isn’t open for new accounts yet”</td><td>Before there’s an owner, only Jean’s two addresses can create one.</td></tr>
       <tr><td>“The portal can’t send email yet…”</td><td>No email key: step 4, then redeploy.</td></tr>
       <tr><td>A connection says Not working</td><td>Change → paste a fresh key → Test it.</td></tr>
@@ -1040,8 +1040,8 @@ table.small { font-size: 7.9pt; }
       <div class="card"><h3>Offboard a client</h3>
         <ol class="steps small"><li>Studio → Clients → <b>Export data</b>; keep the file.</li><li>Archive each project (hidden, can be undone), or delete it.</li><li>Remove their people, or delete the client (its projects and files go too).</li></ol>
         <p class="small muted">Done when their people can’t log in and the export is filed.</p></div>
-      <div class="card"><h3>Change the login photo or words</h3>
-        <ol class="steps small"><li>Studio → Settings → <b>Login screen</b>.</li><li>Choose a photo (or <b>Upload a photo</b>) and the side that stays in view; edit the Murphy’s Law.<span class="see">You’ll see: the preview change as you go.</span></li><li><b>Save</b>.</li></ol>
+      <div class="card"><h3>Change the login photo</h3>
+        <ol class="steps small"><li>Studio → Settings → <b>Login screen</b>.</li><li>Choose a photo (or <b>Upload a photo</b>) and the side that stays in view.<span class="see">You’ll see: the preview change as you go.</span></li><li><b>Save</b>.</li></ol>
         <p class="small muted">Done when a private window shows the new login.</p></div>
       <div class="card"><h3>The weekly check</h3>
         <ol class="steps small"><li>Studio → Settings → <b>System check</b>.<span class="see">You’ll see: every row green, or what to do for the others.</span></li><li>Home → <b>Waiting on clients</b>: send a reminder for anything late.</li><li>Studio → Activity, if something looks odd.</li></ol>
@@ -1091,7 +1091,7 @@ table.small { font-size: 7.9pt; }
       <tr><td>Every connection stopped at once</td><td><code>PORTAL_ENCRYPTION_KEY</code> changed in Vercel: put the old value back, or re-enter each key.</td></tr>
       <tr><td>A Frame.io comment isn’t in the portal</td><td>Open that version’s notes: the portal reads Frame.io each time. To get them straight away, Connections → Frame.io → live updates on.</td></tr>
       <tr><td>Notion stopped updating</td><td>Connections → Notion → <b>Sync now</b>; if that fails, <b>Test it</b> and check the database is still shared with the connection.</td></tr>
-      <tr><td>“The portal is still being set up”</td><td>No database yet: chapter 7, step 1, then redeploy.</td></tr>
+      <tr><td>Log in says “The portal isn’t open yet.”</td><td>No database yet: chapter 7, step 1, then redeploy.</td></tr>
       <tr><td>“The portal isn’t open for new accounts yet”</td><td>No owner yet: only Jean’s two addresses can create the first account (chapter 7, step 6).</td></tr>
       <tr><td>Someone lands on an old address</td><td>That’s fine: the portal sends them on to its address once that answers. System check → Portal address shows which one leads.</td></tr>
       <tr><td>A button seems to do nothing</td><td>Look for the message at the bottom of the screen. In the sample project (Client’s view), nothing is saved: it says so.</td></tr>

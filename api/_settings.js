@@ -26,11 +26,8 @@ export const DEFAULTS = {
     // The line above Messages for clients: who they're writing to, and when to expect a reply.
     replies: "Write to Jean and Justin about this project. They usually reply the same business day.",
   },
-  // The Murphy's Law on the login screen (docs/WRITING.md, "Voice").
+  // The login screen's photo.
   signin: {
-    kicker: "Murphy’s Law, review edition",
-    quote: "The one frame nobody checked is the one everyone sees.",
-    answer: "So every version comes here first, for you to check before it’s final.",
     image: "/media/login-camera.jpg", // one of the portal's photos, or "upload:brand/login-<id>.jpg" (LOGIN_UPLOAD)
     focus: "right",                    // which side of the photo stays in view: left | center | right
   },
