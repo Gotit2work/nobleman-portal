@@ -71,7 +71,7 @@ async function as(email, path = "/", opts) {
   await page.locator('input[name="code"]').fill("setup-code-123");
   await page.getByRole("button", { name: "Create the owner account" }).click();
   check("the right code creates the owner and opens the portal", await waitText(page, hello("Sam")));
-  check("a new owner's first Home starts the studio tutorial, at the setup checklist (no projects yet: 2 steps)", /1 of 2/i.test(await tourCard(page)) && await page.evaluate(() => { const r = document.querySelector(".tour-ring").getBoundingClientRect(), el = document.querySelector('[data-tour="next"]'), s = el.getBoundingClientRect(); return Math.abs(r.top - (s.top - 8)) < 3 && el.classList.contains("setup"); }));
+  check("a new owner's first Home starts the studio tutorial, at the setup checklist (no projects yet: 2 steps)", /1 of 2/i.test(await tourCard(page)) && await page.locator(".tour-ring").waitFor().then(() => true, () => false) && await page.evaluate(() => { const r = document.querySelector(".tour-ring").getBoundingClientRect(), el = document.querySelector('[data-tour="next"]'), s = el.getBoundingClientRect(); return Math.abs(r.top - (s.top - 8)) < 3 && el.classList.contains("setup"); }));
   await page.getByRole("button", { name: "Skip tutorial" }).click();
   check("…and Skip tutorial ends it, saying where it is", await waitText(page, "Tutorial skipped.") && await stepIs(page, null) && !(await page.locator(".tour-veil").count()));
   check("a new, empty portal greets its owner with a Getting started checklist", await waitText(page, /Set up the portal: \d of 6 done\./) && (await page.locator(".setup .step").count()) === 9 && await visible(page.locator(".setup .step", { hasText: "Add your first client" })));
@@ -114,7 +114,7 @@ const dana = await newPage();
   await page.locator('[data-tour="next"] a.btn').click({ timeout: 4000 });
   check("pressing the pulsing button opens it, and the tutorial moves on there", await stepIs(page, "2 of 3") && await waitText(page, "Leave a note") && new URL(page.url()).pathname.startsWith("/review/"));
   await page.waitForTimeout(300);
-  check("…to the note box", await page.evaluate(() => { const r = document.querySelector(".tour-ring").getBoundingClientRect(), s = document.querySelector('[data-tour="note"]').getBoundingClientRect(); return Math.abs(r.left - (s.left - 8)) < 3 && Math.abs(r.width - (s.width + 16)) < 3; }));
+  check("…to the note box", await page.locator(".tour-ring").waitFor().then(() => true, () => false) && await page.evaluate(() => { const r = document.querySelector(".tour-ring").getBoundingClientRect(), s = document.querySelector('[data-tour="note"]').getBoundingClientRect(); return Math.abs(r.left - (s.left - 8)) < 3 && Math.abs(r.width - (s.width + 16)) < 3; }));
   await page.getByRole("button", { name: "Next", exact: true }).click();
   check("…then to Approve", await stepIs(page, "3 of 3") && await waitText(page, "Happy with it? Approve."));
   await page.waitForTimeout(300);
@@ -211,6 +211,7 @@ const dana = await newPage();
   check("staff Home shows what needs the studio and what waits on clients", await waitText(page, "Needs the studio") && await waitText(page, "Waiting on clients"));
   const seen = [];
   for (let k = 1; k <= 5 && (await stepIs(page, `${k} of 5`)); k++) {
+    await page.locator(".tour-ring").waitFor({ timeout: 9000 }).catch(() => {});   // as a person would: read while the spot appears
     await page.waitForTimeout(250);
     seen.push(`${(await page.locator(".tour-title").innerText())}@${new URL(page.url()).pathname.replace(/[0-9a-f-]{36}/, "id")}`);
     await page.locator(".tour-card .btn.primary").click();
@@ -418,7 +419,7 @@ const dana = await newPage();
   await create.click();
   check("the client creates a login and lands on Home with the project, already let in, and the tutorial starts", await nia.waitForURL(B + "/").then(() => true, () => false) && await waitText(nia, "Harbor Launch Film") && /1 of 2/i.test(await tourCard(nia)));
   await nia.locator(".tour-card .btn.primary").click();
-  check("…with nothing to review yet, it shows where versions will appear: Review", await stepIs(nia, "2 of 2") && await waitText(nia, "Each new version shows up here.") && await nia.evaluate(() => { const r = document.querySelector(".tour-ring").getBoundingClientRect(), n = [...document.querySelectorAll('[data-tour="nav-review"]')].find((e) => e.getBoundingClientRect().width).getBoundingClientRect(); return Math.abs(r.left - (n.left - 8)) < 3; }));
+  check("…with nothing to review yet, it shows where versions will appear: Review", await stepIs(nia, "2 of 2") && await waitText(nia, "Each new version shows up here.") && await nia.locator(".tour-ring").waitFor().then(() => true, () => false) && await nia.evaluate(() => { const r = document.querySelector(".tour-ring").getBoundingClientRect(), n = [...document.querySelectorAll('[data-tour="nav-review"]')].find((e) => e.getBoundingClientRect().width).getBoundingClientRect(); return Math.abs(r.left - (n.left - 8)) < 3; }));
   await nia.keyboard.press("Escape");
   await nia.goto(B + "/");
   check("…and sees only that project, nothing else of the company's", await waitText(nia, "Harbor Launch Film") && !(await nia.getByText("Harbor Summit").count()));
