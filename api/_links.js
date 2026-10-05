@@ -104,6 +104,8 @@ export const LIMITS = {
   password: { email: 8, ip: 30, minutes: 15 },
   code: { email: 6, ip: 30, minutes: 15 },
   link: { email: 5, ip: 20, minutes: 60 },
+  // Logins created with a project's link: a few per email, and enough per IP for a team sharing one office.
+  join: { email: 5, ip: 25, minutes: 60 },
 };
 
 /** True when this email or IP has hit the limit for this kind of attempt. */

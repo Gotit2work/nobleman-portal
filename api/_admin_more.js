@@ -16,6 +16,7 @@ import { stripeConnection, liveMode, currencyOf, parseAmount, money, expire } fr
 import { audit } from "./_audit.js";
 import { later } from "./_later.js";
 import { SCHEMA_VERSION } from "./_schema.js";
+import { setLive } from "./_fio_sync.js";
 
 const iso = (d) => (d ? new Date(d).toISOString() : null);
 const csvCell = (v) => { const s = String(v ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
@@ -399,9 +400,30 @@ export const MORE_ACTIONS = {
     if (used && !b.force) return res.status(409).json({ error: `${used} project${used === 1 ? " plays" : "s play"} from this connection. Removing it leaves ${used === 1 ? "it" : "them"} without videos until you choose another source.`, inUse: used });
     if (used) await sql`update projects set source_conn = null, source_ref = null where source_conn = ${conn.id}`;
     if (conn.provider === "notion" && s.notion.connectionId === conn.id) await saveSection("notion", DEFAULTS.notion);
+    if (conn.provider === "frameio" && conn.creds.webhooks && Object.keys(conn.creds.webhooks).length) await setLive(conn, false, "").catch(() => {});
     await deleteConnection(conn.id);
     await audit(req, u, "connection.remove", `Removed the ${PROVIDERS[conn.provider].meta.name} connection (${conn.name})${used ? `; ${used} project(s) now have no video source` : ""}`);
     return res.status(200).json({ ok: true });
+  },
+
+  /**
+   * Frame.io live updates on or off: a webhook in each workspace of the connected account, so new comments and
+   * versions reach the portal (and the client's email) straight away instead of when someone next opens them.
+   */
+  async frameioLive(req, res, u, b, s, deny) {
+    if (deny("connections.manage")) return;
+    const conn = await getConnection(b.id);
+    if (!conn || conn.provider !== "frameio") return res.status(404).json({ error: "That Frame.io connection was removed." });
+    const url = `${originOf(req)}/api/connect?webhook=frameio&c=${conn.id}`;
+    if (b.on && !/^https:\/\//.test(url) && !/^http:\/\/localhost(:\d+)?\//.test(url)) return res.status(409).json({ error: "Live updates need the portal’s public https address." });
+    try {
+      const n = await setLive(conn, !!b.on, url);
+      await audit(req, u, "connection.live", b.on ? `Turned on Frame.io live updates (${n} workspace${n === 1 ? "" : "s"})` : "Turned off Frame.io live updates");
+      return res.status(200).json({ on: !!b.on && n > 0, workspaces: n });
+    } catch (err) {
+      console.error("frame.io live updates failed", err.message);
+      return res.status(502).json({ error: `Frame.io didn’t accept it: ${err.message.slice(0, 200)}` });
+    }
   },
 
   /** Clears every cached listing, so the next page load reads straight from the sources. */

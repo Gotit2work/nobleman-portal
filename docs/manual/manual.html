@@ -178,8 +178,8 @@ table.small { font-size: 7.9pt; }
       <a href="#ch1"><i>01</i><span><b>The portal at a glance</b><span class="d">What it is, how a project moves, and the words this manual uses.</span></span><span class="pn" data-toc="ch1"></span></a>
       <a href="#ch2"><i>02</i><span><b>What clients see</b><span class="d">Home, Review, Films, Files, Messages, Payments, and their account.</span></span><span class="pn" data-toc="ch2"></span></a>
       <a href="#ch3"><i>03</i><span><b>Roles and switches</b><span class="d">Who can do what, and what each project allows.</span></span><span class="pn" data-toc="ch3"></span></a>
-      <a href="#ch4"><i>04</i><span><b>Running the studio</b><span class="d">Studio: projects, clients, people, settings, and the activity log.</span></span><span class="pn" data-toc="ch4"></span></a>
-      <a href="#ch5"><i>05</i><span><b>Connections</b><span class="d">Vimeo and other video sources, Notion, email, file storage, Stripe.</span></span><span class="pn" data-toc="ch5"></span></a>
+      <a href="#ch4"><i>04</i><span><b>Running the studio</b><span class="d">Studio: projects and their client links, people, settings, and the activity log.</span></span><span class="pn" data-toc="ch4"></span></a>
+      <a href="#ch5"><i>05</i><span><b>Connections</b><span class="d">Video sources, Frame.io notes both ways, Notion, email, file storage, Stripe.</span></span><span class="pn" data-toc="ch5"></span></a>
       <a href="#ch6"><i>06</i><span><b>Payments</b><span class="d">Asking, paying, and how a payment is marked paid.</span></span><span class="pn" data-toc="ch6"></span></a>
       <a href="#ch7"><i>07</i><span><b>Going live</b><span class="d">From the sample to the real portal, step by step.</span></span><span class="pn" data-toc="ch7"></span></a>
       <a href="#ch8"><i>08</i><span><b>Moving to noblemanproductions.com</b><span class="d">The studio’s own domain, without breaking a link or the email.</span></span><span class="pn" data-toc="ch8"></span></a>
@@ -200,7 +200,7 @@ table.small { font-size: 7.9pt; }
     <p class="lede">Nobody reads a manual first, and the portal is built for that: every screen says what it’s for and what to do next. These three cards are all most people ever need.</p>
     <div class="quick">
       <div class="card"><h3>If you’re a client</h3>
-        <ol class="steps"><li>Open the email from the studio.</li><li>Press its button. You land on the right page.</li><li>Watch, pause to leave a note, then <span class="ui">Approve</span> or <span class="ui">Ask for changes</span>.</li></ol>
+        <ol class="steps"><li>Open the studio’s email, or the project link you were sent.</li><li>Press its button (a project link first asks for your name, email, and a password). You land on the right page.</li><li>Watch, pause to leave a note, then <span class="ui">Approve</span> or <span class="ui">Ask for changes</span>.</li></ol>
         <span class="see">That’s it. Home always shows your one next step.</span></div>
       <div class="card"><h3>If you’re the studio</h3>
         <ol class="steps"><li>Open the portal’s Home each morning.</li><li>Work down <b>Needs the studio</b>, top to bottom.</li><li>Glance at <b>Waiting on clients</b>; send a reminder if one is late.</li></ol>
@@ -239,7 +239,7 @@ table.small { font-size: 7.9pt; }
     <div class="cols">
       <div class="stack">
         <h3>One door for everyone</h3>
-        <p>Clients, staff, and owners log in at the same page. Clients then see their own company’s projects; staff also see <span class="ui">Studio</span>. Nobody picks a “client login” or a “staff login”.</p>
+        <p>Clients, staff, and owners log in at the same page. Clients then see their company’s projects, or only the ones they joined with a project’s link; staff also see <span class="ui">Studio</span>. Nobody picks a “client login” or a “staff login”.</p>
         <h3>Simple for clients</h3>
         <p>A busy executive opens an email, presses one button, and approves a film. Home leads with one next step, and clients only ever see the newest version.</p>
         <h3>Run without code</h3>
@@ -249,7 +249,7 @@ table.small { font-size: 7.9pt; }
     </div>
     <h3 style="margin-top:2px">How a project moves</h3>
     <div class="flow">
-      <div class="dark"><b>Set up</b><span>Studio creates the project, picks where its videos come from, and invites the client.</span></div>
+      <div class="dark"><b>Set up</b><span>Studio creates the project, picks where its videos come from, and sends the client its link.</span></div>
       <div><b>Review</b><span>A new version arrives; the client is emailed and watches it.</span></div>
       <div><b>Note</b><span>They pause anywhere and leave notes pinned to that moment.</span></div>
       <div><b>Decide</b><span>They approve it, with small fixes if any, or ask for changes.</span></div>
@@ -262,6 +262,7 @@ table.small { font-size: 7.9pt; }
       <tr><td>Finished film</td><td>A video without a version number: delivered, in Films.</td></tr>
       <tr><td>Decision maker</td><td>The client person who approves and pays. Reviewers leave notes; viewers watch.</td></tr>
       <tr><td>Switch</td><td>What a project allows, such as downloads or uploads. Set per project in Studio.</td></tr>
+      <tr><td>Client link</td><td>A project’s own sign-up link. Whoever opens it creates a login and sees that project, already let in.</td></tr>
     </table>
   </div>
   <div class="hd"><span><img src="../../assets/Nobleman_Mark_Black.png" alt="">Client portal manual</span><span>The portal at a glance</span></div>
@@ -359,7 +360,7 @@ table.small { font-size: 7.9pt; }
         <h3>Account</h3>
         <p>Name and job title, email updates on or off, and two-step verification with an authenticator app (with recovery codes, saved once). <span class="ui">Change my password</span> opens the form; changing it logs them out on other devices. A new email address goes through the studio.</p>
         <h3>Logging in</h3>
-        <p>With a password, or an emailed login link (works once, within 15 minutes). <span class="ui">Forgot your password?</span> emails a link to choose a new one (works once, within an hour). New people can <span class="ui">Create an account</span> when the studio allows it.</p>
+        <p>With a password, or an emailed login link (works once, within 15 minutes). <span class="ui">Forgot your password?</span> emails a link to choose a new one (works once, within an hour). New people use the project link the studio sent, or <span class="ui">Create an account</span> when the studio allows it.</p>
       </div>
     </div>
   </div>
@@ -476,12 +477,12 @@ table.small { font-size: 7.9pt; }
 <section class="page" data-title="Running the studio">
   <div class="body">
     <span class="eyebrow">Running the studio · Projects</span>
-    <h2>A project, <em>in five parts</em></h2>
+    <h2>A project, <em>in six parts</em></h2>
     <figure><img src="img/studio-payments.jpg" alt=""><figcaption>A project in Studio, on its Payments part. <span class="ui">See it as the client does</span> opens the client’s page.</figcaption></figure>
     <div class="cols">
       <div class="stack">
-        <h3>Details</h3>
-        <p>Name, kind of project, summary, client, and an optional cover image link (empty uses the newest film’s thumbnail). <span class="ui">Archive</span> hides it from the client and can be undone; <span class="ui">Delete project…</span> removes its notes, decisions, messages, share links, payment records, and files for good, after typing its name. Videos stay where they are.</p></div>
+        <h3>Details, and the client link</h3>
+        <p><b>Client link</b>, the second part, is the project’s own sign-up link (next page). Details: name, kind of project, summary, client, and an optional cover image link (empty uses the newest film’s thumbnail). <span class="ui">Archive</span> hides it from the client and can be undone; <span class="ui">Delete project…</span> removes its notes, decisions, messages, share links, payment records, and files for good, after typing its name. Videos stay where they are.</p></div>
       <div class="stack">
         <h3>Progress</h3>
         <p>The stage (its progress shows by itself; type a number only to override it), the next milestone (label, date, what happens) with an option to ask the client to confirm it, the review-by date, and <span class="ui">Email a review reminder now</span>.</p>
@@ -502,6 +503,50 @@ table.small { font-size: 7.9pt; }
 
 <section class="page" data-title="Running the studio">
   <div class="body">
+    <span class="eyebrow">Running the studio · The client link</span>
+    <h2>A project’s own link, <em>for the client’s team</em></h2>
+    <p class="lede">Every project gets a link of its own when it’s created. Send it to the client: whoever opens it creates a login and lands on that project, already let in. They can pass it around their own team. Nobody waits for an invitation or an approval.</p>
+    <div class="cols" style="grid-template-columns:1.35fr 1fr">
+      <figure><img src="img/link.jpg" alt=""><figcaption>Studio → a project → Client link: the link, the role people join with, and who has joined.</figcaption></figure>
+      <div class="stack">
+        <h3>Send it</h3>
+        <ol class="steps small">
+          <li>Studio → Projects → <span class="ui">New project</span> → <span class="ui">Create project</span>.<span class="see">You’ll see: “… is ready”, with the project’s link.</span></li>
+          <li><span class="ui">Copy link</span> to paste it anywhere, or <span class="ui">Email it</span> for a ready-made email.</li>
+          <li>Each person opens it, types a name, email, and password, ticks one box, and presses <span class="ui">Create my login</span>.<span class="see">You’ll see: them under Joined with the link.</span></li>
+        </ol>
+        <p class="small muted">The link stays at the top of the project in Studio, to copy again any time.</p>
+      </div>
+    </div>
+    <div class="phones" style="grid-template-columns:1.32in 1.32in 1fr;gap:10px 16px;align-items:start">
+      <figure><img src="img/m-join.jpg" alt=""><figcaption>What they see: the project and three short steps.</figcaption></figure>
+      <figure><img src="img/m-join-2.jpg" alt=""><figcaption>Then the form, and one box to tick.</figcaption></figure>
+      <div class="stack">
+        <h3>What people who join get</h3>
+        <ul class="small">
+          <li><b>That project only.</b> They belong to the project’s client but see just the projects they joined. To show one all of the client’s projects: Studio → People → <span class="ui">Edit</span> → Sees.</li>
+          <li><b>The role you chose</b> under “People who join with the link are”: Decision maker unless you change it. A change counts for people who join from then on; change someone already in from Studio → People.</li>
+          <li><b>A normal login.</b> Next time, they log in at the usual login page with the same email and password.</li>
+          <li><b>Already have a login?</b> They press <span class="ui">Log in instead</span> on the link’s page; logging in there adds the project to their login.</li>
+        </ul>
+        <p class="small muted">The box reads: “I’m working on <i>the project</i> with <i>the client</i>, and I’ll share this link only with people on the project.” Nobody can create a login without ticking it.</p>
+      </div>
+    </div>
+    <h3>Keeping it in hand</h3>
+    <table>
+      <tr><th style="width:24%">Press</th><th>What happens</th></tr>
+      <tr><td>Make a new link</td><td>The old link stops working at once; send the new one to whoever still needs it. People who already joined keep the project.</td></tr>
+      <tr><td>Switch the link off</td><td>Nobody can join until you press <span class="ui">Switch it back on</span>, which brings the same link back.</td></tr>
+      <tr><td>Take off</td><td>That person stops seeing the project at once. Their login stays, with any other projects they have.</td></tr>
+      <tr><td>Archive (in Details)</td><td>The link stops working until the project is brought back.</td></tr>
+    </table>
+  </div>
+  <div class="hd"><span><img src="../../assets/Nobleman_Mark_Black.png" alt="">Client portal manual</span><span>Running the studio</span></div>
+  <div class="ft"><span>Nobleman Productions · The screening room</span><span class="n"></span></div>
+</section>
+
+<section class="page" data-title="Running the studio">
+  <div class="body">
     <span class="eyebrow">Running the studio · People and settings</span>
     <h2>People, settings, <em>and the system check</em></h2>
     <div class="cols" style="grid-template-columns:1.1fr 1fr">
@@ -510,7 +555,7 @@ table.small { font-size: 7.9pt; }
         <h3>Invitations, never passwords</h3>
         <p>Nobody sets or sees another person’s password. An invitation or reset is a one-time link (invitations last 14 days), emailed and also shown to copy. A newer link replaces older ones.</p>
         <h3>Asking to join</h3>
-        <p>When sign-up is on, anyone can create an account; it waits until the studio lets them in, choosing their company and role. People whose email domain is listed on a client join that client as soon as they confirm their email.</p>
+        <p>When sign-up is on, anyone can create an account; it waits until the studio lets them in, choosing their company and role. People whose email domain is listed on a client join that client as soon as they confirm their email. People who join with a project’s link skip all this (previous page).</p>
       </div>
     </div>
     <div class="cols" style="grid-template-columns:1fr 1.1fr">
@@ -556,8 +601,58 @@ table.small { font-size: 7.9pt; }
       <div class="card"><h3><img class="ic" src="../../media/icons/play.png" alt="">Vimeo</h3>
         <p class="small">Jean, in Vimeo: developer.vimeo.com → <b>Create an app</b> → <b>Generate an access token</b> → Authenticated (you), scopes <b>Public, Private, Edit, Upload, Video Files, Stats</b>. Paste it in Studio; <span class="ui">Test it</span> ticks each scope. Each project uses one folder. Videos must allow embedding (Unlisted or Hide from Vimeo; embed Anywhere or the portal’s address).</p></div>
       <div class="card"><h3><img class="ic" src="../../media/icons/play.png" alt="">Frame.io, YouTube, Wistia, links</h3>
-        <p class="small"><b>Frame.io</b> signs in through Adobe (Studio shows the redirect address to copy); version stacks are versions. <b>YouTube</b>: a Data API key; one playlist per project. <b>Wistia</b>: an API token; one project each. <b>Video links</b> need no account: paste YouTube, Vimeo, Google Drive, Loom, Wistia, Dropbox, or .mp4 links.</p></div>
+        <p class="small"><b>Frame.io</b> signs in through Adobe (Studio shows the redirect address to copy); version stacks are versions, and notes go both ways (next page). <b>YouTube</b>: a Data API key; one playlist per project. <b>Wistia</b>: an API token; one project each. <b>Video links</b> need no account: paste YouTube, Vimeo, Google Drive, Loom, Wistia, Dropbox, or .mp4 links.</p></div>
     </div>
+  </div>
+  <div class="hd"><span><img src="../../assets/Nobleman_Mark_Black.png" alt="">Client portal manual</span><span>Connections</span></div>
+  <div class="ft"><span>Nobleman Productions · The screening room</span><span class="n"></span></div>
+</section>
+
+<section class="page" data-title="Connections">
+  <div class="body">
+    <span class="eyebrow">Connections · Frame.io</span>
+    <h2>Frame.io notes, <em>both ways</em></h2>
+    <p class="lede">When a project’s videos come from Frame.io, Jean and Justin keep working in Frame.io and clients work in the portal. Each side sees the other’s notes, at the same moment in the video, without copying anything by hand.</p>
+    <div class="cols">
+      <div class="stack">
+        <h3>Written in the portal, shows in Frame.io</h3>
+        <table>
+          <tr><th style="width:36%">In the portal</th><th>In Frame.io</th></tr>
+          <tr><td>A note on a moment</td><td>A comment at the same moment, signed “Dana Whitfield (Harbor Labs) via the portal: …”.</td></tr>
+          <tr><td>A reply</td><td>A comment at the same moment that says who it replies to (Frame.io’s API can’t add replies).</td></tr>
+          <tr><td>Approve, or Ask for changes</td><td>A comment on that version saying so, with the client’s words.</td></tr>
+          <tr><td>Marked done</td><td>The comment is marked complete.</td></tr>
+          <tr><td>Deleted</td><td>The comment is deleted.</td></tr>
+        </table>
+      </div>
+      <div class="stack">
+        <h3>Written in Frame.io, shows in the portal</h3>
+        <table>
+          <tr><th style="width:36%">In Frame.io</th><th>In the portal</th></tr>
+          <tr><td>A comment</td><td>A note at the same moment, under its author’s name, labeled “in Frame.io”. Authors with a portal login are matched by email.</td></tr>
+          <tr><td>A reply</td><td>A reply under its note.</td></tr>
+          <tr><td>Marked complete</td><td>Done.</td></tr>
+          <tr><td>Deleted</td><td>Gone. A client’s own note stays in the portal.</td></tr>
+          <tr><td>A new version</td><td>With live updates on, the client is emailed once that it’s ready.</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="cols" style="grid-template-columns:1fr 1.15fr">
+      <figure><img src="img/frameio.jpg" alt=""><figcaption>Studio → Connections → Frame.io, with live updates on.</figcaption></figure>
+      <div class="stack">
+        <h3>When the portal reads Frame.io</h3>
+        <p>Each time someone opens a version’s notes, so nothing is missed even with live updates off.</p>
+        <h3>Live updates</h3>
+        <p>The switch under <b>Notes go both ways</b> on the Frame.io card. Frame.io then tells the portal the moment a comment or a version changes, so the studio’s notes and new versions reach clients by email without anyone opening the portal.</p>
+        <h3>Set it up</h3>
+        <ol class="steps small">
+          <li>Studio → Connections → <span class="ui">Add a connection</span> → Frame.io, then <span class="ui">Sign in with Adobe</span> (chapter 7, step 10).</li>
+          <li>Switch on live updates.</li>
+          <li>Each project: <span class="ui">Videos come from</span> Frame.io, and its folder.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="note"><b>Good to know.</b> Notes land on the whole second. Drawings on the frame stay in Frame.io. A note written while Frame.io isn’t answering is sent the next time anyone opens that version’s notes. After the move to noblemanproductions.com, switch live updates off and on once, so Frame.io calls the new address.</div>
   </div>
   <div class="hd"><span><img src="../../assets/Nobleman_Mark_Black.png" alt="">Client portal manual</span><span>Connections</span></div>
   <div class="ft"><span>Nobleman Productions · The screening room</span><span class="n"></span></div>
@@ -718,7 +813,8 @@ table.small { font-size: 7.9pt; }
     <h2>Email, Vimeo, Notion, <em>and Stripe</em></h2>
     <ol class="steps" style="counter-reset:s 8">
       <li><b>Email.</b> resend.com → Domains: <code>gotit2work.com</code> should already be <b>Verified</b> for the website’s form (if not, do the website runbook’s Phase 5 first; its records never change the root SPF, the Microsoft 365 MX, or the apex). API Keys → Create: name “Nobleman portal”, <b>Sending access</b>. Studio → Connections → <b>Connect email</b>: the key; send from <code>Nobleman Productions &lt;portal@gotit2work.com&gt;</code>; replies to the address Jean and Justin read. <span class="muted">Expected: Send a test email arrives.</span></li>
-      <li><b>Vimeo (Jean).</b> developer.vimeo.com → Create an app → Generate an access token (Authenticated, scopes Public, Private, Edit, Upload, Video Files, Stats). Studio → Connections → Add a connection → Vimeo. <span class="muted">Expected: Test it ticks each scope.</span></li>
+      <li><b>Vimeo and Frame.io.</b> <b>Vimeo (Jean):</b> developer.vimeo.com → Create an app → Generate an access token (Authenticated, scopes Public, Private, Edit, Upload, Video Files, Stats). Studio → Connections → Add a connection → Vimeo. <span class="muted">Expected: Test it ticks each scope.</span>
+        <p style="margin-top:3px"><b>Frame.io:</b> developer.adobe.com/console → Create new project → Add API → Frame.io API → OAuth Web App, with the redirect URI copied from the Frame.io card. Paste the Client ID and secret in Studio → Add a connection → Frame.io → <b>Sign in with Adobe</b> → Test it → switch on live updates. <span class="muted">Expected: Working, and “Live updates are on”.</span></p></li>
       <li><b>Notion (optional).</b> Create an internal connection (Read, Update, Insert content) → paste its token in <b>Connect Notion</b> → in Notion, add the connection to the page → in Studio, create the database or use yours. <span class="muted">Expected: “Projects sync to …”.</span></li>
       <li><b>Stripe.</b>
         <div class="stack" style="margin-top:3px;gap:4px">
@@ -739,14 +835,14 @@ table.small { font-size: 7.9pt; }
     <span class="eyebrow">Going live · Part C · People, checks, rollback</span>
     <h2>People and projects, <em>then check it all</em></h2>
     <ol class="steps" style="counter-reset:s 12">
-      <li><b>People and projects.</b> Studio → People: invite Jean and Justin as Owner or Producer (at least two owners). Studio → Clients: add each company, with its email domain if its people may join by themselves. Studio → Projects → <b>New project</b>: the client, the Vimeo folder, then What they can do (Payments on; Downloads after payment if final files wait for the balance). Invite the client’s decision maker.</li>
+      <li><b>People and projects.</b> Studio → People: invite Jean and Justin as Owner or Producer (at least two owners). Studio → Clients: add each company, with its email domain if its people may join by themselves. Studio → Projects → <b>New project</b>: the client, the Vimeo or Frame.io folder, then What they can do (Payments on; Downloads after payment if final files wait for the balance). Send the client the project’s link, or invite their decision maker.</li>
       <li><b>Settings.</b> Studio details, Login screen, Welcome message, Review reminders. Once every staff member has two-step verification, turn on <b>Two-step verification for staff</b>.</li>
     </ol>
     <div class="cols">
       <div class="stack">
         <h3>Check it worked</h3>
         <ul class="check">
-          <li>The invitation email arrives; its link sets a password.</li>
+          <li>The invitation email arrives; its link sets a password. A project’s link opens on a phone and lands on the project.</li>
           <li>Home shows the next step; a version plays; a note on a moment saves.</li>
           <li>Approve with a small fix; the studio gets the receipt.</li>
           <li>A message and a small file go both ways.</li>
@@ -818,7 +914,7 @@ table.small { font-size: 7.9pt; }
       <tr><td>5</td><td>Change the code’s addresses</td><td><code>node scripts/move-domain.mjs --apply</code> in each repository, then push</td><td>“Done: … now say noblemanproductions.com”</td></tr>
       <tr><td>6</td><td>Forward the old website</td><td>Vercel → nobleman-website → old domain → Redirect to (not the portal’s)</td><td>Old links open the new site</td></tr>
       <tr><td>7</td><td>Confirm the portal’s address</td><td>Studio → Settings → Studio details → Portal address</td><td>System check: two green rows</td></tr>
-      <tr><td>8</td><td>Update outside services</td><td>Stripe webhook, Adobe redirect URI, Notion, Google</td><td>Stripe’s test event answers 200</td></tr>
+      <tr><td>8</td><td>Update outside services</td><td>Stripe webhook, Adobe redirect URI, Frame.io live updates, Notion, Google</td><td>Stripe’s test event answers 200</td></tr>
       <tr><td>9</td><td>Send email from the new domain</td><td>Resend, then Studio → Connections → Email (optional)</td><td>A test email arrives</td></tr>
       <tr><td>10</td><td>Retire the old site, a week later</td><td>Lovable → unpublish</td><td>Nothing changes for visitors</td></tr>
     </table>
@@ -879,10 +975,10 @@ table.small { font-size: 7.9pt; }
   <div class="body">
     <div class="cols">
       <div class="card"><h3>Start a new client project</h3>
-        <ol class="steps small"><li>Studio → Clients → <b>Add a client</b>: name, email domain.</li><li>Make a folder for it in Vimeo.</li><li>Studio → Projects → <b>New project</b>: client, folder, switches.<span class="see">You’ll see: the project, with its five parts.</span></li><li>Progress: the stage and the next milestone.</li><li>Studio → People → <b>Invite a person</b>: the decision maker.<span class="see">You’ll see: the link, also emailed.</span></li><li>Payments → <b>Ask for a payment</b>: the deposit.</li></ol>
+        <ol class="steps small"><li>Studio → Clients → <b>Add a client</b>: name, email domain.</li><li>Make a folder for it in Vimeo or Frame.io.</li><li>Studio → Projects → <b>New project</b>: client, folder, switches.<span class="see">You’ll see: the project’s link, then the project.</span></li><li>Progress: the stage and the next milestone.</li><li>Send the client the project’s link: <b>Copy link</b> or <b>Email it</b>.<span class="see">You’ll see: each person who joins, under Client link.</span></li><li>Payments → <b>Ask for a payment</b>: the deposit.</li></ol>
         <p class="small muted">Done when the client’s Home shows the project and the deposit (<span class="ui">See it as the client does</span>).</p></div>
       <div class="card"><h3>Deliver a new version</h3>
-        <ol class="steps small"><li>Upload it to the project’s Vimeo folder, named with its number: “Harbor Spot V3”.</li><li>Studio → the project → Videos → <b>Refresh from the source</b>.<span class="see">You’ll see: Version 3 at the top, newest.</span></li><li>Optional: a review-by date under Progress.</li></ol>
+        <ol class="steps small"><li>Vimeo: upload it to the project’s folder, named with its number (“Harbor Spot V3”). Frame.io: add it to the film’s version stack.</li><li>Studio → the project → Videos → <b>Refresh from the source</b>.<span class="see">You’ll see: Version 3 at the top, newest.</span></li><li>Optional: a review-by date under Progress.</li></ol>
         <p class="small muted">Done when the client is emailed and their Home says “Version 3 … is ready for you”. Their notes arrive on your Home under Needs the studio.</p></div>
       <div class="card"><h3>Final delivery and payment</h3>
         <ol class="steps small"><li>Upload the final without a version number: it goes to Films.</li><li>What they can do: <b>Downloads after payment</b> on.</li><li>Payments → <b>Ask for a payment</b>: the balance.<span class="see">You’ll see: Due, and the client is emailed.</span></li><li>Progress: stage Delivered.</li></ol>
@@ -932,6 +1028,7 @@ table.small { font-size: 7.9pt; }
       <tr><th style="width:32%">What you see</th><th>What to do</th></tr>
       <tr><td>“I didn’t get the email”</td><td>Check spam. Then the studio: People → More → <b>Resend invite</b> or <b>Reset password</b>; the link is also shown to copy and send by hand.</td></tr>
       <tr><td>“The link has expired”</td><td>Links work once: invitations for 14 days, login links for 15 minutes, resets for an hour. Ask for a new one, or press <b>Forgot your password?</b>.</td></tr>
+      <tr><td>“This link isn’t working any more”</td><td>The project’s link was replaced or switched off, or the project is archived. The studio: the project → Client link → copy the current link (or <b>Switch it back on</b>) and send it again.</td></tr>
       <tr><td>“I can’t log in”</td><td><b>Forgot your password?</b> on the login. If two-step is on and the phone is lost: a recovery code, or the studio turns it off (People → More).</td></tr>
       <tr><td>The video won’t play</td><td>Reload, or try another browser. The studio: the video’s embed settings in Vimeo must allow the portal’s address.</td></tr>
       <tr><td>There’s no Approve button</td><td>Only decision makers approve: ask yours. Or the project’s Approve switch is off (Studio → the project → What they can do).</td></tr>
@@ -955,6 +1052,7 @@ table.small { font-size: 7.9pt; }
       <tr><td>Emails aren’t going out</td><td>Studio → Connections → Email → <b>Send a test email</b>. If it fails, the card says why; Resend’s domain must be verified.</td></tr>
       <tr><td>A connection says Not working</td><td>The card → <b>Change</b> → paste a fresh key → <b>Test it</b>.</td></tr>
       <tr><td>Every connection stopped at once</td><td><code>PORTAL_ENCRYPTION_KEY</code> changed in Vercel: put the old value back, or re-enter each key.</td></tr>
+      <tr><td>A Frame.io comment isn’t in the portal</td><td>Open that version’s notes: the portal reads Frame.io each time. To get them straight away, Connections → Frame.io → live updates on.</td></tr>
       <tr><td>Notion stopped updating</td><td>Connections → Notion → <b>Sync now</b>; if that fails, <b>Test it</b> and check the database is still shared with the connection.</td></tr>
       <tr><td>“The portal is still being set up”</td><td>No database yet: chapter 7, step 1, then redeploy.</td></tr>
       <tr><td>The address still shows the sample</td><td><code>PORTAL_MODE</code> is still set in Vercel, or there was no redeploy after deleting it.</td></tr>
@@ -979,13 +1077,13 @@ table.small { font-size: 7.9pt; }
       <ul>
         <li><b>Logins.</b> Passwords are stored only as bcrypt hashes; nobody, staff included, can read them. Logins last 7 days by default (1 to 30 in Settings). A password, role, or email change, or Log out everywhere, ends every other session at once.</li>
         <li><b>Two-step verification</b> with an authenticator app and ten single-use recovery codes. Owners can require it for staff.</li>
-        <li><b>Throttling.</b> Repeated wrong passwords, codes, or link requests from one email or one address are slowed down.</li>
-        <li><b>Scoping.</b> Clients only ever reach their own company’s active projects. Every action is checked on the server against the project’s switches and the person’s role.</li>
+        <li><b>Throttling.</b> Repeated wrong passwords, codes, link requests, or sign-ups through a project link from one email or one address are slowed down.</li>
+        <li><b>Scoping.</b> Clients only ever reach active projects they’re allowed: their company’s, or just the ones they joined with a project’s link. Every action is checked on the server against the project’s switches and the person’s role.</li>
       </ul>
       <ul>
-        <li><b>Stored keys</b> (Vimeo, Resend, Notion, Stripe) are encrypted (AES-256-GCM) and never sent to the page or shown again.</li>
+        <li><b>Stored keys</b> (Vimeo, Frame.io, Resend, Notion, Stripe) are encrypted (AES-256-GCM) and never sent to the page or shown again.</li>
         <li><b>Files</b> are in private storage; downloads use links that expire after ten minutes.</li>
-        <li><b>One-time links</b> and share links are stored only as hashes. Share links can expire and be turned off, and show one film with nothing about the client.</li>
+        <li><b>One-time links</b> and share links are stored only as hashes. A project’s link is found by its hash and kept encrypted so staff can copy it again. Share links can expire and be turned off, and show one film with nothing about the client.</li>
         <li><b>Payments</b> happen on Stripe; the portal keeps the request, its status, who paid, and Stripe’s reference numbers.</li>
         <li><b>The activity log</b> keeps who did what for about 13 months.</li>
       </ul>

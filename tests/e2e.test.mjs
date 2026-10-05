@@ -183,7 +183,7 @@ const dana = await newPage();
   await page.getByRole("row", { name: /Harbor Summit/ }).getByRole("link", { name: "Open", exact: true }).click();
   const part = (name) => page.locator(".parts").getByRole("button", { name, exact: true });
   await part("Details").waitFor();
-  check("a project opens in parts, not one long form", (await page.locator(".parts .tab-btn").count()) === 5 && await visible(page.getByLabel("Project name")) && !(await visible(page.getByRole("switch", { name: "Messages" }))));
+  check("a project opens in parts, not one long form", (await page.locator(".parts .tab-btn").count()) === 6 && await visible(page.getByLabel("Project name")) && !(await visible(page.getByRole("switch", { name: "Messages" }))));
   check("the save bar is calm until something changes", await waitText(page, "Everything is saved."));
   await part("Videos").click();
   check("the project lists its videos with what the client sees", await waitText(page, "Version 3") && await waitText(page, "Finished film"));
@@ -353,6 +353,64 @@ const dana = await newPage();
   await lee.context().close();
 }
 
+// ---------- 4c. A project's own link for the client ----------
+{
+  const page = await as("alexis@gotit2work.com", "/studio/projects");
+  await page.getByRole("button", { name: "New project" }).click();
+  await page.getByRole("dialog").locator("select").first().selectOption({ label: "Harbor Labs" });
+  await page.getByRole("dialog").getByLabel("Project name").fill("Harbor Launch Film");
+  await page.getByRole("button", { name: "Create project" }).click();
+  const linkBox = page.getByRole("dialog").getByRole("textbox", { name: /Link for Harbor Launch Film/ });
+  check("creating a project shows its link for the client straight away, with Copy and Email", await waitText(page, "Harbor Launch Film is ready") && /\/join\/[\w-]{20,}$/.test(await linkBox.inputValue()) && await visible(page.getByRole("button", { name: "Copy link" })) && /^mailto:/.test(await page.getByRole("dialog").getByRole("link", { name: "Email it" }).getAttribute("href")));
+  const link = local(await linkBox.inputValue());
+  await page.getByRole("dialog").getByRole("button", { name: "Copy link" }).click();
+  check("…and Copy puts it on the clipboard", (await page.evaluate(() => navigator.clipboard.readText()).catch(() => "")) === link.replace(B, "http://localhost:4400"));
+  await page.getByRole("button", { name: "Open the project" }).click();
+  check("the project's page keeps the link at the top", await page.locator(".linkbar input").inputValue().then((v) => v.endsWith(link.split("/join/")[1])).catch(() => false));
+
+  const nia = await newPage();
+  await nia.goto(link);
+  const create = nia.getByRole("button", { name: "Create my login" });
+  check("the link opens on the project, with three short steps", await waitText(nia, "Harbor Launch Film") && await waitText(nia, "Create your login") && await waitText(nia, "You go straight to Harbor Launch Film") && (await nia.locator(".joinsteps li").count()) === 3);
+  await nia.locator('input[name="name"]').fill("Nia New");
+  await nia.locator('input[name="email"]').fill("nia@agency.test");
+  await nia.locator('input[name="new-password"]').fill("nia-password-1");
+  check("…and can't be sent until the acknowledgement is ticked", await create.isDisabled());
+  await nia.locator(".ack input").check();
+  await create.click();
+  check("the client creates a login and lands on the project, already let in", await nia.waitForURL(/\/projects\/[0-9a-f-]{36}$/).then(() => true, () => false) && await waitText(nia, "Harbor Launch Film"));
+  await nia.goto(B + "/");
+  check("…and sees only that project, nothing else of the company's", await waitText(nia, "Harbor Launch Film") && !(await nia.getByText("Harbor Summit").count()));
+  await nia.context().close();
+
+  const dana = await newPage();
+  await dana.goto(link);
+  await dana.getByRole("button", { name: "Already have a login? Log in instead" }).click();
+  await dana.locator('input[name="email"]').fill("dana@harbor.test");
+  await dana.locator('input[name="password"]').fill(PASS);
+  await dana.getByRole("button", { name: "Log in and open Harbor Launch Film" }).click();
+  check("someone with a login logs in on the link page and goes to the project", await dana.waitForURL(/\/projects\//).then(() => true, () => false) && await waitText(dana, "Harbor Launch Film"));
+  await dana.context().close();
+
+  await page.reload();
+  await page.locator(".parts").getByRole("button", { name: "Client link", exact: true }).click();
+  check("Studio lists who joined with the link, and lets staff choose what joiners can do", await waitText(page, "Nia New") && await visible(page.getByRole("radiogroup", { name: "Role for people who join" })));
+  await page.locator(".li", { hasText: "Nia New" }).getByRole("button", { name: "Take off" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Take them off" }).click();
+  check("…and take someone off the project", await waitText(page, "Nia New no longer sees Harbor Launch Film."));
+  await page.getByRole("button", { name: "Make a new link" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Make a new link" }).click();
+  await waitText(page, "New link made.");
+  const old = await newPage();
+  await old.goto(link);
+  check("after “Make a new link”, the old one says it isn't working", await waitText(old, "That link didn’t work") && await waitText(old, /isn’t working any more/));
+  await old.context().close();
+  // Archived again, so the sections below see Harbor Labs as before.
+  const launchId = new URL(page.url()).pathname.split("/").pop();
+  await page.evaluate((id) => fetch("/api/admin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "projectUpdate", id, archived: true }) }), launchId);
+  await page.context().close();
+}
+
 // ---------- 5. An editor's Studio is limited to their role ----------
 {
   const page = await as("eddie@studio.test", "/studio");
@@ -507,6 +565,21 @@ const PHONE = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch:
   check("Review opens for a film whose title has a % in it", await waitText(page, "Campaign Film"));
   await page.goto(DEMO + "/review/%E0%A4%A");
   check("…and a mistyped address with a stray % still opens the portal", await waitText(page, "Campaign Film"));
+  // The client's link, in the demo, and notes from Frame.io.
+  await page.goto(DEMO + "/demo/join/meridian".replace("/demo/demo", "/demo"));
+  check("demo: a project's link shows what the client sees, marked as the demo", await waitText(page, "Meridian Campaign") && await waitText(page, /This is the demo/) && await waitText(page, "Create your login"));
+  await page.locator('input[name="name"]').fill("Sam Sample");
+  await page.locator('input[name="email"]').fill("sam@sample.test");
+  await page.locator('input[name="new-password"]').fill("sample-password-1");
+  await page.locator(".ack input").check();
+  await page.getByRole("button", { name: "Create my login" }).click();
+  check("…and creating a login there says nothing was saved, then shows the client's side", await waitText(page, /Demo only:/) && await visible(page.getByRole("link", { name: "See what they see" })));
+  await page.goto(DEMO + "/review/demo-meridian");
+  check("demo: a comment written in Frame.io shows in the notes, marked as such", await waitText(page, "Music swells here in the final mix.") && await waitText(page, "· in Frame.io"));
+  await page.goto(DEMO + "/studio/connections?view=studio");
+  check("demo Studio: Frame.io notes go both ways, with live updates on", await waitText(page, "Notes go both ways") && (await page.getByRole("switch", { name: "Live updates from Frame.io" }).getAttribute("aria-checked")) === "true");
+  await page.goto(DEMO + "/studio/projects/demo-meridian?view=studio");
+  check("demo Studio: each project has its client link at the top", /\/demo\/join\/meridian$/.test(await page.locator(".linkbar input").inputValue().catch(() => "")));
   await page.goto(DEMO + "/account");
   const pwHidden = !(await page.locator('input[autocomplete="current-password"]').count());
   await page.getByRole("button", { name: "Change my password" }).click();

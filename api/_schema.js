@@ -4,7 +4,7 @@
 //
 // To read it as one SQL file: node -e "import('./api/_schema.js').then(m => console.log(m.STATEMENTS.join(';\n\n') + ';'))"
 
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 export const STATEMENTS = [
   `create table if not exists settings (
@@ -329,4 +329,39 @@ export const STATEMENTS = [
   )`,
   `create index if not exists payments_project_idx on payments(project_id, created_at)`,
   `create index if not exists payments_session_idx on payments(stripe_session)`,
+
+  // ---------- v7: project links, per-project access, notes mirrored with Frame.io ----------
+
+  // Each project's own link (/join/<token>): whoever opens it creates a login that sees this project, already
+  // let in. The token is stored hashed (to look it up) and sealed (so staff can copy the link again).
+  // join_access is the role it gives; join_off switches the link off without forgetting it.
+  `alter table projects add column if not exists join_hash text`,
+  `alter table projects add column if not exists join_enc text`,
+  `alter table projects add column if not exists join_access text`,
+  `alter table projects add column if not exists join_off boolean not null default false`,
+  `create unique index if not exists projects_join_idx on projects(join_hash)`,
+  // People who joined by a project's link see only the projects they joined (project_people). Everyone else in a
+  // client company sees every active project of that company, as before (all_projects).
+  `alter table users add column if not exists all_projects boolean not null default true`,
+  `create table if not exists project_people (
+    project_id  uuid not null references projects(id) on delete cascade,
+    user_id     uuid not null references users(id) on delete cascade,
+    how         text not null default 'link',
+    created_at  timestamptz not null default now(),
+    primary key (project_id, user_id)
+  )`,
+  `create index if not exists project_people_user_idx on project_people(user_id)`,
+  // Notes mirrored with Frame.io (_fio_sync.js): frameio_id is the comment's id there, origin where it was written
+  // ('portal' or 'frameio'). A decision is mirrored as a comment too.
+  `alter table comments add column if not exists frameio_id text`,
+  `create unique index if not exists comments_frameio_idx on comments(frameio_id)`,
+  `alter table comments add column if not exists origin text not null default 'portal'`,
+  `alter table approvals add column if not exists frameio_id text`,
+  // New versions the client was emailed about (Frame.io's webhook), so each is announced once.
+  `create table if not exists video_announcements (
+    project_id  uuid not null references projects(id) on delete cascade,
+    video_id    text not null,
+    at          timestamptz not null default now(),
+    primary key (project_id, video_id)
+  )`,
 ];

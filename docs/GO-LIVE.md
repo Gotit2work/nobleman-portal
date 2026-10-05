@@ -130,7 +130,25 @@ Email sends invitations, login links, password resets, reminders, receipts, and 
 
 *About downloads:* Vimeo gives download links to the portal only on its Standard plan and above. On Plus, clients get a **Download on Vimeo** button instead. Upgrading switches to the full list with no other change.
 
-Frame.io, YouTube, and Wistia work the same way when needed (README, "Video sources"). **Video links** need no account at all.
+YouTube and Wistia work the same way when needed (README, "Video sources"). **Video links** need no account at all.
+
+### 10b. Frame.io (Jean and Justin's main platform)
+
+Frame.io signs in through Adobe. Once connected, versions come from Frame.io version stacks, and **notes go both ways**: what clients write in the portal appears in Frame.io, and what the studio writes in Frame.io appears in the portal.
+
+1. Logged in to the Adobe account that owns the Frame.io team: developer.adobe.com/console → **Create new project** → **Add API** → **Frame.io API** → **OAuth Web App** credential.
+2. **Redirect URI:** exactly `https://portal.noblemanproductions.gotit2work.com/api/connect` (Studio shows it with a **Copy** button). **Redirect URI pattern:** `https://portal\.noblemanproductions\.gotit2work\.com/api/connect`. Save, then copy the **Client ID** and **Client secret**.
+3. Portal → Studio → Connections → **Add a connection → Frame.io** → **How it connects:** *Adobe sign-in* → paste both → **Save**.
+4. On the Frame.io card, press **Sign in with Adobe** and approve. *Expected:* back in Studio with "Frame.io is connected." If the login sees several Frame.io accounts, choose the studio's.
+5. Press **Test it**. *Expected:* **Working**, with the account's name.
+6. Turn on **Live updates** (the switch under *Notes go both ways*). *Expected:* "Live updates are on." This adds one webhook per Frame.io workspace, so new comments and versions reach the portal straight away and clients are emailed about them. Without it, notes still go both ways, but Frame.io comments arrive when someone opens the notes.
+7. In Frame.io, give each client project its own folder (or Frame.io project). In the portal, **New project** → **Videos come from:** Frame.io → choose that folder.
+
+*Check:* upload a test video to the folder, open the project in the portal, leave a note at 0:05. *Expected:* within seconds, Frame.io shows a comment at 00:00:05 starting "<your name> via the portal:". Reply to it in Frame.io: the reply shows under the note in the portal.
+
+> 📸 Screenshot the Frame.io card showing **Working** and **Live updates are on**.
+
+*After the domain move:* switch **Live updates** off and on once, so Frame.io calls the new address. (The old address keeps answering either way.)
 
 ### 11. Notion (optional)
 
@@ -181,8 +199,8 @@ Clients pay deposits and balances by card or bank on Stripe's own checkout page.
 
 - **Staff:** Studio → People → **Invite a person**. Jean and Justin as **Owner** or **Producer**. Make sure there are at least two owners, so the studio is never locked out. Once every staff member has two-step verification, turn on Settings → Logins and accounts → **Two-step verification for staff**.
 - **Clients:** Studio → Clients → **Add a client** (the company). Add its email domain (such as `harborlabs.com`) if its people should be able to join by themselves.
-- **Projects:** Studio → Projects → **New project** → the client, the Vimeo folder, then check **What they can do**: Payments on, and **Downloads after payment** if final files should wait for the balance.
-- **The client's people:** Studio → People → **Invite a person** → role **Decision maker** for whoever approves and pays. They can add their own colleagues.
+- **Projects:** Studio → Projects → **New project** → the client, the video folder (Frame.io or Vimeo). The next screen shows the project's **link for the client**: **Copy link** or **Email it**. Then check **What they can do**: Payments on, and **Downloads after payment** if final files should wait for the balance.
+- **The client's people:** send them the project's link. Whoever opens it creates their own login (name, email, password) and lands on that project, already let in; they can pass the link to their team, and you're emailed as each one joins. Studio → the project → **Client link** shows who joined and what they can do (Decision maker unless you change it). To give someone **every** project of their company instead, use Studio → People → **Invite a person**, or Edit → **Sees: Every … project**.
 
 ### 14. The login page and settings
 
@@ -194,6 +212,7 @@ Studio → Settings: check **Studio details** (help email, the line above Messag
 
 On a phone and a laptop, as a test client:
 
+- [ ] The project's link (Studio → the project → **Copy link**), opened in a private window, creates a login and lands on that project only.
 - [ ] The invitation email arrives and its link lets you choose a password.
 - [ ] Home shows the next step; a version plays; a note pinned to a moment is saved.
 - [ ] **Approve** with a small fix, and the studio receives the receipt.

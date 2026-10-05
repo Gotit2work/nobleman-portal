@@ -142,6 +142,12 @@ http.createServer(async (req, res) => {
   if (p === "/__mail") { res.writeHead(200, { "content-type": "application/json" }); return res.end(JSON.stringify(mail)); }
   if (p === "/__fake/state") { res.writeHead(200, { "content-type": "application/json" }); return res.end(JSON.stringify(fakes.snapshot())); }
   if (p === "/__stripe/pay") { const s = fakes.stripePay(url.searchParams.get("session"), url.searchParams.get("bank") === "1"); res.writeHead(s ? 200 : 404, { "content-type": "application/json" }); return res.end(JSON.stringify(s)); }
+  // Frame.io, played by the tests: a comment made there, a change to one, and its signed webhook (lib/fakes.mjs).
+  if (p.startsWith("/__fio/")) {
+    let b = {}; try { b = JSON.parse(raw.toString() || "{}"); } catch {}
+    const out = p === "/__fio/comment" ? fakes.addComment(b) : p === "/__fio/edit" ? fakes.editComment(b.id, b) : p === "/__fio/fire" ? await fakes.fireWebhook(b.type, b.id, b) : null;
+    res.writeHead(out ? 200 : 404, { "content-type": "application/json" }); return res.end(JSON.stringify(out));
+  }
   if (p === "/__vimeo/state") { res.writeHead(200, { "content-type": "application/json" }); return res.end(JSON.stringify(V.folders)); }
   if (p === "/__vimeo/finish") { // mark every finished upload as transcoded
     for (const f of Object.values(V.folders)) for (const v of f.videos) if (v.status === "uploading" && tus.get(v.uri.split("/").pop())?.offset > 0) v.status = "available";

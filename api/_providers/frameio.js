@@ -37,7 +37,7 @@ export const meta = {
     { key: "token", label: "Developer token", secret: true, when: ["legacy"], help: "From Frame.io’s developer site. Only for accounts not yet using Adobe sign-in." },
   ],
   source: { label: "Folder", placeholder: "Folder ID", help: "Pick a project to use its top folder, or paste a folder’s ID from its address in Frame.io." },
-  features: { downloads: true, captions: false, chapters: false, upload: false, stats: false, versions: "Use version stacks: drag the new version onto the old one in Frame.io." },
+  features: { downloads: true, captions: false, chapters: false, upload: false, stats: false, notes: true, versions: "Use version stacks: drag the new version onto the old one in Frame.io." },
 };
 
 export const needsSignIn = (conn) => conn.creds.auth === "oauth" && !conn.creds.refreshToken;
@@ -75,12 +75,12 @@ export async function exchangeCode(conn, code, redirectUri) {
   return { ...c, accessToken: d.access_token, refreshToken: d.refresh_token, expiresAt: Date.now() + (Number(d.expires_in) || 3600) * 1000 };
 }
 
-async function call(conn, path, params = {}) {
+async function call(conn, path, params = {}, { method = "GET", body } = {}) {
   const token = await accessToken(conn);
   const url = new URL(path.startsWith("http") ? path : path.startsWith("/v4") ? "https://api.frame.io" + path : API + path);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
   return fetchJson(url, {
-    label: "Frame.io",
+    method, body, label: "Frame.io",
     headers: { Authorization: "Bearer " + token, ...(conn.creds.auth === "legacy" ? { "x-frameio-legacy-token-auth": "true" } : {}) },
   });
 }
@@ -205,4 +205,59 @@ export async function details(conn, v, want) {
   }
   if (want.captions) { out.captions = []; out.chapters = []; }
   return out;
+}
+
+// ---------- comments: the portal's notes, mirrored both ways (api/_fio_sync.js) ----------
+// Frame.io places a comment by timecode (HH:MM:SS:FF). The portal pins notes to the second, so it writes whole
+// seconds (frame 00) and reads the hours, minutes, and seconds. A bare number is a frame count: read at 24 fps.
+
+/** 83.4 seconds → "00:01:23:00". */
+export function toTimecode(sec) {
+  const t = Math.max(0, Math.floor(Number(sec) || 0));
+  const p = (n) => String(n).padStart(2, "0");
+  return `${p(Math.floor(t / 3600))}:${p(Math.floor(t / 60) % 60)}:${p(t % 60)}:00`;
+}
+/** "00:01:23:12" → 83; 2000 (frames) → 83; nothing → null. */
+export function fromTimecode(ts) {
+  if (ts === null || ts === undefined || ts === "") return null;
+  const m = /^(\d+):(\d{1,2}):(\d{1,2})(?:[:;](\d+))?$/.exec(String(ts));
+  if (m) return Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]);
+  const n = Number(ts);
+  return Number.isFinite(n) ? Math.floor(n / 24) : null;
+}
+
+/** Every comment on a file, oldest first, each with its replies and its author (owner). */
+export async function listComments(conn, fileId) {
+  return all(conn, `/accounts/${account(conn)}/files/${fileId}/comments`, { include: "owner,replies", timestamp_as_timecode: true, sort: "created_at_asc" }, 6);
+}
+/** One comment with its author; its file_id says which video it's on. */
+export async function showComment(conn, id) {
+  return (await call(conn, `/accounts/${account(conn)}/comments/${id}`, { include: "owner", timestamp_as_timecode: true })).data;
+}
+/** A new comment on a file, at a moment (seconds) or on the whole video (at = null). Returns it (its id). */
+export async function createComment(conn, fileId, { text, at = null }) {
+  const data = { text: String(text).slice(0, 5000), ...(at === null || at === undefined ? {} : { timestamp: toTimecode(at) }) };
+  return (await call(conn, `/accounts/${account(conn)}/files/${fileId}/comments`, { timestamp_as_timecode: true }, { method: "POST", body: { data } })).data;
+}
+/** Marks a comment done (or not) in Frame.io: the portal's "resolved". */
+export async function completeComment(conn, id, done) {
+  return call(conn, `/accounts/${account(conn)}/comments/${id}`, {}, { method: "PATCH", body: { data: { completed: !!done } } });
+}
+export async function deleteComment(conn, id) {
+  try { await call(conn, `/accounts/${account(conn)}/comments/${id}`, {}, { method: "DELETE" }); } catch (err) { if (err.status !== 404) throw err; }
+}
+
+// ---------- webhooks: Frame.io tells the portal straight away (api/connect.js, ?webhook=frameio) ----------
+export const WEBHOOK_EVENTS = ["comment.created", "comment.updated", "comment.deleted", "comment.completed", "comment.uncompleted", "file.ready", "file.versioned"];
+
+export async function workspaces(conn) {
+  return (await all(conn, `/accounts/${account(conn)}/workspaces`)).map((w) => ({ id: w.id, name: w.name || "Workspace" }));
+}
+/** Creates a webhook in one workspace. Returns { id, secret }: Frame.io shows the secret only this once. */
+export async function createWebhook(conn, workspaceId, { name, url, events = WEBHOOK_EVENTS }) {
+  const d = (await call(conn, `/accounts/${account(conn)}/workspaces/${workspaceId}/webhooks`, {}, { method: "POST", body: { data: { name, url, events } } })).data;
+  return { id: d.id, secret: d.secret };
+}
+export async function deleteWebhook(conn, id) {
+  try { await call(conn, `/accounts/${account(conn)}/webhooks/${id}`, {}, { method: "DELETE" }); } catch (err) { if (err.status !== 404) throw err; }
 }

@@ -8,6 +8,8 @@ import { audit } from "./_audit.js";
 import { can } from "./_roles.js";
 import { getSettings } from "./_settings.js";
 import { stripeConnection, verifySignature, settle, failed, refunded, announce } from "./_payments.js";
+import { verifyFrameio, handleEvent } from "./_fio_sync.js";
+import { later } from "./_later.js";
 
 /**
  * "Sign in with Adobe" for a Frame.io connection (Studio → Connections).
@@ -17,7 +19,12 @@ import { stripeConnection, verifySignature, settle, failed, refunded, announce }
  *
  * Also Stripe's webhook (Studio → Connections → Payments):
  *   POST /api/connect?webhook=stripe        signed with the connection's webhook secret; marks payments paid
+ * And Frame.io's (Studio → Connections → Frame.io → Live updates, _fio_sync.js):
+ *   POST /api/connect?webhook=frameio&c=<connection>   signed per workspace; new comments and versions, straight away
  */
+// The webhooks' signatures cover the body's exact bytes, so Vercel mustn't parse it first (nothing here reads req.body).
+export const config = { api: { bodyParser: false } };
+
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "private, no-store");
   const q = req.query || {};
@@ -27,6 +34,7 @@ export default async function handler(req, res) {
     return res.end();
   };
   if (req.method === "POST" && q.webhook === "stripe") return stripeWebhook(req, res);
+  if (req.method === "POST" && q.webhook === "frameio") return frameioWebhook(req, res, String(q.c || ""));
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
   if (!dbConfigured()) return back("The portal isn’t connected to its database yet.");
   await ready();
@@ -74,6 +82,28 @@ async function rawBody(req) {
   const chunks = [];
   try { for await (const c of req) chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)); } catch { /* already read */ }
   return chunks.length ? Buffer.concat(chunks) : null;
+}
+
+/**
+ * Frame.io tells the portal about new comments and versions. Anything unsigned, signed with another secret, or more
+ * than five minutes old is refused. The work happens after the answer, so Frame.io never waits (it allows 5 seconds).
+ */
+async function frameioWebhook(req, res, connId) {
+  if (!dbConfigured()) return res.status(503).json({ error: "No database." });
+  await ready();
+  const conn = await getConnection(connId).catch(() => null);
+  const secrets = conn && conn.provider === "frameio" ? Object.values((conn.creds && conn.creds.webhooks) || {}).map((h) => h.secret).filter(Boolean) : [];
+  if (!secrets.length) return res.status(404).json({ error: "Live updates aren’t on for that connection." });
+  const raw = await rawBody(req);
+  if (!raw || !verifyFrameio(raw, req.headers["x-frameio-request-timestamp"], req.headers["x-frameio-signature"], secrets)) {
+    console.error("frame.io webhook: signature didn’t match");
+    return res.status(401).json({ error: "Signature didn’t match." });
+  }
+  let evt;
+  try { evt = JSON.parse(raw.toString("utf8")); } catch { return res.status(400).json({ error: "Not JSON." }); }
+  const origin = originOf(req);
+  await later(() => handleEvent(conn, evt, origin), "frame.io event");
+  return res.status(200).json({ received: true });
 }
 
 /**

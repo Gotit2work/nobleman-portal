@@ -276,6 +276,124 @@ function Redeem({ session, onSignedIn, onPassword }) {
   <//>`;
 }
 
+// ---------- a project's own link (/join/<token>) ----------
+// The client's whole way in: which project this is, three short steps, and a short form. Their login is let in
+// straight away and sees this project. Someone who already has a login logs in here and the project is added.
+const DEMO_JOIN = {
+  project: { title: "Meridian Campaign", client: "Meridian", type: "Brand campaign" }, studio: "Nobleman Productions", role: "approver", roleLabel: "Decision maker",
+  can: ["Watch each new version", "Leave notes on any moment", "Approve a version, or ask for changes", "Download the finished films"], minPassword: 10, user: null, member: false,
+};
+
+function Join({ session, demo, onJoined }) {
+  const s = session || {};
+  const token = demo ? "" : location.pathname.split("/")[2] || "";
+  const [info, setInfo] = useState(demo ? DEMO_JOIN : null);
+  const [err, setErr] = useState("");
+  const [mode, setMode] = useState("new"); // new | login | code | demo-done
+  const [f, setF] = useState({ name: "", email: "", password: "", agree: false });
+  const [busy, setBusy] = useState(false);
+  const [ticket, setTicket] = useState(null);
+  useEffect(() => {
+    if (demo) return;
+    api("/api/session?join=" + encodeURIComponent(token)).then(setInfo).catch((e) => setErr(e.message || "This link isn’t working."));
+  }, []);
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value });
+  // In the project: a new login, or one that's logged in (it's added to it).
+  const enter = async (body) => {
+    const d = await post({ action: "join", token, ...body });
+    onJoined(d.user, "/projects/" + d.projectId);
+  };
+  const create = async (e) => {
+    e.preventDefault();
+    setBusy(true); setErr("");
+    if (demo) { setMode("demo-done"); setBusy(false); return; }
+    try { await enter({ name: f.name, email: f.email, password: f.password, agree: f.agree }); }
+    catch (x) {
+      setErr(x.message); setBusy(false);
+      if (x.data && x.data.exists) setMode("login");
+    }
+  };
+  const login = async (e) => {
+    e.preventDefault();
+    setBusy(true); setErr("");
+    try {
+      const d = await post({ action: "login", email: f.email, password: f.password });
+      if (d.twoStep) { setTicket(d.ticket); setMode("code"); setBusy(false); return; }
+      await enter({});
+    } catch (x) { setErr(x.message); setBusy(false); }
+  };
+  const logout = async () => { await post({ action: "logout" }).catch(() => {}); location.reload(); };
+  const support = (s.brand && s.brand.support) || "alexis@gotit2work.com";
+  const privacy = (info && info.privacy) || (s.brand && s.brand.privacy) || "https://noblemanproductions.gotit2work.com/privacy#portal";
+
+  if (!info) return html`<${Door} law=${s.signin} brand=${s.brand}>
+    ${err ? html`<div class="stack" style=${{ gap: "14px" }}>
+      <h2 class="h2 door-title">That link didn’t work</h2>
+      <div class="alert" role="alert">${err}</div>
+      <a class="btn primary" href="/">Go to login</a>
+    </div>` : html`<div class="boot-line"><i></i></div>`}
+  <//>`;
+
+  const p = info.project;
+  const me = info.user;
+  return html`<${Door} law=${s.signin} brand=${s.brand}>
+    <div class="stack joinhead" style=${{ gap: "6px" }}>
+      <span class="eyebrow">${info.studio} · Your project link</span>
+      <h2 class="h2 door-title">${p.title}</h2>
+      <span class="muted small">${p.client}${p.type ? " · " + p.type : ""}</span>
+    </div>
+    ${demo ? html`<div class="alert info small">This is the demo: here’s what a client sees when they open a project’s link. Nothing you type is saved.</div>` : null}
+
+    ${mode === "demo-done" ? html`<div class="stack" style=${{ gap: "14px" }}>
+      <div class="alert info" role="status"><b>Demo only:</b> in the real portal this creates ${f.name.split(" ")[0] || "their"} login, and they land on ${p.title}, already let in.</div>
+      <a class="btn primary lg" href="/demo/projects/demo-meridian">See what they see</a>
+    </div>`
+
+    : me ? html`<div class="stack" style=${{ gap: "14px" }}>
+      <p style=${{ margin: 0, lineHeight: 1.6 }}>You’re logged in as <b>${me.name}</b> (${me.email}).${info.member ? ` ${p.title} is already in your portal.` : ""}</p>
+      ${err ? html`<div class="alert" role="alert">${err}</div>` : null}
+      <button class="btn primary lg" disabled=${busy} onClick=${async () => { setBusy(true); setErr(""); try { await enter({}); } catch (x) { setErr(x.message); setBusy(false); } }}>
+        ${busy ? "One moment…" : info.member || me.staff ? `Open ${p.title}` : `Add ${p.title} to my portal`}</button>
+      <button type="button" class="link small" style=${{ alignSelf: "flex-start" }} onClick=${logout}>Not you? Log out</button>
+    </div>`
+
+    : mode === "code" ? html`<${CodeForm} ticket=${ticket} next="" onSignedIn=${async () => { try { await enter({}); } catch (x) { setErr(x.message); setMode("login"); } }} onRestart=${() => setMode("login")} />`
+
+    : mode === "login" ? html`<form onSubmit=${login} noValidate>
+      <p class="muted" style=${{ margin: 0, lineHeight: 1.6 }}>Log in, and ${p.title} is added to your portal.</p>
+      <${Field} label="Email"><input class="input" type="email" name="email" autoComplete="username" required value=${f.email} onInput=${set("email")} /><//>
+      <${Password} label="Password" name="password" auto="current-password" value=${f.password} onInput=${(v) => setF({ ...f, password: v })} />
+      ${err ? html`<div class="alert" role="alert">${err}</div>` : null}
+      <button class="btn primary lg" type="submit" disabled=${busy || !f.email.includes("@") || !f.password}>${busy ? "Logging in…" : `Log in and open ${p.title}`}</button>
+      <div class="door-links">
+        <button type="button" class="link small" onClick=${() => { setMode("new"); setErr(""); }}>I’m new: create my login</button>
+        <a class="link small" href=${"/signin?next=" + encodeURIComponent(location.pathname)}>Forgot your password?</a>
+      </div>
+    </form>`
+
+    : html`<ol class="joinsteps">
+        <li><b>Create your login</b><span>Your name, email, and a password you choose.</span></li>
+        <li><b>You go straight to ${p.title}</b><span>Nothing to wait for. Next time, log in with the same email and password.</span></li>
+        <li><b>Then you can</b><span>${info.can.join(" · ")}</span></li>
+      </ol>
+      <form onSubmit=${create} noValidate>
+        <${Field} label="Your name"><input class="input" name="name" autoComplete="name" required value=${f.name} onInput=${set("name")} /><//>
+        <${Field} label="Email"><input class="input" type="email" name="email" autoComplete="email" required value=${f.email} onInput=${set("email")} /><//>
+        <${Password} label=${`Choose a password (at least ${info.minPassword || 10} characters)`} name="new-password" auto="new-password" value=${f.password} onInput=${(v) => setF({ ...f, password: v })} />
+        <label class="ack"><input type="checkbox" class="check-box" checked=${f.agree} onChange=${set("agree")} />
+          <span>I’m working on <b>${p.title}</b> with ${p.client}, and I’ll share this link only with people on the project.</span></label>
+        ${err ? html`<div class="alert" role="alert">${err}</div>` : null}
+        <button class="btn primary lg" type="submit" disabled=${busy || !f.name.trim() || !f.email.includes("@") || f.password.length < (info.minPassword || 10) || !f.agree}>${busy ? "One moment…" : "Create my login"}</button>
+        <button type="button" class="link small" style=${{ alignSelf: "flex-start" }} onClick=${() => { setMode("login"); setErr(""); }}>Already have a login? Log in instead</button>
+      </form>`}
+
+    <div class="foot">
+      <span>Questions? Email <a href=${"mailto:" + support}>${support}</a>.</span>
+      <span class="faint"><a href=${privacy}>How we handle your information</a></span>
+    </div>
+  <//>`;
+}
+
 function Setup({ ready, onDone, session }) {
   const [f, setF] = useState({ code: "", name: "", email: "", password: "", again: "" });
   const [busy, setBusy] = useState(false);
@@ -351,13 +469,14 @@ function TwoStepRequired({ session, onDone, onSignOut, toast }) {
   <//>`;
 }
 
-export function Gate({ mode, session, problem, start, onSignedIn, onSetupDone, onPasswordDone, onPasswordNeeded, onTwoStepDone, onSignOut, toast }) {
+export function Gate({ mode, session, problem, start, demo, onSignedIn, onSetupDone, onPasswordDone, onPasswordNeeded, onTwoStepDone, onSignOut, toast }) {
   const s = session || {};
   return html`<div class="gate">
     <${Screen} law=${s.signin} />
     ${mode === "setup" ? html`<${Setup} ready=${s.setupReady} onDone=${onSetupDone} session=${s} />`
       : mode === "password" ? html`<${NewPassword} user=${s.user} onDone=${onPasswordDone} onSignOut=${onSignOut} session=${s} />`
       : mode === "link" ? html`<${Redeem} session=${s} onSignedIn=${onSignedIn} onPassword=${onPasswordNeeded} />`
+      : mode === "join" ? html`<${Join} session=${s} demo=${demo} onJoined=${onSignedIn} />`
       : mode === "twostep" ? html`<${TwoStepRequired} session=${s} onDone=${onTwoStepDone} onSignOut=${onSignOut} toast=${toast} />`
       : html`<${Login} session=${s} onSignedIn=${onSignedIn} problem=${problem} start=${start} />`}
   </div>`;

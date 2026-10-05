@@ -130,7 +130,7 @@ function App() {
     setDemoMode(false);
     const data = await api("/api/portal");
     // Land on the page they wanted, or stay where they are; never on a used one-time link or /signin.
-    const target = next && /^\/(?!\/)/.test(next) ? next : /^\/(link|signin|signup|login)(\/|$)/.test(location.pathname) ? "/" : location.pathname;
+    const target = next && /^\/(?!\/)/.test(next) ? next : /^\/(link|join|signin|signup|login)(\/|$)/.test(location.pathname) ? "/" : location.pathname;
     if (target !== location.pathname) history.replaceState(null, "", target);
     setPath(target);
     setSt({ phase: "app", demo: false, base: "", data, session });
@@ -147,6 +147,8 @@ function App() {
     try { s = await api("/api/session"); } catch (e) { s = { error: e.message }; }
     if (await movedOn(s)) return;
     try {
+      // A project's own link: the client's way in (gate.js, Join). The demo shows a sample one.
+      if (p.startsWith("/join/") || p.startsWith("/demo/join")) return setSt({ phase: "gate", gate: "join", session: s, demoJoin: p.startsWith("/demo/") });
       if (wantsDemo) return await loadDemo("/demo");
       if (p.startsWith("/link/")) return setSt({ phase: "gate", gate: "link", session: s });
       if (s.user) {
@@ -206,7 +208,7 @@ function App() {
   if (st.phase === "boot") return html`<div class="boot" role="status" aria-label="Loading the portal"><img src="/assets/Nobleman_Mark_White.png" alt="" /><div class="bar"><i></i></div><div class="eyebrow">Private screening room</div></div>`;
   if (st.phase === "watch") return html`<${Watch} token=${location.pathname.split("/")[2] || ""} /><${Toasts} items=${toasts} />`;
   if (st.phase === "gate") {
-    return html`<${Gate} mode=${st.gate} session=${st.session} problem=${st.problem} start=${st.start}
+    return html`<${Gate} mode=${st.gate} session=${st.session} problem=${st.problem} start=${st.start} demo=${st.demoJoin}
       onSignedIn=${signedIn} onSetupDone=${signedIn}
       onPasswordNeeded=${(user, next) => setSt({ phase: "gate", gate: "password", session: { ...(st.session || {}), user }, next })}
       onPasswordDone=${(user) => signedIn(user, st.next)}
@@ -359,7 +361,7 @@ const HELP = [
 ];
 const STAFF_HELP = [
   { icon: "anchor", t: "Home", d: "What needs you: versions waiting on clients, change requests, unread messages, and what clients did lately." },
-  { icon: "key", t: "Studio", d: "Projects (video sources, progress, payments, what the client can do), clients, people and roles, connections (Vimeo, Frame.io, YouTube, Wistia, Notion, email, Stripe), settings, and the activity log." },
+  { icon: "key", t: "Studio", d: "Projects (each with its own client link, plus video sources, progress, payments, and what the client can do), clients, people and roles, connections (Vimeo, Frame.io with notes both ways, YouTube, Wistia, Notion, email, Stripe), settings, and the activity log." },
   { icon: "play", t: "Review and Films", d: "See every version, reply to notes, and check what the client sees. Clients see only the newest version unless Earlier versions is on." },
 ];
 

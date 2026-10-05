@@ -124,6 +124,25 @@ function LinkSent({ person, link, purpose, emailed, onClose }) {
   <//>`;
 }
 
+/** Which projects a client sees: all of their company's, or only some (people who joined by a project's link). */
+function SeesProjects({ d, f, setF }) {
+  const company = (d.clients.find((c) => c.id === f.clientId) || {}).name || "their company";
+  const list = d.projects.filter((p) => !p.archived && (p.clientId === f.clientId || f.projectIds.includes(p.id)));
+  const pick = (id, on) => setF({ ...f, projectIds: on ? f.projectIds.concat([id]) : f.projectIds.filter((x) => x !== id) });
+  return html`<div class="stack" style=${{ gap: "8px" }}>
+    <span class="small" style=${{ fontWeight: 600 }}>Sees</span>
+    <div class="roles" role="radiogroup" aria-label="Which projects they see">
+      <label class=${"rolecard" + (f.allProjects ? " on" : "")}><input type="radio" name="sees" checked=${f.allProjects} onChange=${() => setF({ ...f, allProjects: true })} />
+        <b>Every ${company} project</b><span>Including new ones, as soon as you create them.</span></label>
+      <label class=${"rolecard" + (!f.allProjects ? " on" : "")}><input type="radio" name="sees" checked=${!f.allProjects} onChange=${() => setF({ ...f, allProjects: false })} />
+        <b>Only the projects ticked</b><span>What people who join by a project’s link get.</span></label>
+    </div>
+    ${!f.allProjects ? html`<div class="stack" style=${{ gap: "6px", paddingLeft: "4px" }}>${list.length ? list.map((p) => html`<label key=${p.id} class="ack" style=${{ color: "var(--ink)" }}>
+      <input type="checkbox" class="check-box" checked=${f.projectIds.includes(p.id)} onChange=${(e) => pick(p.id, e.target.checked)} />
+      <span>${p.title}${p.clientId !== f.clientId ? html` <span class="faint">· ${p.clientName}</span>` : null}</span></label>`) : html`<span class="muted small">${company} has no active projects yet.</span>`}</div>` : null}
+  </div>`;
+}
+
 function PersonForm({ admin, person, defaults, onClose, onLink }) {
   const { user } = useApp();
   const { d } = admin;
@@ -131,7 +150,8 @@ function PersonForm({ admin, person, defaults, onClose, onLink }) {
   const editing = !!person;
   const mayStaff = admin.can("staff.manage"), mayClients = admin.can("people.manage");
   const [f, setF] = useState(person
-    ? { name: person.name, email: person.email, title: person.title, role: person.role, access: person.access, clientId: person.clientId || "", clientName: "" }
+    ? { name: person.name, email: person.email, title: person.title, role: person.role, access: person.access, clientId: person.clientId || "", clientName: "",
+        allProjects: person.allProjects !== false, projectIds: person.projects || [] }
     : { name: "", email: "", title: "", role: mayClients ? "client" : "admin", access: mayClients ? "approver" : "editor", clientId: (defaults && defaults.clientId) || "", clientName: "", send: d.email });
   const [err, setErr] = useState("");
   const self = editing && person.id === user.id;
@@ -140,8 +160,9 @@ function PersonForm({ admin, person, defaults, onClose, onLink }) {
     e.preventDefault();
     setErr("");
     const client = f.role === "client" ? (f.clientId === "__new" ? { clientName: f.clientName } : { clientId: f.clientId }) : {};
+    const scope = editing && f.role === "client" ? { allProjects: f.allProjects, ...(f.allProjects ? {} : { projectIds: f.projectIds }) } : {};
     const body = editing
-      ? { action: "personUpdate", id: person.id, name: f.name, title: f.title, email: f.email, role: f.role, access: f.access, ...client }
+      ? { action: "personUpdate", id: person.id, name: f.name, title: f.title, email: f.email, role: f.role, access: f.access, ...client, ...scope }
       : { action: "personCreate", name: f.name, email: f.email, title: f.title, role: f.role, access: f.access, send: f.send, ...client };
     const r = await run(body, editing ? "Saved." : null);
     if (!r) return;
@@ -168,6 +189,7 @@ function PersonForm({ admin, person, defaults, onClose, onLink }) {
           <b>${r.label}</b><span>${r.detail}</span></label>`)}</div>
       </div>
       ${f.role === "client" ? html`<${ClientPicker} clients=${d.clients} value=${f} onChange=${(v) => setF({ ...f, ...v })} />` : null}
+      ${editing && f.role === "client" ? html`<${SeesProjects} d=${d} f=${f} setF=${setF} />` : null}
       ${!editing && d.email ? html`<div class="cap"><${Toggle} checked=${f.send} onChange=${(v) => setF({ ...f, send: v })} label="Email the invitation" />
         <div><b>Email them the invitation</b><span>They get a link to choose a password. Either way you can copy the link next.</span></div></div>` : null}
       ${err ? html`<div class="alert" role="alert">${err}</div>` : null}
@@ -227,7 +249,7 @@ export function People({ admin, view }) {
     <table class="table"><thead><tr><th>Person</th><th>Role</th><th>Login</th><th></th></tr></thead>
       <tbody>${list.map((p) => html`<tr key=${p.id}>
         <td><b>${p.name}</b>${p.id === user.id ? html` <span class="faint small">(you)</span>` : null}<div class="muted small">${p.email}${p.title ? " · " + p.title : ""}</div></td>
-        <td class="small">${p.roleLabel}${p.clientName ? html`<span class="muted"> · ${p.clientName}</span>` : null}</td>
+        <td class="small">${p.roleLabel}${p.clientName ? html`<span class="muted"> · ${p.clientName}</span>` : null}${p.role === "client" && p.allProjects === false ? html`<div class="faint">Only ${p.projects.length === 1 ? (d.projects.find((x) => x.id === p.projects[0]) || {}).title || "1 project" : plural(p.projects.length, "project")}</div>` : null}</td>
         <td class="small" data-label="Last login">${p.invited ? html`<span class="warn-text">Invited, not logged in yet</span>` : p.lastLogin ? fmtAgo(p.lastLogin) : html`<span class="muted">Never</span>`}${p.twoStep ? html`<span class="muted"> · two-step on</span>` : null}</td>
         <td style=${{ textAlign: "right", whiteSpace: "nowrap" }}>
           ${p.id === user.id ? html`<${Link} to="/account" cls="btn ghost sm">My account<//>`

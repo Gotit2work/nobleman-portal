@@ -1,7 +1,7 @@
 // Studio → Connections: video sources (Vimeo, Frame.io, YouTube, Wistia), Notion, payments (Stripe), email, and
 // file storage.
 // Credentials go to the server once and are stored encrypted; the page never gets them back.
-import { html, useApp, useState, useEffect, api, Head, Field, Modal, Confirm, More, Icon, copy, fmtAgo, fmtBytes, plural } from "./ui.js";
+import { html, useApp, useState, useEffect, api, Head, Field, Modal, Confirm, More, Icon, Toggle, copy, fmtAgo, fmtBytes, plural } from "./ui.js";
 import { useRun, providerOf } from "./studio.js";
 
 const ICON = { video: "play", tracking: "grid", email: "bottle", payments: "key" };
@@ -156,12 +156,23 @@ function TestResult({ t }) {
   </div>`;
 }
 
-/** Frame.io with Adobe sign-in: the redirect address to register, the login button, and the account choice. */
+/**
+ * Frame.io with Adobe sign-in: the redirect address to register, the login button, and the account choice. Once
+ * connected: notes go both ways (api/_fio_sync.js), and live updates make that instant.
+ */
 function FrameioSteps({ c, d, test, admin }) {
   const { toast } = useApp();
   const { run, busy } = useRun(admin);
   const accounts = test && test.accounts;
+  const ready = c.signedIn && c.config && c.config.accountId;
+  const live = !!(c.config && c.config.live);
   return html`<div class="stack" style=${{ gap: "10px" }}>
+    ${ready ? html`<div class="setopt">
+      <div><b>Notes go both ways</b><span>${live
+        ? `Live updates are on${c.config.live.at ? " since " + fmtAgo(c.config.live.at) : ""}: Frame.io comments and new versions reach the portal straight away, and clients are emailed about them.`
+        : "Notes and decisions from the portal appear in Frame.io, and Frame.io comments appear in the portal when someone opens them. Turn on live updates so they arrive straight away and clients are emailed."}</span></div>
+      <${Toggle} checked=${live} disabled=${busy} onChange=${(v) => run({ action: "frameioLive", id: c.id, on: v }, v ? "Live updates are on." : "Live updates are off.")} label="Live updates from Frame.io" />
+    </div>` : null}
     ${c.auth === "oauth" ? html`
       <span class="muted small" style=${{ lineHeight: 1.6 }}>In the Adobe Developer Console, the credential’s redirect URI must be exactly:</span>
       <div class="copybox"><code class="clip">${d.redirectUri}</code><button class="btn ghost sm" onClick=${() => copy(d.redirectUri, toast, "Address")}>Copy</button></div>
