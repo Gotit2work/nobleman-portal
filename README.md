@@ -28,8 +28,9 @@ Pages are client-side routes served by one `index.html` (rewrite in `vercel.json
 
 The goal: a busy executive opens an email, presses one button, and approves a film without learning anything.
 
-- **One next step.** Home leads with the single thing that needs them ("Version 3 of Harbor Spot is ready for you" → **Watch Version 3**). A first-visit welcome explains Watch → Note → Approve once.
-- **Only the newest version.** When V2 arrives, V1 disappears for the client: Review shows one film, labelled "Version 2. The newest version. It replaces Version 1." There's never a choice to make. Staff can open every version, still one at a time: Review shows the newest, with the earlier ones in a version picker, and Studio's Videos list folds each film's earlier versions under its newest. A project can show earlier versions to the client (the same picker) with the **Earlier versions** switch.
+- **One next step.** Home leads with the single thing that needs them ("Version 3 of Harbor Spot is ready for you" → **Watch Version 3**).
+- **A three-step tutorial.** See "The tutorial" below.
+- **Only the newest version.** When V2 arrives, V1 disappears for the client: Review shows one film, "Version 2", and there's never a choice to make. Staff can open every version, still one at a time: Review shows the newest, with the earlier ones in a version picker, and Studio's Videos list folds each film's earlier versions under its newest. A project can show earlier versions to the client (the same picker) with the **Earlier versions** switch.
 - **Preview mark.** Versions under review carry a "Preview · Version N" mark on the player, so nobody mistakes a draft for the final.
 - **Notes on the moment.** Pause anywhere, write a note, and it's pinned to that second. Players that can't report the time (Google Drive, Loom) take notes about the whole version instead, and say so.
 - **Approve with small fixes.** The approve dialog has an optional "Any small fixes?" box, so "yes, but lift the logo" doesn't need another round. Approvers get a receipt by email.
@@ -40,6 +41,21 @@ The goal: a busy executive opens an email, presses one button, and approves a fi
 - **Two-step verification** (optional for clients, can be required for staff), with recovery codes.
 - **Milestone confirmation.** Staff can ask the client to confirm the next milestone (a filming day, a delivery); the client gets a **Confirm** button and staff are told.
 - **Payments.** When the studio asks for a payment, Home says **Please pay** and **Pay** opens Stripe's secure checkout (card or bank). The project page shows what's due; paid ones stay listed with who paid and when.
+
+## The tutorial
+
+`app/tour.js`. A few steps, each pointing at the real thing on the screen: everything else dims and blurs (a `backdrop-filter` veil with a rounded hole cut by `clip-path: path(evenodd, …)`, which also lets clicks through the hole), and the spot pulses in red with its step number. A small card says what it is in one line, with **Next** (or **Done**) and **Skip tutorial**; Escape skips too.
+
+| Who | Steps |
+|---|---|
+| Clients (3) | **Start here** (the next-step card on Home) → **Leave a note** (the note box on Review; before the first version, **Review** in the menu instead) → **Approve** (Approve / Ask for changes) |
+| Studio (5) | **Start here** (Home's next step, or the setup checklist) → **New project** (Studio → Projects) → **Send the link** (the client link on a project) → **Add videos** (the Videos part) → **Check their view** (See it as the client does) |
+
+- **When it starts.** By itself the first time someone opens Home (a deep link from an email waits until they visit Home), and any time from **Tutorial** at the top right (desktop), next to the logo (phones), and in Help. New logins from a project link land on Home, so their tutorial starts straight away. Finishing or skipping it is remembered on the server (`users.welcomed_at`, `POST /api/session {action:"profile", welcomed:true}`), so it never starts by itself again, on any device. The demo never starts it by itself; its **Tutorial** button replaces the old "Demo" chip.
+- **Pressing the spot.** For steps that open something (the next step, the Videos part, See it as the client does), pressing the spot does just that and the tutorial moves on. For the others (New project, the note box, Approve) pressing it only moves the tutorial on, so nothing is created or approved by accident.
+- **Only what they have.** Elements opt in with `data-tour="<name>"`, and each step can say who it's for (`when`): a reviewer has no Approve step, an editor no New project, a portal without projects only the first two studio steps. A step whose element still isn't there (a viewer has no note box; nothing to review yet; an editor can't create projects) is skipped, and the tutorial goes to a step's own screen when it isn't on the current one.
+- **Phones.** The spot scrolls to the top and the card docks to the bottom (or the top, when the spot is low).
+- **Reduced motion.** No pulsing for people who ask their device for less motion.
 
 ## A project's own link (the simplest way in)
 
@@ -109,11 +125,11 @@ Each project has its own switches (Studio → Projects → a project → "What <
 
 | Tab | Who (by default) | What you do there |
 |---|---|---|
-| **Projects** | all staff | Create projects. Each project opens in parts (Details, Progress, Videos, Payments, What they can do) under one Save: stage, progress, next milestone (and ask the client to confirm it), the review-by date, and a reminder; the video source and every video at it (**hide**, **rename**, **make it a finished film**, add by link); **ask for a payment**, cancel one, or **mark it paid** another way; switch capabilities; archive or delete. Export all projects to a spreadsheet |
+| **Projects** | all staff | Create projects. Each project opens in parts (Details, Client link, Progress, Videos, Payments, What they can do) under one Save, with its client link at the top: stage, progress, next milestone (and ask the client to confirm it), the review-by date, and a reminder; the video source and every video at it (**hide**, **rename**, **make it a finished film**, add by link); **ask for a payment**, cancel one, or **mark it paid** another way; switch capabilities; archive or delete. Export all projects to a spreadsheet (a link under the list) |
 | **Clients** | owners, producers | Add and edit companies (name, logo shown in their portal, email domain for joining by sign-up, private notes); **Export data** (everything the portal holds about a client, as JSON, for access requests or offboarding); delete |
 | **People** | owners, producers | **Asking to join**: let people who created an account in (company and role) or decline them. Invite people (an emailed one-time link to choose a password, also shown to copy); change role, company, or email; resend an invitation or send a reset link; log someone out everywhere; turn off two-step verification for a lost phone; remove. **What roles can do** is the roles table |
 | **Connections** | owners | Add, test, change, and remove video accounts (Vimeo, Frame.io, YouTube, Wistia), Notion, payments (Stripe; its webhook address shows until the webhook is connected, then under **Show the setup**), and email. Keys are encrypted and never shown again |
-| **Settings** | owners | A short list of sections, each with a one-line summary; one opens at a time. Studio name, help email, addresses, the line above Messages; the login screen's photo (one of the studio's, or an upload, resized in the browser to 2400 px and served by `GET /api/session?loginImage=<id>`; a replaced upload is deleted) and its Murphy's Law; the first-visit welcome; a notice for everyone; project stages (names, progress, order); defaults for new projects; security (require two-step verification for staff, emailed login links, how long logins last, client teams, who can create an account, joining by email domain); review reminders; **System check** |
+| **Settings** | owners | A short list of sections, each with a one-line summary; one opens at a time. Studio name, help email, addresses, the line above Messages; the login screen's photo (one of the studio's, or an upload, resized in the browser to 2400 px and served by `GET /api/session?loginImage=<id>`; a replaced upload is deleted) and its Murphy's Law; a notice for everyone; project stages (names, progress, order); defaults for new projects; security (require two-step verification for staff, emailed login links, how long logins last, client teams, who can create an account, joining by email domain); review reminders; **System check** |
 | **Activity** | owners, producers | Who did what and when (logins, sign-ups, views, downloads, approvals, Studio changes), filtered by kind of person, client, project, or word; export to a spreadsheet. Kept about 13 months |
 
 **System check** (first in Settings) lists anything that needs attention: missing secrets, the setup code still set, the demo still on, file storage, email, the daily job, each connection, payments, Notion, fewer than two owners, staff without two-step verification.
@@ -226,7 +242,7 @@ Documents and client files live in a **private** Vercel Blob store: nothing in i
 
 ## Demo mode
 
-`PORTAL_MODE=demo` opens the portal at `/` to anyone as a sample client ("Jonathan Reyes, Meridian"), with nothing saved: every action says "Demo only: …". A **Client's view / Studio's view** switch (top right on desktop; in the Demo help on phones) shows the same sample as the studio sees it, on the same page (both views load together, so the switch is instant): the staff board, every version, someone asking to join, and all of Studio with sample clients, people, connections, settings, and activity. Studio's changes are refused with "Demo only". Link to it with `?view=studio`. It's a server setting, never a fallback: if the API fails, the login screen shows the problem. The sample is always at `/demo` too, so the website can link to it after go-live. In demo mode, `/signin` still reaches the real sign-in.
+`PORTAL_MODE=demo` opens the portal at `/` to anyone as a sample client ("Jonathan Reyes, Meridian"), with nothing saved: every action says "Demo only: …". **Tutorial** at the top plays the client's or the studio's tutorial. A **Client's view / Studio's view** switch (top right on desktop; in Help on phones) shows the same sample as the studio sees it, on the same page (both views load together, so the switch is instant): the staff board, every version, someone asking to join, and all of Studio with sample clients, people, connections, settings, and activity. Studio's changes are refused with "Demo only". Link to it with `?view=studio`. It's a server setting, never a fallback: if the API fails, the login screen shows the problem. The sample is always at `/demo` too, so the website can link to it after go-live. In demo mode, `/signin` still reaches the real sign-in.
 
 ## Environment variables
 
@@ -328,7 +344,7 @@ The data layer is plain Postgres. To move: create the Supabase project; copy the
 
 ```bash
 npm ci && (cd tests && npm ci)
-cd tests && npm test        # 362 API checks, then 164 browser checks (desktop and phone)
+cd tests && npm test        # 363 API checks, then 181 browser checks (desktop and phone)
 npm run shots               # screenshots of every screen in tests/.work/shots
 ./run.sh && node crawl.mjs http://localhost:4401 demo-studio   # clicks every link and button, looking for screens that break
 ```

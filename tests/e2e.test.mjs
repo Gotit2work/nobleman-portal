@@ -38,6 +38,9 @@ const nav = (page, name) => page.locator("nav.rail").getByRole("link", { name, e
 const tab = (page, name) => page.locator(".studio-tabs").getByRole("link", { name, exact: true });
 const visible = (loc) => loc.first().isVisible().catch(() => false);
 const waitText = async (page, text, ms = 8000) => { try { await page.getByText(text).first().waitFor({ state: "visible", timeout: ms }); return true; } catch { return false; } };
+const tourCard = (page, ms = 4000) => page.locator(".tour-card").waitFor({ timeout: ms }).then(() => page.locator(".tour-card").innerText(), () => "");
+// Waits until the tutorial shows this step ("2 of 3"), or until it has closed (null).
+const stepIs = (page, t, ms = 5000) => page.waitForFunction((t) => { const c = document.querySelector(".tour-count"); return t === null ? !document.querySelector(".tour-card") : !!c && c.textContent.startsWith(t); }, t, { timeout: ms }).then(() => true, () => false);
 const hello = (name) => new RegExp(`Good (morning|afternoon|evening), ${name}\\.`);
 const local = (url) => String(url).replace(/^https?:\/\/[^/]+/, B);
 
@@ -68,6 +71,9 @@ async function as(email, path = "/", opts) {
   await page.locator('input[name="code"]').fill("setup-code-123");
   await page.getByRole("button", { name: "Create the owner account" }).click();
   check("the right code creates the owner and opens the portal", await waitText(page, hello("Sam")));
+  check("a new owner's first Home starts the studio tutorial, at the setup checklist (no projects yet: 2 steps)", /1 of 2/i.test(await tourCard(page)) && await page.evaluate(() => { const r = document.querySelector(".tour-ring").getBoundingClientRect(), el = document.querySelector('[data-tour="next"]'), s = el.getBoundingClientRect(); return Math.abs(r.top - (s.top - 8)) < 3 && el.classList.contains("setup"); }));
+  await page.getByRole("button", { name: "Skip tutorial" }).click();
+  check("…and Skip tutorial ends it, saying where it is", await waitText(page, "Tutorial skipped.") && await stepIs(page, null) && !(await page.locator(".tour-veil").count()));
   check("a new, empty portal greets its owner with a Getting started checklist", await waitText(page, /Set up the portal: \d of 6 done\./) && (await page.locator(".setup .step").count()) === 9 && await visible(page.locator(".setup .step", { hasText: "Add your first client" })));
   check("staff see Studio in the side capsule", await visible(nav(page, "Studio")));
   await nav(page, "Studio").click();
@@ -94,13 +100,34 @@ const dana = await newPage();
   check("desktop: the side capsule is shown and the bottom bar isn't", await visible(page.locator("nav.rail")) && !(await visible(page.locator("nav.bottombar"))));
 
   check("the client sees only the newest version: no version picker", !(await visible(page.locator(".vpick"))));
-  check("…and is told it replaces the earlier ones", await waitText(page, "It replaces Version 2 and earlier."));
+  check("…and isn't asked to read about older versions", !(await waitText(page, "It replaces Version", 500)));
+  check("a deep link doesn't start the tutorial: it waits for Home", !(await tourCard(page, 1200)));
   check("the version under review is marked as a preview", (await page.locator(".player-mark").first().textContent().catch(() => "") || "").includes("Version 3"));
 
   await nav(page, "Home").click();
   check("Home leads with the next step", await waitText(page, "Version 3 of Harbor Spot is ready for you."));
-  check("a first visit shows the welcome", await waitText(page, "Welcome to your screening room."));
-  await page.getByRole("button", { name: "Got it" }).click();
+  const first = await tourCard(page);
+  check("the first time on Home, the client tutorial starts: 3 steps, at the next step", /1 of 3/i.test(first) && /Start here/.test(first));
+  const veil = await page.evaluate(() => { const v = getComputedStyle(document.querySelector(".tour-veil")); return { blur: v.backdropFilter || v.webkitBackdropFilter, clip: v.clipPath, pulse: getComputedStyle(document.querySelector(".tour-ring")).animationName, n: document.querySelector(".tour-num").textContent }; });
+  check("…the page is blurred except the spot, which pulses with its number", /blur/.test(veil.blur) && /path\(evenodd/.test(veil.clip) && veil.pulse === "tourRing" && veil.n === "1", JSON.stringify(veil));
+  // Press the real button through the hole: if the veil caught the click, this would time out.
+  await page.locator('[data-tour="next"] a.btn').click({ timeout: 4000 });
+  check("pressing the pulsing button opens it, and the tutorial moves on there", await stepIs(page, "2 of 3") && await waitText(page, "Leave a note") && new URL(page.url()).pathname.startsWith("/review/"));
+  await page.waitForTimeout(300);
+  check("…to the note box", await page.evaluate(() => { const r = document.querySelector(".tour-ring").getBoundingClientRect(), s = document.querySelector('[data-tour="note"]').getBoundingClientRect(); return Math.abs(r.left - (s.left - 8)) < 3 && Math.abs(r.width - (s.width + 16)) < 3; }));
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  check("…then to Approve", await stepIs(page, "3 of 3") && await waitText(page, "Happy with it? Approve."));
+  await page.waitForTimeout(300);
+  await page.getByRole("button", { name: "Approve Version 3" }).click();
+  check("pressing a spot that isn't a link only moves the tutorial on (no approval yet)", await stepIs(page, null) && await waitText(page, "That’s it.") && !(await page.getByRole("button", { name: /Yes, approve Version 3/ }).count()));
+  await page.waitForTimeout(500);   // the portal records it in the background
+  await page.reload();
+  await nav(page, "Home").click();
+  check("once finished, it doesn't start by itself again", !(await tourCard(page, 1500)));
+  await page.locator(".tour-corner .tour-btn").click();
+  check("Tutorial at the top plays it again", /1 of 3/i.test(await tourCard(page)));
+  await page.keyboard.press("Escape");
+  check("…and Escape skips it", await stepIs(page, null) && await waitText(page, "Tutorial skipped."));
   await page.getByRole("link", { name: /Watch Version 3/ }).first().click();
   check("the next-step button opens Version 3", await waitText(page, "Is Version 3 right?"));
 
@@ -166,10 +193,13 @@ const dana = await newPage();
   await waitText(rae, /Notes on Version/);
   check("a reviewer can leave notes", await visible(rae.getByRole("button", { name: "Add note" })));
   check("…but has no approve button", !(await visible(rae.getByRole("button", { name: /^Approve Version/ }))));
+  await rae.locator(".tour-corner .tour-btn").click();
+  check("…so their tutorial skips the Approve step: two steps, not three", await stepIs(rae, "1 of 2"));
+  await rae.keyboard.press("Escape");
   await rae.context().close();
   const vic = await as("vic@harbor.test", "/review");
   await waitText(vic, /Notes on Version/);
-  check("a viewer watches and reads notes, with no note box", !(await visible(vic.getByRole("button", { name: "Add note" }))) && await waitText(vic, "You can watch and read the notes."));
+  check("a viewer watches and reads notes, with no note box", !(await visible(vic.getByRole("button", { name: "Add note" }))) && await waitText(vic, "You can read the notes here."));
   check("a viewer has no Messages", !(await visible(nav(vic, "Messages"))));
   await vic.context().close();
 }
@@ -179,6 +209,14 @@ const dana = await newPage();
   const page = await as("alexis@gotit2work.com");
   await waitText(page, hello("Alexis"));
   check("staff Home shows what needs the studio and what waits on clients", await waitText(page, "Needs the studio") && await waitText(page, "Waiting on clients"));
+  const seen = [];
+  for (let k = 1; k <= 5 && (await stepIs(page, `${k} of 5`)); k++) {
+    await page.waitForTimeout(250);
+    seen.push(`${(await page.locator(".tour-title").innerText())}@${new URL(page.url()).pathname.replace(/[0-9a-f-]{36}/, "id")}`);
+    await page.locator(".tour-card .btn.primary").click();
+  }
+  check("the studio tutorial walks five steps across Home, Projects, and a project", seen.join(" | ") === "Start here@/ | New project@/studio/projects | Send the link@/studio/projects/id | Add videos@/studio/projects/id | Check their view@/studio/projects/id", seen.join(" | "));
+  check("…and ends saying where to watch it again", await waitText(page, "Watch it again any time"));
   await nav(page, "Studio").click();
   await page.getByRole("row", { name: /Harbor Summit/ }).getByRole("link", { name: "Open", exact: true }).click();
   const part = (name) => page.locator(".parts").getByRole("button", { name, exact: true });
@@ -253,7 +291,7 @@ const dana = await newPage();
   check("…and the projects arrive in Notion", fake.notion.pages.length >= 2, fake.notion.pages.length);
 
   await tab(page, "Settings").click();
-  check("Settings is a short list of sections, with the system check first", await waitText(page, "System check") && (await page.locator(".setrow").count()) === 9);
+  check("Settings is a short list of sections, with the system check first", await waitText(page, "System check") && (await page.locator(".setrow").count()) === 8);
   await page.locator(".setrow", { hasText: "Login screen" }).click();
   const law = page.locator("section.setcard");
   check("…and opens one section at a time", await page.getByRole("heading", { name: "Login screen" }).waitFor().then(() => true, () => false) && new URL(page.url()).pathname === "/studio/settings/signin");
@@ -371,14 +409,17 @@ const dana = await newPage();
   const nia = await newPage();
   await nia.goto(link);
   const create = nia.getByRole("button", { name: "Create my login" });
-  check("the link opens on the project, with three short steps", await waitText(nia, "Harbor Launch Film") && await waitText(nia, "Create your login") && await waitText(nia, "You go straight to Harbor Launch Film") && (await nia.locator(".joinsteps li").count()) === 3);
+  check("the link opens on the project, with three short steps", await waitText(nia, "Harbor Launch Film") && await waitText(nia, "Create your login") && await waitText(nia, "You’re in straight away") && (await nia.locator(".joinsteps li").count()) === 3);
   await nia.locator('input[name="name"]').fill("Nia New");
   await nia.locator('input[name="email"]').fill("nia@agency.test");
   await nia.locator('input[name="new-password"]').fill("nia-password-1");
   check("…and can't be sent until the acknowledgement is ticked", await create.isDisabled());
   await nia.locator(".ack input").check();
   await create.click();
-  check("the client creates a login and lands on the project, already let in", await nia.waitForURL(/\/projects\/[0-9a-f-]{36}$/).then(() => true, () => false) && await waitText(nia, "Harbor Launch Film"));
+  check("the client creates a login and lands on Home with the project, already let in, and the tutorial starts", await nia.waitForURL(B + "/").then(() => true, () => false) && await waitText(nia, "Harbor Launch Film") && /1 of 2/i.test(await tourCard(nia)));
+  await nia.locator(".tour-card .btn.primary").click();
+  check("…with nothing to review yet, it shows where versions will appear: Review", await stepIs(nia, "2 of 2") && await waitText(nia, "Each new version shows up here.") && await nia.evaluate(() => { const r = document.querySelector(".tour-ring").getBoundingClientRect(), n = [...document.querySelectorAll('[data-tour="nav-review"]')].find((e) => e.getBoundingClientRect().width).getBoundingClientRect(); return Math.abs(r.left - (n.left - 8)) < 3; }));
+  await nia.keyboard.press("Escape");
   await nia.goto(B + "/");
   check("…and sees only that project, nothing else of the company's", await waitText(nia, "Harbor Launch Film") && !(await nia.getByText("Harbor Summit").count()));
   await nia.context().close();
@@ -492,7 +533,11 @@ const PHONE = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch:
   const page = await newPage();
   await page.goto(DEMO + "/");
   check("demo mode: the sample project opens without signing in", await waitText(page, hello("Jonathan")));
-  check("the demo says it's a demo", await waitText(page, /Demo · sample project/i));
+  check("the demo says it's a sample", await waitText(page, "A sample project: click anything."));
+  check("the demo never starts the tutorial by itself", !(await tourCard(page, 1200)));
+  await page.locator(".tour-btn:visible").first().click();
+  check("Tutorial at the top plays the client's tutorial in the demo", /1 of 3/i.test(await tourCard(page)));
+  await page.getByRole("button", { name: "Skip tutorial" }).click();
   await page.getByRole("link", { name: /Watch Version 3/ }).first().click();
   await page.getByRole("button", { name: "Approve Version 3" }).click();
   await page.getByRole("button", { name: "Yes, approve Version 3" }).click();
@@ -510,7 +555,7 @@ const PHONE = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch:
   check("…and picking an earlier one opens just that one", await page.waitForURL(/\/1$/, { timeout: 5000 }).then(() => true, () => false) && (await page.locator(".player-mark").first().textContent().catch(() => "") || "").includes("Version 1") && await waitText(page, "Shorter opening, and more of the boat."));
   await page.locator(".demo-switch").first().getByRole("button", { name: "Client’s view" }).click();
   check("switching back to the client's view works", await page.waitForFunction(() => document.querySelector(".demo-switch")?.dataset.on === "1").then(() => true, () => false) && await page.waitForFunction(() => ![...document.querySelectorAll("nav.rail .rail-item")].some((a) => /Studio/.test(a.textContent))).then(() => true, () => false));
-  check("…the client's side shows only the newest version", !(await visible(page.locator(".vpick"))) && await waitText(page, "It replaces Version 2 and earlier."));
+  check("…the client's side shows only the newest version", !(await visible(page.locator(".vpick"))) && await waitText(page, "Is Version 3 right?"));
   await page.locator(".demo-switch").first().getByRole("button", { name: "Studio’s view" }).click();
   await nav(page, "Home").click();
   check("…and to the studio's again", await waitText(page, "Someone is asking to join."));

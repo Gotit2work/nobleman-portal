@@ -189,7 +189,8 @@ export async function buildPortal(user) {
     },
     demo: false,
     brand: s.brand,
-    welcome: !staff && !user.welcomed_at ? s.welcome : null,
+    // First visit: the tutorial starts by itself (app/tour.js) until it's finished or skipped.
+    tour: !user.welcomed_at,
     announcement: s.announcement && s.announcement.text ? s.announcement : null,
     emailEnabled: await emailReady(),
     payReady: !!stripeConn,

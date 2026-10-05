@@ -169,8 +169,8 @@ function FrameioSteps({ c, d, test, admin }) {
   return html`<div class="stack" style=${{ gap: "10px" }}>
     ${ready ? html`<div class="setopt">
       <div><b>Notes go both ways</b><span>${live
-        ? `Live updates are on${c.config.live.at ? " since " + fmtAgo(c.config.live.at) : ""}: Frame.io comments and new versions reach the portal straight away, and clients are emailed about them.`
-        : "Notes and decisions from the portal appear in Frame.io, and Frame.io comments appear in the portal when someone opens them. Turn on live updates so they arrive straight away and clients are emailed."}</span></div>
+        ? `Live updates are on${c.config.live.at ? " since " + fmtAgo(c.config.live.at) : ""}: Frame.io comments and new versions arrive straight away.`
+        : "Portal notes show in Frame.io, and Frame.io comments show here. Live updates bring them in straight away and email clients."}</span></div>
       <${Toggle} checked=${live} disabled=${busy} onChange=${(v) => run({ action: "frameioLive", id: c.id, on: v }, v ? "Live updates are on." : "Live updates are off.")} label="Live updates from Frame.io" />
     </div>` : null}
     ${c.auth === "oauth" ? html`

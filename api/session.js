@@ -33,7 +33,7 @@ import { effectiveCaps } from "./_roles.js";
  * POST /api/session {action:"logout"}
  * POST /api/session {action:"setup"}       code, name, email, password: the first owner (once)
  * POST /api/session {action:"password"}    current, next
- * POST /api/session {action:"profile"}     name, title, notifyEmail, welcomed
+ * POST /api/session {action:"profile"}     name, title, notifyEmail, welcomed (finished or skipped the tutorial)
  * POST /api/session {action:"twoStepBegin" | "twoStepEnable" | "twoStepDisable" | "recoveryCodes"}
  */
 
@@ -397,7 +397,7 @@ async function join(req, res, b) {
   await audit(req, u, "join", `Created a login with the link for ${p.title}, as ${roleLabel(u)}, and confirmed they’re working on it`, { projectId: p.id, clientId: p.client_id });
   await notify({ audience: "staff", project: p, actor: null, origin: originOf(req), path: "/studio/projects/" + p.id, button: "See who joined",
     subject: `${name} joined ${p.title}`, lines: [`${name} (${email}) used the link for ${p.title} and can now see it in the portal, as ${roleLabel(u)}.`] });
-  return signIn(req, res, u, "project link", { joined: true, projectId: p.id });
+  return signIn(req, res, u, "project link", { joined: true, created: true, projectId: p.id });
 }
 
 async function setup(req, res, b) {

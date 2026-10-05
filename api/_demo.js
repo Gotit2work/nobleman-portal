@@ -115,7 +115,7 @@ export function demoPortal() {
       roleLabel: "Decision maker", perms: ROLE_DEFAULTS.approver, clientId: "demo-client", clientName: "Meridian", clientLogo: null, mustChangePassword: false, notifyEmail: true, twoStep: false },
     demo: true,
     brand: resolveBrand(DEFAULTS.brand),
-    welcome: DEFAULTS.welcome,
+    tour: false,
     announcement: null,
     emailEnabled: true,
     payReady: true,
@@ -159,7 +159,6 @@ export function demoStudioPortal() {
   return {
     ...d,
     user: { ...STUDIO_USER, perms: all },
-    welcome: null,
     projects,
     signups: 1,
     activity: STUDIO_LOG.slice(0, 8).map((e) => ({ type: e.action, projectId: e.projectId, projectTitle: e.project || "", who: e.who, role: e.kind === "staff" ? "admin" : "client", text: e.summary, at: e.at, log: true })),

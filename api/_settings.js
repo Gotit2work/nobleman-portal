@@ -30,10 +30,6 @@ export const DEFAULTS = {
     image: "/media/login-camera.jpg", // one of the portal's photos, or "upload:brand/login-<id>.jpg" (LOGIN_UPLOAD)
     focus: "right",                    // which side of the photo stays in view: left | center | right
   },
-  welcome: {
-    title: "Welcome to your screening room.",
-    text: "Every version of your film lands here first. Watch it, pause on anything you’d change and leave a note, then approve it when it’s right.",
-  },
   // A short notice at the top of every page, for everyone logged in. Empty = none.
   announcement: { text: "", tone: "info" },
   stages: [

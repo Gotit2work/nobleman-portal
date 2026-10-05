@@ -204,7 +204,7 @@ Clients pay deposits and balances by card or bank on Stripe's own checkout page.
 
 ### 14. The login page and settings
 
-Studio → Settings: check **Studio details** (help email, the line above Messages; leave **Website** and **Privacy page** empty so they follow the portal's address), **Login screen** (the photo and the Murphy's Law), **Welcome message**, and **Review reminders**.
+Studio → Settings: check **Studio details** (help email, the line above Messages; leave **Website** and **Privacy page** empty so they follow the portal's address), **Login screen** (the photo and the Murphy's Law), and **Review reminders**. The first time each person opens Home, a short tutorial shows them around (Tutorial at the top replays it).
 
 ---
 

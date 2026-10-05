@@ -158,7 +158,6 @@ const CLEAN = {
     image: LOGIN_MEDIA.test(String(v.image)) || LOGIN_UPLOAD.test(String(v.image)) ? String(v.image) : (cur && cur.image) || DEFAULTS.signin.image,
     focus: ["left", "center", "right"].includes(v.focus) ? v.focus : (cur && cur.focus) || DEFAULTS.signin.focus,
   }),
-  welcome: (v) => ({ title: text(v.title, 120), text: longText(v.text, 600) }),
   announcement: (v) => ({ text: text(v.text, 300), tone: v.tone === "warning" ? "warning" : "info" }),
   stages(v) {
     if (!Array.isArray(v) || v.length < 2 || v.length > 10) throw bad("Keep between 2 and 10 stages.");

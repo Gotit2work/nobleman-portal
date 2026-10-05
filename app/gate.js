@@ -301,7 +301,8 @@ function Join({ session, demo, onJoined }) {
   // In the project: a new login, or one that's logged in (it's added to it).
   const enter = async (body) => {
     const d = await post({ action: "join", token, ...body });
-    onJoined(d.user, "/projects/" + d.projectId);
+    // A new login starts on Home (where the tutorial starts); one that already existed opens the project.
+    onJoined(d.user, d.created ? "/" : "/projects/" + d.projectId);
   };
   const create = async (e) => {
     e.preventDefault();
@@ -345,7 +346,7 @@ function Join({ session, demo, onJoined }) {
     ${demo ? html`<div class="alert info small">This is the demo: here’s what a client sees when they open a project’s link. Nothing you type is saved.</div>` : null}
 
     ${mode === "demo-done" ? html`<div class="stack" style=${{ gap: "14px" }}>
-      <div class="alert info" role="status"><b>Demo only:</b> in the real portal this creates ${f.name.trim() ? `a login for ${f.name.trim().split(" ")[0]}` : "their login"}, and they land on ${p.title}, already let in.</div>
+      <div class="alert info" role="status"><b>Demo only:</b> in the real portal this creates ${f.name.trim() ? `a login for ${f.name.trim().split(" ")[0]}` : "their login"}, and they’re in ${p.title} straight away.</div>
       <a class="btn primary lg" href="/demo/projects/demo-meridian">See what they see</a>
     </div>`
 
@@ -373,7 +374,7 @@ function Join({ session, demo, onJoined }) {
 
     : html`<ol class="joinsteps">
         <li><b>Create your login</b><span>Your name, email, and a password you choose.</span></li>
-        <li><b>You go straight to ${p.title}</b><span>Nothing to wait for. Next time, log in with the same email and password.</span></li>
+        <li><b>You’re in straight away</b><span>Next time, log in with the same email and password.</span></li>
         <li><b>Then you can</b><span>${info.can.join(" · ")}</span></li>
       </ol>
       <form onSubmit=${create} noValidate>

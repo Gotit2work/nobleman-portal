@@ -72,10 +72,10 @@ check("stats on: play counts included", recap.plays === 487, recap.plays);
 check("no credentials, source ids, or staff fields reach clients", !J(r.d).includes("test-token") && hp.source === undefined && hp.clientCaps === undefined && recap.manage === undefined);
 check("caps combine the project and the role (decision maker: notes, approve, team)", hp.caps.notes && hp.caps.approve && hp.caps.team && hp.caps.upload && !hp.caps.history, J(hp.caps));
 check("review status: waiting on the client", hp.status.key === "waiting", J(hp.status));
-check("the welcome card shows until it's closed", !!r.d.welcome && /screening room/.test(r.d.welcome.title));
+check("a first visit starts the tutorial", r.d.tour === true && !("welcome" in r.d), J({ tour: r.d.tour, welcome: r.d.welcome }));
 await dana.post("/api/session", { action: "profile", welcomed: true });
 r = await dana.get("/api/portal");
-check("closing the welcome card keeps it closed", r.d.welcome === null);
+check("finishing or skipping the tutorial keeps it from starting again", r.d.tour === false);
 r = await rob.get("/api/portal");
 const dp = r.d.projects[0];
 check("another client sees their own project with its own switches", dp.id === DESERT && dp.caps.download === false && dp.caps.messages === false && dp.messages === null, J(dp.caps));
@@ -145,6 +145,7 @@ r = await dana.get("/api/portal");
 check("with Earlier versions on, the client sees V1–V3", spotOf(r.d.projects[0]).versions.map((v) => v.n).join() === "1,2,3");
 await admin.admin("projectUpdate", { id: HARBOR, caps: { history: false } });
 r = await admin.get("/api/portal");
+check("staff get the tutorial on their first visit too", r.d.tour === true);
 check("staff always see every version", spotOf(r.d.projects.find((p) => p.id === HARBOR)).versions.length === 3);
 
 // ================= messages =================

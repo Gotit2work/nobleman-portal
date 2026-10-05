@@ -116,7 +116,7 @@ export function Files({ pid }) {
 
   return html`<div class="page">
     <${Head} eyebrow=${p.title} title="Files">
-      ${admin ? `Documents you add here appear to ${p.clientName} under “From the studio”.` : p.caps.upload ? "Documents from the studio, and anything you send: logos, brand guides, footage, references." : "Documents from the studio: quotes, schedules, and anything else they share."}
+      ${admin ? `Documents you add here appear to ${p.clientName} under “From the studio”.` : p.caps.upload ? "Documents from the studio, and files you send." : "Documents from the studio."}
     <//>
     ${eligible.length > 1 ? html`<div class="tabs" style=${{ marginBottom: "24px" }}>${eligible.map((x) => html`<${Link} key=${x.id} to=${"/files/" + x.id} cls="tab-btn" current=${x.id === p.id}>${admin ? x.clientName + " · " : ""}${x.title}<//>`)}</div>` : null}
 
@@ -127,7 +127,7 @@ export function Files({ pid }) {
       <div class="stack" style=${{ alignItems: "center", gap: "12px" }}>
         <${Icon} name="send" size=${40} />
         <b style=${{ fontSize: "18px" }}>${admin ? "Add documents for " + p.clientName : "Send files to the studio"}</b>
-        <span class="muted small" style=${{ maxWidth: "520px", lineHeight: 1.6 }}>Drag files here, or choose them. ${p.videoUploadsToSource ? (admin ? "Videos go to the project’s video folder: put V1, V2… in the name to send a version to Review; without one it becomes a finished film. Other files up to 500 MB each." : "Videos up to 50 GB go straight to the studio’s video folder. Other files up to 500 MB each.") : "Up to 500 MB each."}</span>
+        <span class="muted small" style=${{ maxWidth: "520px", lineHeight: 1.6 }}>Drag files here. ${p.videoUploadsToSource ? (admin ? "Videos go to the project’s video folder: “V2” in the name makes it a version, otherwise a finished film. Other files up to 500 MB." : "Videos up to 50 GB. Other files up to 500 MB.") : "Up to 500 MB each."}</span>
         <button class="btn primary" onClick=${() => input.current.click()}>Choose files</button>
         <input ref=${input} type="file" multiple hidden onChange=${(e) => { send(e.target.files); e.target.value = ""; }} />
       </div>
@@ -143,7 +143,7 @@ export function Files({ pid }) {
 
     ${p.caps.files ? html`<section class="section" style=${{ marginTop: "32px" }}>
       <div class="sh"><span class="eyebrow"><span>From the studio</span></span><span class="muted small">${plural(docs.length, "file")}</span></div>
-      ${docs.length ? html`<div class="list">${docs.map(row)}</div>` : html`<p class="muted">${admin ? "Nothing added yet. Quotes, schedules, and call sheets you add show up here for the client." : "Nothing yet. Quotes, schedules, and call sheets from the studio will show up here."}</p>`}
+      ${docs.length ? html`<div class="list">${docs.map(row)}</div>` : html`<p class="muted">${admin ? "Nothing added yet." : "Nothing yet."}</p>`}
     </section>` : null}
     ${p.caps.upload || admin ? html`<section class="section" style=${{ marginTop: "40px" }}>
       <div class="sh"><span class="eyebrow"><span>${admin ? "From " + p.clientName : "From you"}</span></span><span class="muted small">${plural(mine.length + p.videoUploads.length, "file")}</span></div>
