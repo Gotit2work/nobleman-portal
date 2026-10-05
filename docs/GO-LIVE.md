@@ -213,7 +213,7 @@ Clients pay deposits and balances by card or bank on Stripe's own checkout page.
 
 ### 14. The login page and settings
 
-Studio → Settings: check **Studio details** (help email, the line above Messages; leave **Website** and **Privacy page** empty so they follow the portal's address), **Login screen** (the photo and the Murphy's Law), and **Review reminders**. The first time each person opens Home, a short tutorial shows them around (Tutorial at the top replays it).
+Studio → Settings: check **Studio details** (help email, the line above Messages; leave **Website** and **Privacy page** empty so they follow the portal's address), **Login screen** (the photo), and **Review reminders**. The first time each person opens Home, a short tutorial shows them around (Tutorial at the top replays it).
 
 ---
 
@@ -240,7 +240,7 @@ On a phone and a laptop, as a test client:
 
 | What you see | Why | What to do |
 |---|---|---|
-| "The portal is still being set up" | No database | Step 1, then redeploy |
+| Log in says "The portal isn't open yet." | No database | Step 1, then redeploy |
 | "The portal isn't open for new accounts yet" | Another address was used before the portal has an owner | Use jeancgotay@gmail.com or jean@noblemanproductions.com |
 | "The portal can't send email yet…" | No email key | Step 4, then redeploy |
 | Jean's confirmation email never arrives | Spam, or the domain isn't verified in Resend | Check spam; Resend → Domains shows Verified? The link works for an hour: **Create my account** again sends a new one |

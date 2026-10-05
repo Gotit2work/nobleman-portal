@@ -111,7 +111,7 @@ const dana = await newPage();
   await page.goto(B + "/review");
   check("logged out, everyone sees the same login (not a client login)", await waitText(page, "screening room") && await visible(page.getByRole("heading", { name: "Log in" })) && !(await waitText(page, /client portal|client login/i, 500)));
   check("the login offers creating an account", await visible(page.getByRole("tab", { name: "Create an account" })));
-  check("the login screen carries its Murphy’s Law", await waitText(page, "The one frame nobody checked is the one everyone sees."));
+  check("the login screen has no Murphy’s Law: the title, then the door", !/Murphy|frame nobody checked/i.test(await page.evaluate(() => document.body.innerText)) && !(await page.locator("figure, blockquote").count()));
   check("emailed login links are offered", await visible(page.getByRole("button", { name: "Email me a login link" })));
   check("the login is a camera still, not a video", (await page.locator(".screen iframe").count()) === 0 && /login-camera\.jpg/.test(await page.locator(".screen .poster").evaluate((e) => getComputedStyle(e).backgroundImage)));
   await signIn(page, "dana@harbor.test", "wrong-password-here");
@@ -315,27 +315,27 @@ const dana = await newPage();
   await tab(page, "Settings").click();
   check("Settings is a short list of sections, with the system check first", await waitText(page, "System check") && (await page.locator(".setrow").count()) === 8);
   await page.locator(".setrow", { hasText: "Login screen" }).click();
-  const law = page.locator("section.setcard");
+  const card = page.locator("section.setcard");
   check("…and opens one section at a time", await page.getByRole("heading", { name: "Login screen" }).waitFor().then(() => true, () => false) && new URL(page.url()).pathname === "/studio/settings/signin");
-  await law.getByRole("button", { name: "Crew at sunset" }).click();
-  await law.getByLabel("The law").fill("Anything that can go wrong in the edit will show up in the final cut.");
+  await card.getByRole("button", { name: "Crew at sunset" }).click();
+  check("…with only the photo and the side to keep in view", !(await card.locator("input:not([type=file])").count()));
   check("the preview shows the chosen photo", /a09\.jpg/.test(await page.locator(".loginprev .img").evaluate((e) => e.style.backgroundImage)));
-  await law.getByRole("button", { name: "Save", exact: true }).click();
+  await card.getByRole("button", { name: "Save", exact: true }).click();
   await waitText(page, "Saved.");
   const out = await newPage();
   await out.goto(B + "/");
-  check("the login screen's law changes without code", await waitText(out, "Anything that can go wrong in the edit will show up in the final cut."));
-  check("…and so does its photo", /a09\.jpg/.test(await out.locator(".screen .poster").evaluate((e) => getComputedStyle(e).backgroundImage)));
+  await out.locator(".screen .poster").waitFor();
+  check("the login screen's photo changes without code", /a09\.jpg/.test(await out.locator(".screen .poster").evaluate((e) => getComputedStyle(e).backgroundImage)));
   await out.context().close();
   // Upload a photo of your own: resized in the browser, sent to file storage, used once saved.
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGNkYPj/n4GBgYGJgYGBAQAWAAP/2Q0xXQAAAABJRU5ErkJggg==", "base64");
-  await law.locator('input[type="file"]').setInputFiles({ name: "harbor.png", mimeType: "image/png", buffer: png });
-  check("an uploaded photo is resized, sent, and previewed before saving", await waitText(page, /Uploaded\./) && /blob:/.test(await page.locator(".loginprev .img").evaluate((e) => e.style.backgroundImage)) && await visible(law.getByRole("button", { name: "Your photo" })));
+  await card.locator('input[type="file"]').setInputFiles({ name: "harbor.png", mimeType: "image/png", buffer: png });
+  check("an uploaded photo is resized, sent, and previewed before saving", await waitText(page, /Uploaded\./) && /blob:/.test(await page.locator(".loginprev .img").evaluate((e) => e.style.backgroundImage)) && await visible(card.getByRole("button", { name: "Your photo" })));
   const saved = page.waitForResponse((r) => r.url().endsWith("/api/admin") && r.request().method() === "POST" && /settingsSave/.test(r.request().postData() || ""));
-  await law.getByRole("button", { name: "Save", exact: true }).click();
+  await card.getByRole("button", { name: "Save", exact: true }).click();
   check("…and saved as the login photo", (await saved).ok() && /^upload:brand\/login-/.test((await (await fetch(B + "/api/session")).json()).signin.image));
-  await law.getByRole("button", { name: "Camera at night" }).click();
-  await law.getByRole("button", { name: "Save", exact: true }).click();
+  await card.getByRole("button", { name: "Camera at night" }).click();
+  await card.getByRole("button", { name: "Save", exact: true }).click();
   await waitText(page, "Saved.");
 
   // Every section after every other, without reloading. A section once showed the last one's values for a moment,
@@ -683,7 +683,7 @@ const PHONE = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch:
   await page.context().close();
 }
 
-// ---------- 11. Before go-live: the door says so, with nothing about a demo ----------
+// ---------- 11. Before go-live: just the login, with no notice and nothing about a demo ----------
 {
   const page = await newPage();
   await page.route("**/api/session", async (r) => {
@@ -693,7 +693,7 @@ const PHONE = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch:
   });
   await page.goto(B + "/");
   const text = await page.waitForTimeout(800).then(() => page.evaluate(() => document.body.innerText));
-  check("before go-live, the login says the portal is being set up, and nothing else", await waitText(page, "The portal is still being set up. Try again soon.") && !/demo|sample/i.test(text) && !(await page.getByRole("tab", { name: "Create an account" }).count()), text.slice(0, 300));
+  check("before go-live, the door is just the login: no notice, nothing about a demo", await waitText(page, "Log in") && !(await page.locator("[role=alert]").count()) && !/set up|demo|sample/i.test(text) && !(await page.getByRole("tab", { name: "Create an account" }).count()), text.slice(0, 300));
   await page.context().close();
 }
 

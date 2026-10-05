@@ -1,29 +1,19 @@
 // The way in, for everyone: clients, staff, and owners log in at the same door, and what they see next depends
 // on their role. Also: creating an account (three short steps), emailed login links, two-step codes, first-run
 // setup, and choosing a password. The left side is a camera at work, framed like a viewfinder (REC light, running
-// timecode), with the studio's Murphy's Law under the title (Studio → Settings → Login screen); the right side is the door.
+// timecode; the photo is chosen in Studio → Settings → Login screen); the right side is the door.
 import { html, useState, useEffect, useRef, api, Icon, Field } from "./ui.js";
 import { TwoStepSetup } from "./twostep.js";
 
-/** The studio's Murphy's Law: the risk, then how the portal handles it. */
-function Law({ law, cls }) {
-  if (!law || !law.quote) return null;
-  return html`<figure class=${"law " + (cls || "")}>
-    ${law.kicker ? html`<figcaption>${law.kicker}</figcaption>` : null}
-    <blockquote>“${law.quote}”</blockquote>
-    ${law.answer ? html`<p>${law.answer}</p>` : null}
-  </figure>`;
-}
-
 /** Where the login photo comes from: one of the portal's own, or the one staff uploaded (served by the API). */
-export function loginPhoto(law) {
-  const i = (law && law.image) || "/media/login-camera.jpg";
+export function loginPhoto(signin) {
+  const i = (signin && signin.image) || "/media/login-camera.jpg";
   const m = /^upload:brand\/login-([0-9a-f-]{36})\.jpg$/.exec(i);
   return m ? "/api/session?loginImage=" + m[1] : i;
 }
 export const FOCUS = { left: ["12%", "0%"], center: ["50%", "50%"], right: ["96%", "100%"] };
 
-function Screen({ law }) {
+function Screen({ signin }) {
   const tc = useRef(null);
   useEffect(() => {
     const t0 = Date.now();
@@ -35,12 +25,11 @@ function Screen({ law }) {
     return () => clearInterval(iv);
   }, []);
   return html`<section class="screen" aria-label="Nobleman Productions">
-    <div class="poster" aria-hidden="true" style=${{ backgroundImage: `url('${loginPhoto(law)}')`, "--x": (FOCUS[law && law.focus] || FOCUS.right)[0], "--xm": (FOCUS[law && law.focus] || FOCUS.right)[1] }}></div>
+    <div class="poster" aria-hidden="true" style=${{ backgroundImage: `url('${loginPhoto(signin)}')`, "--x": (FOCUS[signin && signin.focus] || FOCUS.right)[0], "--xm": (FOCUS[signin && signin.focus] || FOCUS.right)[1] }}></div>
     <div class="grain" aria-hidden="true"></div>
     <div class="frame" aria-hidden="true"></div>
     <div class="hud" aria-hidden="true"><span class="rec"><i></i>REC</span><span ref=${tc}>00:00:00:00</span></div>
     <h1>The <em>screening room.</em></h1>
-    <${Law} law=${law} cls="on-screen" />
   </section>`;
 }
 
@@ -54,11 +43,10 @@ function Password({ value, onInput, label, auto, name }) {
   <//>`;
 }
 
-function Door({ children, law, brand }) {
+function Door({ children, brand }) {
   return html`<section class="door"><div class="in">
     <img class="logo" src="/assets/Nobleman_Logo_White.png" alt=${(brand && brand.studio) || "Nobleman Productions"} />
     ${children}
-    <${Law} law=${law} cls="in-door" />
   </div></section>`;
 }
 
@@ -204,7 +192,7 @@ function Login({ session, onSignedIn, problem, start }) {
   const tab = (m) => { setMode(m); setErr(""); history.replaceState(null, "", m === "signup" ? "/signup" : location.pathname === "/signup" ? "/" : location.pathname + location.search); };
   const tabs = signupOn && (mode === "password" || mode === "signup");
   const title = mode === "code" ? "One more step" : mode === "reset" ? "Choose a new password" : mode === "signin-link" ? "Log in by email" : "Log in";
-  return html`<${Door} law=${s.signin} brand=${s.brand}>
+  return html`<${Door} brand=${s.brand}>
     ${tabs ? html`<div class="doortabs" data-on=${mode === "signup" ? "2" : "1"} role="tablist" aria-label="Log in or create an account">
       <i class="thumb" aria-hidden="true"></i>
       <button type="button" role="tab" aria-selected=${mode === "password"} onClick=${() => tab("password")}>Log in</button>
@@ -248,7 +236,7 @@ function Redeem({ session, onSignedIn, onPassword }) {
       onSignedIn(d.user, d.next || next);
     }).catch((e) => setSt({ phase: "error", error: e.message }));
   }, []);
-  return html`<${Door} law=${s.signin} brand=${s.brand}>
+  return html`<${Door} brand=${s.brand}>
     <div class="stack" style=${{ gap: "10px" }}>
       <h2 class="h2 door-title">${st.phase === "error" ? "That link didn’t work" : st.phase === "code" ? "One more step" : st.phase === "waiting" ? `You’re on the list, ${String(st.name || "").split(" ")[0]}.` : "Opening your portal…"}</h2>
     </div>
@@ -314,7 +302,7 @@ function Join({ session, demo, onJoined }) {
   const support = (s.brand && s.brand.support) || "alexis@gotit2work.com";
   const privacy = (info && info.privacy) || (s.brand && s.brand.privacy) || "https://noblemanproductions.gotit2work.com/privacy#portal";
 
-  if (!info) return html`<${Door} law=${s.signin} brand=${s.brand}>
+  if (!info) return html`<${Door} brand=${s.brand}>
     ${err ? html`<div class="stack" style=${{ gap: "14px" }}>
       <h2 class="h2 door-title">That link didn’t work</h2>
       <div class="alert" role="alert">${err}</div>
@@ -324,7 +312,7 @@ function Join({ session, demo, onJoined }) {
 
   const p = info.project;
   const me = info.user;
-  return html`<${Door} law=${s.signin} brand=${s.brand}>
+  return html`<${Door} brand=${s.brand}>
     <div class="stack joinhead" style=${{ gap: "6px" }}>
       <span class="eyebrow">${info.studio} · Your project link</span>
       <h2 class="h2 door-title">${p.title}</h2>
@@ -396,7 +384,7 @@ function NewPassword({ user, onDone, onSignOut, session }) {
       onDone(d.user);
     } catch (x) { setErr(x.message); setBusy(false); }
   };
-  return html`<${Door} brand=${session && session.brand} law=${session && session.signin}>
+  return html`<${Door} brand=${session && session.brand}>
     <div class="stack" style=${{ gap: "10px" }}>
       <span class="eyebrow">Welcome${user && user.name ? ", " + user.name.split(" ")[0] : ""}</span>
       <h2 class="h2">Choose your password</h2>
@@ -428,7 +416,7 @@ function TwoStepRequired({ session, onDone, onSignOut, toast }) {
 export function Gate({ mode, session, problem, start, demo, onSignedIn, onPasswordDone, onPasswordNeeded, onTwoStepDone, onSignOut, toast }) {
   const s = session || {};
   return html`<div class="gate">
-    <${Screen} law=${s.signin} />
+    <${Screen} signin=${s.signin} />
     ${mode === "password" ? html`<${NewPassword} user=${s.user} onDone=${onPasswordDone} onSignOut=${onSignOut} session=${s} />`
       : mode === "link" ? html`<${Redeem} session=${s} onSignedIn=${onSignedIn} onPassword=${onPasswordNeeded} />`
       : mode === "join" ? html`<${Join} session=${s} demo=${demo} onJoined=${onSignedIn} />`

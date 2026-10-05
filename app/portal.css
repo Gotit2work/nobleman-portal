@@ -347,11 +347,6 @@ a.li:hover .name { text-decoration: underline; text-underline-offset: 3px; text-
 .screen h1 { margin: 0; font-family: var(--serif); font-weight: 500; font-size: clamp(40px, 4.6vw, 74px); line-height: .98; letter-spacing: -.02em; }
 .screen h1 em { font-weight: 400; }
 @media (max-width: 959px) { .screen h1 { font-size: 38px; } }
-.screen .law { margin-top: 20px; padding: 0; border: 0; max-width: 440px; gap: 8px; }
-.screen .law blockquote { font-size: clamp(19px, 1.55vw, 23px); }
-.screen .law p { font-size: 13.5px; color: rgba(244, 244, 242, .72); }
-.door .law { display: none; }
-@media (max-width: 959px) { .screen .law { display: none; } .door .law { display: flex; } .door .law blockquote { font-size: 20px; } }
 .door { position: relative; display: flex; flex-direction: column; justify-content: center; padding: clamp(28px, 3.6vw, 52px); background: linear-gradient(180deg, #04222a, #021519); border-left: 1px solid var(--line); }
 @media (max-width: 959px) { .door { border-left: 0; border-top: 1px solid var(--line); justify-content: flex-start; padding: 24px 22px 40px; } }
 .door .in { width: 100%; max-width: 380px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; animation: pIn .6s var(--ease) both; }
@@ -381,11 +376,6 @@ a.li:hover .name { text-decoration: underline; text-underline-offset: 3px; text-
 /* ---------- sign-in: Murphy's law, codes, two-step ---------- */
 .boot-line { position: relative; height: 2px; width: min(320px, 70vw); margin: 28vh auto 0; background: var(--line); overflow: hidden; border-radius: 2px; }
 .boot-line i { position: absolute; inset: 0; background: var(--red); transform-origin: left; animation: line 1.2s var(--ease) infinite alternate; }
-.law { margin: 0; padding: 22px 0 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
-.law figcaption { font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
-.law blockquote { margin: 0; font-family: var(--serif); font-style: italic; font-size: clamp(22px, 2.2vw, 27px); line-height: 1.22; color: var(--ink); }
-.law p { margin: 0; color: var(--mute); font-size: 14px; line-height: 1.6; }
-.law.preview { padding: 18px 20px; border: 1px dashed var(--line-2); border-radius: 16px; background: linear-gradient(180deg, #04222a, #021519); max-width: 480px; }
 .input.code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 22px; letter-spacing: .3em; text-align: center; }
 .steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; color: var(--mute); line-height: 1.55; }
 .steps li::marker { color: var(--faint); }
@@ -520,7 +510,6 @@ span.client-logo, div.client-logo { display: inline-block; background: center / 
 .loginprev::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 35%, rgba(1, 13, 16, .85)), linear-gradient(90deg, rgba(1, 13, 16, .5), transparent 60%); }
 .loginprev .txt { position: absolute; left: 16px; right: 16px; bottom: 12px; z-index: 1; display: flex; flex-direction: column; gap: 4px; }
 .loginprev .t { font-family: var(--serif); font-size: 26px; line-height: 1; }
-.loginprev .q { font-family: var(--serif); font-style: italic; font-size: 15px; color: rgba(244, 244, 242, .85); max-width: 420px; }
 .photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
 .photo { aspect-ratio: 16 / 10; border-radius: 10px; border: 1px solid var(--line); background: #062a33 center / cover no-repeat; cursor: pointer; padding: 0; }
 .photo[aria-pressed="true"] { outline: 2px solid var(--ink); outline-offset: 2px; }

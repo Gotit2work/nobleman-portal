@@ -152,7 +152,6 @@ const CLEAN = {
     return { studio, support: text(v.support, 120) || cur.support, website: text(v.website, 300), privacy: text(v.privacy, 300), portal: text(v.portal, 300).replace(/\/+$/, "") || cur.portal, replies: text(v.replies, 200) };
   },
   signin: (v, cur) => ({
-    kicker: text(v.kicker, 80), quote: text(v.quote, 200), answer: text(v.answer, 200),
     image: LOGIN_MEDIA.test(String(v.image)) || LOGIN_UPLOAD.test(String(v.image)) ? String(v.image) : (cur && cur.image) || DEFAULTS.signin.image,
     focus: ["left", "center", "right"].includes(v.focus) ? v.focus : (cur && cur.focus) || DEFAULTS.signin.focus,
   }),

@@ -36,7 +36,7 @@ function summary(key, s, d, health) {
       return bad ? `${bad} to fix` : warn ? `All working · ${plural(warn, "suggestion")}` : "All working";
     }
     case "brand": return [s.brand.studio, s.brand.support].filter(Boolean).join(" · ");
-    case "signin": return photoLabel(s.signin.image) + (s.signin.quote ? " · Murphy’s Law" : "");
+    case "signin": return photoLabel(s.signin.image);
     case "announcement": return s.announcement.text || "None showing";
     case "stages": return `${plural(s.stages.length, "stage")}: ${s.stages[0].name} to ${s.stages[s.stages.length - 1].name}`;
     case "caps": { const on = d.capabilities.filter((c) => s.caps[c.key] && !(c.needs && !s.caps[c.needs])).length; return `${on} of ${d.capabilities.length} switched on`; }
@@ -129,7 +129,7 @@ export function Settings({ admin, section }) {
   `;
 }
 
-/** Login screen: the photo (one of the studio's, or an upload), which side stays in view, and the Murphy's Law. */
+/** Login screen: the photo (one of the studio's, or an upload) and which side stays in view. */
 function LoginScreen({ v, set }) {
   const { demo, say, toast } = useApp();
   const [busy, setBusy] = useState(false);
@@ -157,8 +157,7 @@ function LoginScreen({ v, set }) {
   return html`
     <div class="loginprev" aria-label="Preview of the login screen">
       <div class="img" style=${{ backgroundImage: `url('${url(v.image)}')`, backgroundPosition: `${pos[0]} 50%` }}></div>
-      <div class="txt"><span class="t">The <em>screening room.</em></span>
-        ${v.quote ? html`<span class="q">“${v.quote}”</span>` : null}</div>
+      <div class="txt"><span class="t">The <em>screening room.</em></span></div>
     </div>
     <div class="stack" style=${{ gap: "10px" }}>
       <span class="label">Photo</span>
@@ -173,10 +172,7 @@ function LoginScreen({ v, set }) {
     <div class="stack" style=${{ gap: "10px" }}>
       <span class="label">Keep in view</span>
       <div class="seg s3" role="group" aria-label="Keep in view">${[["left", "Left"], ["center", "Center"], ["right", "Right"]].map(([k, l]) => html`<button type="button" key=${k} aria-pressed=${v.focus === k} onClick=${() => set({ focus: k })}>${l}</button>`)}</div>
-    </div>
-    <${Field} label="Murphy’s Law: small heading"><input class="input" value=${v.kicker} onInput=${(e) => set({ kicker: e.target.value })} /><//>
-    <${Field} label="The law"><input class="input" value=${v.quote} onInput=${(e) => set({ quote: e.target.value })} /><//>
-    <${Field} label="The answer"><input class="input" value=${v.answer} onInput=${(e) => set({ answer: e.target.value })} /><//>`;
+    </div>`;
 }
 
 /** Makes an upload a sensible size for the web: at most 2400 px wide, as a JPEG. */

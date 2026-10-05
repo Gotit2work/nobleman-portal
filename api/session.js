@@ -51,7 +51,7 @@ export default async function handler(req, res) {
   const b = readBody(req, res);
   if (!b) return;
   if (b.action === "logout") { clearSessionCookie(res); return res.status(200).json({ ok: true }); }
-  if (!dbConfigured()) return res.status(503).json({ error: "The portal is still being set up. Try again soon." });
+  if (!dbConfigured()) return res.status(503).json({ error: "The portal isn’t open yet." });
   try {
     await ready();
     switch (b.action) {
@@ -75,13 +75,12 @@ export default async function handler(req, res) {
   }
 }
 
-// The login screen's wording: saved settings, or the defaults when there's no database yet (so the
-// Murphy's Law and studio name show before go-live too).
+// The login screen's studio name and photo: saved settings, or the defaults when there's no database yet.
 const DEFAULT_SCREEN = { brand: resolveBrand(DEFAULTS.brand), signin: DEFAULTS.signin, signinLinks: false, signup: false };
 async function screen() {
   const s = await getSettings().catch(() => null);
   // Sign-up needs email (the address is confirmed by a link), so it only shows when email works.
-  return s ? { brand: s.brand, signin: s.signin, signinLinks: !!s.security.signinLinks, signup: s.security.signup !== "off" && (await emailReady()) } : DEFAULT_SCREEN;
+  return s ? { brand: s.brand, signin: { image: s.signin.image, focus: s.signin.focus }, signinLinks: !!s.security.signinLinks, signup: s.security.signup !== "off" && (await emailReady()) } : DEFAULT_SCREEN;
 }
 
 /**
@@ -357,7 +356,7 @@ function joinCan(p, s) {
 
 /** GET ?join=<token>: the page behind a project link. Only what the link's holder needs; never other projects. */
 async function joinInfo(req, res) {
-  if (!dbConfigured()) return res.status(503).json({ error: "The portal is still being set up. Try the link again soon." });
+  if (!dbConfigured()) return res.status(503).json({ error: "The portal isn’t open yet." });
   try {
     await ready();
     const p = await projectByJoin(req.query.join);

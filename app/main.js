@@ -165,7 +165,6 @@ function App() {
         return await loadPortal(s);
       }
       if (s.error) return setSt({ phase: "gate", gate: "login", session: s, problem: s.error, start });
-      if (s.db === false) return setSt({ phase: "gate", gate: "login", session: s, problem: "The portal is still being set up. Try again soon.", start });
       return setSt({ phase: "gate", gate: "login", session: s, start });
     } catch (e) {
       setSt({ phase: "gate", gate: "login", session: s, problem: e.message });
