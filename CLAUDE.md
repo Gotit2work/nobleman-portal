@@ -1,5 +1,13 @@
 # Nobleman client portal — project notes
 
+> **The portal has moved to Lovable** (October 2026): `Gotit2work/noble-access` (private), Lovable project
+> `8950dd9a-84a3-4d02-8605-4bfdfadf75b6` ("Noble Access", workspace "Transfer 1"), with Lovable Cloud (Postgres and file
+> storage in Canada) in place of Neon and Vercel Blob. Make portal changes there. Since 2026-10-05
+> `portal.noblemanproductions.gotit2work.com` is served by Lovable (GoDaddy A record `portal.noblemanproductions` →
+> `185.158.133.1`, replacing the CNAME to Vercel). Nothing in this repo is live any more: the Vercel project still holds
+> the domain only as a rollback until it's removed (`docs/GO-LIVE.md` in `noble-access`). Keep this repo for history and
+> as the reference the port was checked against. The notes below describe the Vercel version.
+
 Client portal for Nobleman Productions at `portal.noblemanproductions.gotit2work.com`, moving to `portal.noblemanproductions.com` (README, "Moving to noblemanproductions.com"; the guide is `docs/MOVE.md` in the website repo). Operated by Alexis / GotIT2Work. The marketing site is `Gotit2work/nobleman-website`; its `docs/DEPLOYMENT.md` is the runbook for both. README.md explains the product, roles, capabilities, Studio, video sources, Notion, env vars, and the go-live steps.
 
 **Staff run everything from Studio; code changes are only for adding or removing capabilities** (README, "Changing what the portal can do"). Anything an admin would want to change (wording on the login screen, who can create an account, stages, defaults, roles, connections) belongs in Settings or Connections, not in code.
