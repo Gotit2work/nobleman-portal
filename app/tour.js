@@ -84,7 +84,7 @@ export function Tour({ onEnd }) {
       if (!found && live) {
         const first = data.projects && data.projects[0];
         const to = step.path === "project" ? first && "/studio/projects/" + first.id : step.path;
-        if (to) { go(to); found = await waitFor(step.t, 3000); }
+        if (to) { go(to); found = await waitFor(step.t, 8000); }
       }
       if (!live) return;
       if (!found) return move(i + 1);
@@ -113,7 +113,7 @@ export function Tour({ onEnd }) {
     return () => cancelAnimationFrame(raf);
   }, [el]);
 
-  useEffect(() => { if (box && next.current && document.activeElement !== next.current) next.current.focus({ preventScroll: true }); }, [i, !!box]);
+  useEffect(() => { if (next.current && document.activeElement !== next.current) next.current.focus({ preventScroll: true }); }, [i]);
 
   // Pressing the spot moves on (and, for the steps that open a screen, opens it). Escape skips.
   useEffect(() => {
@@ -130,13 +130,14 @@ export function Tour({ onEnd }) {
     return () => { document.removeEventListener("click", onClick, true); document.removeEventListener("keydown", onKey); };
   }, [el, i]);
 
-  if (!box) return html`<div class="tour-veil" aria-hidden="true"></div>`;
-  const clip = `path(evenodd, "${box.d}")`;
+  // While a screen opens, the card already shows (in the middle), and the spot joins it when it's there.
+  const clip = box && `path(evenodd, "${box.d}")`;
+  const at = box ? box.at : phone() ? { bottom: "calc(72px + env(safe-area-inset-bottom))" } : { left: Math.max(16, (innerWidth - 380) / 2), top: Math.round(innerHeight * 0.4) };
   return html`<div class="tour">
-    <div class="tour-veil" aria-hidden="true" style=${{ clipPath: clip, WebkitClipPath: clip }}></div>
-    <div class="tour-ring" aria-hidden="true" style=${{ left: box.x, top: box.y, width: box.w, height: box.h }}></div>
-    <span class="tour-num" aria-hidden="true" style=${{ left: Math.max(18, box.x), top: Math.max(18, box.y) }}>${i + 1}</span>
-    <section class="tour-card" key=${i} ref=${card} role="dialog" aria-modal="false" aria-labelledby="tour-t" aria-describedby="tour-d" style=${box.at}>
+    <div class="tour-veil" aria-hidden="true" style=${clip ? { clipPath: clip, WebkitClipPath: clip } : null}></div>
+    ${box ? html`<div class="tour-ring" aria-hidden="true" style=${{ left: box.x, top: box.y, width: box.w, height: box.h }}></div>
+    <span class="tour-num" aria-hidden="true" style=${{ left: Math.max(18, box.x), top: Math.max(18, box.y) }}>${i + 1}</span>` : null}
+    <section class="tour-card" key=${i} ref=${card} role="dialog" aria-modal="false" aria-labelledby="tour-t" aria-describedby="tour-d" style=${at}>
       <div class="tour-top"><span class="tour-count">${i + 1} of ${steps.length}</span><button type="button" class="link small" onClick=${() => end(false)}>Skip tutorial</button></div>
       <h2 class="tour-title" id="tour-t">${step.title}</h2>
       <p id="tour-d">${step.text}</p>
