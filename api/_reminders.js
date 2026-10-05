@@ -25,7 +25,8 @@ export async function remind(p, origin, { manual = false } = {}) {
   if (!capsOf(p.capabilities).approve) return 0;
   const waiting = await waitingVersions(p);
   if (!waiting.length) return 0;
-  const people = (await sql`select id, email, name, role, access from users where role = 'client' and client_id = ${p.client_id} and notify_email`)
+  const people = (await sql`select id, email, name, role, access from users u where role = 'client' and notify_email
+      and ((client_id = ${p.client_id} and all_projects) or exists (select 1 from project_people pp where pp.user_id = u.id and pp.project_id = ${p.id}))`)
     .filter((x) => permsOf(x, s).approve);
   if (!people.length) return 0;
   const due = p.review_due ? new Date(p.review_due).toISOString().slice(0, 10) : null;

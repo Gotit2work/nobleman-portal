@@ -6,7 +6,7 @@
 //   Connections  video sources, Notion, email, file storage     (studio-connect.js)
 //   Settings     brand, login screen, stages, defaults, security, reminders, system check (studio-settings.js)
 //   Activity     who did what, filterable, exportable           (studio-settings.js)
-import { html, useApp, useState, useEffect, api, Head, Empty, Link, Field, Toggle, Modal, Confirm, More, Icon, fmtDate, fmtAgo, fmtDay, plural, can } from "./ui.js";
+import { html, useApp, useState, useEffect, api, Head, Empty, Link, Field, Toggle, Modal, Confirm, More, Icon, copy, fmtDate, fmtAgo, fmtDay, plural, can } from "./ui.js";
 import { Clients, People } from "./studio-people.js";
 import { Connections } from "./studio-connect.js";
 import { Settings, Activity } from "./studio-settings.js";
@@ -179,12 +179,32 @@ function Projects({ admin }) {
   `;
 }
 
+// ---------- a project's own link for the client (api/_join.js) ----------
+/** The email the "Email it" button starts, in the studio's voice. Only what's always true. */
+function mailto(title, client, link, studio) {
+  const subject = `${title}: your link to the ${studio} portal`;
+  const body = `Hi,\n\nHere’s your link to ${title} in our client portal:\n${link}\n\nOpen it and create your login (your name, email, and a password you choose). You go straight to the project, with nothing to wait for. Next time, log in with the same email and password.\n\nAnyone on your team who should see ${title} can use the same link.\n\n${studio}`;
+  return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+/** The link itself, with Copy and Email: the one thing to send the client. */
+function LinkBox({ link, title, client }) {
+  const { toast, data } = useApp();
+  const studio = (data && data.brand && data.brand.studio) || "Nobleman Productions";
+  return html`<div class="linkbox">
+    <input class="input mono" readonly value=${link} aria-label=${"Link for " + title} onFocus=${(e) => e.target.select()} />
+    <button type="button" class="btn primary sm" onClick=${() => copy(link, toast, "Link")}>Copy link</button>
+    <a class="btn ghost sm" href=${mailto(title, client, link, studio)}>Email it</a>
+  </div>`;
+}
+
 function NewProject({ admin, onClose }) {
   const { go, toast, reload } = useApp();
   const { d } = admin;
   const [f, setF] = useState({ clientId: "", clientName: "", title: "", type: "", source: null, stage: 0 });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [made, setMade] = useState(null); // { id, link, client }
   const submit = async (e) => {
     e.preventDefault();
     setBusy(true); setErr("");
@@ -192,11 +212,26 @@ function NewProject({ admin, onClose }) {
       const body = { action: "projectCreate", title: f.title, type: f.type, stage: f.stage, source: f.source, ...(f.clientId === "__new" ? { clientName: f.clientName } : { clientId: f.clientId }) };
       const r = await api("/api/admin", { method: "POST", body });
       await admin.load(); reload();
-      toast(`${f.title} created. Check what the client can do, then add their people.`);
+      const client = f.clientId === "__new" ? f.clientName : (d.clients.find((c) => c.id === f.clientId) || {}).name;
+      if (r.link) { setMade({ id: r.id, link: r.link, client }); setBusy(false); return; }
+      toast(`${f.title} created.`);
       onClose();
       go("/studio/projects/" + r.id);
-    } catch (x) { setErr(x.message); setBusy(false); }
+    } catch (x) {
+      // The demo saves nothing, but shows the next step: the link to send.
+      if (x.demo) { setMade({ id: "demo-meridian", link: location.origin + "/demo/join/meridian", client: f.clientId === "__new" ? f.clientName : (d.clients.find((c) => c.id === f.clientId) || {}).name, demo: true }); setBusy(false); return; }
+      setErr(x.message); setBusy(false);
+    }
   };
+  const open = () => { onClose(); go("/studio/projects/" + made.id); };
+  // Created: the link to send, straight away.
+  if (made) return html`<${Modal} title=${`${f.title} is ready`} onClose=${open} wide>
+    ${made.demo ? html`<div class="alert info small">Demo only: nothing was created. This is the next step in the real portal, with the sample project’s link.</div>` : null}
+    <p style=${{ margin: 0, lineHeight: 1.6 }}>Send this link to ${made.client}. Whoever opens it creates a login and goes straight to <b>${f.title}</b>, already let in: nothing for you to approve. They can share it with their team.</p>
+    <${LinkBox} link=${made.link} title=${f.title} client=${made.client} />
+    <span class="faint small">It’s always on the project’s page too, under Client link.</span>
+    <div class="row"><button class="btn primary" onClick=${open}>Open the project</button></div>
+  <//>`;
   return html`<${Modal} title="New project" onClose=${onClose} wide>
     <form class="stack" style=${{ gap: "18px" }} onSubmit=${submit}>
       <${ClientPicker} clients=${d.clients} value=${f} onChange=${(v) => setF({ ...f, ...v })} />
@@ -215,7 +250,7 @@ function NewProject({ admin, onClose }) {
 
 // A project's page in Studio, in parts so it never becomes one long form; one Save covers them all (payments
 // save as you go: each request is its own action).
-const PARTS = [["details", "Details"], ["progress", "Progress"], ["videos", "Videos"], ["payments", "Payments"], ["access", "What they can do"]];
+const PARTS = [["details", "Details"], ["link", "Client link"], ["progress", "Progress"], ["videos", "Videos"], ["payments", "Payments"], ["access", "What they can do"]];
 const firstSentence = (t) => (String(t || "").match(/^.*?[.!?](?=\s|$)/) || [t])[0];
 
 function ProjectEdit({ id, admin }) {
@@ -272,6 +307,11 @@ function ProjectEdit({ id, admin }) {
       ${src.archived ? "Archived: the client can’t see this project." : "Changes reach the client as soon as you save."}${src.notion ? " Kept up to date in Notion." : ""}
     <//>
 
+    ${!src.archived && src.join && src.join.link ? html`<section class="card pad linkbar">
+      <div class="stack" style=${{ gap: "2px" }}><b>Client link</b><span class="muted small">Send it to ${src.clientName}. Whoever opens it creates a login and sees this project, already let in.</span></div>
+      <${LinkBox} link=${src.join.link} title=${src.title} client=${src.clientName} />
+    </section>` : null}
+
     <div class="tabs parts" role="group" aria-label="Parts of the project" style=${{ marginBottom: "18px" }}>${PARTS.map(([k, l]) => html`<button type="button" key=${k} class="tab-btn" aria-pressed=${part === k} onClick=${() => setPart(k)}>${l}</button>`)}</div>
 
     ${part === "details" ? html`<section class="card pad stack" style=${{ gap: "18px" }}>
@@ -290,6 +330,8 @@ function ProjectEdit({ id, admin }) {
       </div>
       <span class="faint small">Archiving can be undone. Deleting removes its notes, decisions, messages, share links, and files for good.</span>
     </section>` : null}` : null}
+
+    ${part === "link" ? html`<${ClientLink} p=${src} admin=${admin} />` : null}
 
     ${part === "progress" ? html`<${Progress} f=${f} setF=${setF} src=${src} d=${d} may=${mayProgress} admin=${admin} />` : null}
 
@@ -325,6 +367,61 @@ function ProjectEdit({ id, admin }) {
       <div class="row"><button class="btn solid-red" disabled=${busy || confirmText.trim() !== src.title} onClick=${remove}>Delete for good</button><button class="btn ghost" onClick=${() => setDel(false)}>Keep it</button></div>
     <//>` : null}
   `;
+}
+
+/**
+ * Who sees the project: its link (copy, email, what people who join can do, a new link, off), the people who
+ * joined with it, and how many of the client's people see all its projects anyway.
+ */
+function ClientLink({ p, admin }) {
+  const { d } = admin;
+  const { run, busy } = useRun(admin);
+  const [ask, setAsk] = useState(null); // { kind: "new" | "off" | "remove", x }
+  const j = p.join || { people: [] };
+  const may = admin.can("people.manage");
+  const everyone = d.people.filter((x) => x.role === "client" && x.clientId === p.clientId && x.allProjects !== false);
+  const roles = d.roles.client;
+  const act = async () => {
+    const a = ask;
+    const ok = a.kind === "remove"
+      ? await run({ action: "projectPersonRemove", projectId: p.id, userId: a.x.id }, `${a.x.name} no longer sees ${p.title}.`)
+      : await run({ action: "joinLink", projectId: p.id, op: a.kind }, a.kind === "new" ? "New link made. The old one no longer works." : "The link is off.");
+    if (ok) setAsk(null);
+  };
+  return html`<section class="card pad stack" style=${{ gap: "18px" }}>
+    <div class="stack" style=${{ gap: "4px" }}><div class="h3">Client link</div>
+      <span class="muted small" style=${{ lineHeight: 1.6 }}>Send it to ${p.clientName}. Whoever opens it creates a login and goes straight to this project, already let in. They see only this project, and can pass the link to their team.</span></div>
+    ${p.archived ? html`<div class="alert info small">This project is archived, so its link doesn’t work. Bring the project back to use it again.</div>`
+      : j.off ? html`<div class="row" style=${{ justifyContent: "space-between" }}><span class="muted">The link is off: nobody can join with it.</span>
+          ${may ? html`<button class="btn primary sm" disabled=${busy} onClick=${() => run({ action: "joinLink", projectId: p.id, op: "on" }, "The link works again.")}>Switch it back on</button>` : null}</div>`
+      : html`<${LinkBox} link=${j.link} title=${p.title} client=${p.clientName} />`}
+    ${may && !p.archived ? html`<div class="stack" style=${{ gap: "8px" }}>
+      <span class="small" style=${{ fontWeight: 600 }}>People who join with the link are</span>
+      <div class="roles" role="radiogroup" aria-label="Role for people who join">${roles.map((r) => html`<label key=${r.key} class=${"rolecard" + (j.access === r.key ? " on" : "")}>
+        <input type="radio" name="joinrole" value=${r.key} checked=${j.access === r.key} disabled=${busy}
+          onChange=${() => run({ action: "joinLink", projectId: p.id, op: "role", access: r.key }, `People who join are now ${r.label.toLowerCase()}s.`)} />
+        <b>${r.label}</b><span>${r.key === "approver" ? "Watches, leaves notes, and approves versions." : r.detail}</span></label>`)}</div>
+      <span class="faint small">Changing it affects people who join from now on. Change someone who already joined in Studio → People.</span>
+    </div>` : null}
+    <div class="stack" style=${{ gap: "8px" }}>
+      <span class="small" style=${{ fontWeight: 600 }}>Joined with the link</span>
+      ${j.people.length ? html`<div class="list">${j.people.map((x) => html`<div class="li" key=${x.id}>
+        <div class="grow"><div class="name">${x.name}</div><div class="meta">${x.email} · ${x.roleLabel} · joined ${fmtDate(x.at)}${x.lastLogin ? " · last in " + fmtAgo(x.lastLogin) : ""}</div></div>
+        ${may ? html`<button class="btn ghost sm" onClick=${() => setAsk({ kind: "remove", x })}>Take off</button>` : null}
+      </div>`)}</div>` : html`<span class="muted small">Nobody yet. Whoever joins is listed here, and the studio is emailed once email is connected.</span>`}
+      <span class="faint small">${everyone.length ? `Also: ${plural(everyone.length, "person", "people")} at ${p.clientName} see${everyone.length === 1 ? "s" : ""} all of ${p.clientName}’s projects (${everyone.map((x) => x.name).join(", ")}).` : ""}</span>
+    </div>
+    ${may && !p.archived && !j.off ? html`<div class="row" style=${{ gap: "16px" }}>
+      <button class="link small" onClick=${() => setAsk({ kind: "new" })}>Make a new link</button>
+      <button class="link small" onClick=${() => setAsk({ kind: "off" })}>Switch the link off</button>
+    </div>` : null}
+    ${ask ? html`<${Confirm} title=${ask.kind === "remove" ? `Take ${ask.x.name} off ${p.title}?` : ask.kind === "new" ? "Make a new link?" : "Switch the link off?"}
+      yes=${ask.kind === "remove" ? "Take them off" : ask.kind === "new" ? "Make a new link" : "Switch it off"} danger=${ask.kind !== "new"} busy=${busy} onYes=${act} onNo=${() => setAsk(null)}>
+      ${ask.kind === "remove" ? "They stop seeing this project at once. Their login stays, with any other projects they have."
+        : ask.kind === "new" ? "The current link stops working at once, so send the new one to anyone who still needs it. People who already joined keep the project."
+        : "Nobody can join with it until you switch it back on. People who already joined keep the project."}
+    <//>` : null}
+  </section>`;
 }
 
 function Progress({ f, setF, src, d, may, admin }) {

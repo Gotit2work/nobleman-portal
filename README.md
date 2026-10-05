@@ -41,6 +41,25 @@ The goal: a busy executive opens an email, presses one button, and approves a fi
 - **Milestone confirmation.** Staff can ask the client to confirm the next milestone (a filming day, a delivery); the client gets a **Confirm** button and staff are told.
 - **Payments.** When the studio asks for a payment, Home says **Please pay** and **Pay** opens Stripe's secure checkout (card or bank). The project page shows what's due; paid ones stay listed with who paid and when.
 
+## A project's own link (the simplest way in)
+
+Every project gets its own link the moment it's created: **New project** → *“Harbor Launch Film is ready”* → **Copy link** or **Email it** (it starts an email in the studio's words). Send it to the client. Whoever opens it:
+
+1. sees which project it is and three short steps;
+2. types their name, email, and a password they choose, and ticks *“I'm working on Harbor Launch Film with Harbor Labs, and I'll share this link only with people on the project”*;
+3. lands on the project, **already let in**: no email to confirm and nothing for the studio to approve. They can pass the link to their team.
+
+People who join with a link belong to the project's client and see **only the projects they joined**. Someone who already has a login presses **Log in instead** on the same page, and the project is added to their login (even if they're from another company, like an agency). The studio is emailed when someone joins.
+
+The link is on the project's page in Studio (at the top, and under **Client link**), where staff can also:
+- choose what people who join can do: **Decision maker** (the default), Reviewer, or Viewer;
+- see who joined, and **Take off** a person (their login stays);
+- **Make a new link** (the old one stops working at once; people who joined keep the project) or **Switch the link off**.
+
+Studio → People → **Edit** shows each client's reach: **Every <company> project** or **Only the projects ticked**. People invited by the studio, let in from a sign-up, or joined by email domain see every project of their company, as before. Managing a company's team (decision makers adding colleagues) is only for people who see all its projects.
+
+The link is a long random token (looked up by its hash; sealed so staff can copy it again), it stops working when the project is archived, and logins made with it are throttled per email and per IP. An archived project's link, a replaced one, or one switched off says *“This link isn't working any more”*.
+
 ## Creating an account
 
 Three short steps, from the **Create an account** tab (or `/signup`):
@@ -131,6 +150,24 @@ Frame.io V4 signs in through Adobe. Studio → Connections → Add a connection 
 3. **Legacy developer token**, for accounts not yet on Adobe sign-in.
 
 Each project uses one Frame.io **folder** (pick a project from the list to use its top folder, or paste a folder ID). **Version stacks are versions**: drag the new cut onto the old one in Frame.io and the client sees only the newest. Frame.io's media links can expire within minutes, so the portal fetches them when someone presses play or download and never stores them.
+
+**Notes go both ways** (`api/_fio_sync.js`):
+
+| Done in the portal | Shows in Frame.io |
+|---|---|
+| A note on a moment | A comment at that moment: *“Dana Whitfield (Harbor Labs) via the portal: Logo bigger here.”* |
+| A reply | A comment at the same moment, *“…via the portal, replying to Jean Gotay: …”* (Frame.io's API can't make replies) |
+| Approve, or ask for changes | A comment on that version: *“…via the portal: Approved Version 3.”* |
+| Mark done / delete | The copy is marked completed / deleted |
+
+| Done in Frame.io | Shows in the portal |
+|---|---|
+| A comment | A note at that moment, under its author (matched to a portal person by email, otherwise their Frame.io name), marked *in Frame.io* |
+| A reply to a client's note | A reply under that note |
+| Completed / deleted | Done / removed (a client's own note stays in the portal if its Frame.io copy is deleted) |
+| A new version finishes | It's in Review, as always; with live updates, the client is emailed once |
+
+Frame.io's comments are read whenever someone opens that version's notes (at most every 15 seconds). **Live updates** (Studio → Connections → Frame.io → the switch) add a Frame.io webhook in each workspace, so comments and new versions arrive straight away and the client is emailed about the studio's notes and new versions. The webhook calls `https://<portal>/api/connect?webhook=frameio&c=<connection>`; every call is signed (HMAC-SHA256, Frame.io's `v0` scheme), checked against the secret Frame.io gave when the webhook was made (stored encrypted), and refused if older than five minutes. A note that couldn't reach Frame.io (it was down) is sent the next time anyone opens that version's notes. Timecodes are to the second.
 
 ### YouTube
 
@@ -243,7 +280,9 @@ It is built from `docs/manual/manual.html` (fixed US Letter pages, local fonts i
 - **Passwords:** bcrypt (cost 10), at least 10 characters. Unknown emails are checked against a real dummy hash so timing doesn't reveal accounts. Nobody else ever sets or sees a person's password: invitations and resets are one-time links, stored only as SHA-256 hashes, and a newer link replaces older ones.
 - **Two-step verification:** TOTP (RFC 6238, 30-second codes, one step either side), a code can't be used twice, and ten single-use recovery codes stored hashed. The step between password and code is a 5-minute signed ticket. Owners can require it for staff.
 - **Throttling** per email and per IP: passwords 8 / 30 per 15 minutes, codes 6 / 30 per 15 minutes, emailed links 5 / 20 per hour.
-- **Roles and scoping:** every Studio action checks the role's permission on the server (`api/_roles.js`). Clients only ever reach their own company's non-archived projects (`projectFor`), and every capability is checked server-side as the project's switch and the role's permission together.
+- **Roles and scoping:** every Studio action checks the role's permission on the server (`api/_roles.js`). Clients only ever reach non-archived projects they may see (`clientMaySee` in `_auth.js`: their company's, unless they joined by link, plus any they joined), through `projectFor`, and every capability is checked server-side as the project's switch and the role's permission together. The same rule picks who is emailed about a project.
+- **Project links:** 18-byte random tokens, looked up by SHA-256 hash and sealed so staff can copy them; replaced, switched off, or archived means dead. A login made with one sees only that project and can't take over an existing email (it's asked to log in). Throttled 5 per email and 25 per IP per hour.
+- **Frame.io webhooks:** signed per workspace (HMAC-SHA256 over `v0:<timestamp>:<body>`), five-minute window, secrets stored encrypted with the connection.
 - **Stored keys:** connection credentials are encrypted with AES-256-GCM (`api/_crypto.js`); the page never receives them, and secret fields are never pre-filled.
 - **Share links:** 24-byte random tokens, looked up by hash, revocable, optional expiry. The page shows one finished film and the studio's name, nothing about the client or project.
 - **Cross-origin:** POSTs a browser sends from another origin are refused (403). SameSite alone isn't enough because every `*.gotit2work.com` host counts as the same site.
@@ -269,7 +308,8 @@ The data layer is plain Postgres. To move: create the Supabase project; copy the
 | Route | Who | |
 |---|---|---|
 | `GET /api/session` | anyone | Who's logged in; the login screen's settings (including whether sign-up is on); whether setup or two-step setup is needed |
-| `POST /api/session` | anyone / logged in | `login`, `twoStep`, `requestLink`, `signup`, `redeem` (also confirms sign-ups), `logout`, `setup`, `password`, `profile`, `twoStepBegin`, `twoStepEnable`, `twoStepDisable`, `recoveryCodes` |
+| `GET /api/session?join=<token>` | anyone with a project link | Which project it opens and what joining gives |
+| `POST /api/session` | anyone / logged in | `login`, `twoStep`, `requestLink`, `signup`, `join` (a project link), `redeem` (also confirms sign-ups), `logout`, `setup`, `password`, `profile`, `twoStepBegin`, `twoStepEnable`, `twoStepDisable`, `recoveryCodes` |
 | `GET /api/portal` | logged in | Everything this person can see; `?demo=1` or `?demo=studio` (anyone), `?thread=`, `?notes=&video=`, `?shares=`, `?team=1` |
 | `POST /api/portal` | logged in | `note`, `resolve`, `deleteNote`, `decide`, `message`, `deleteMessage`, `seen`, `downloaded`, `confirmNext`, `shareCreate`, `shareRevoke`, `teamAdd`, `teamUpdate`, `teamRemove`, `pay` (a Stripe checkout address), `payCheck` (back from checkout) |
 | `GET /api/media` | logged in | Downloads, captions, chapters for one video; `&play=1` for a fresh playback address |
@@ -278,8 +318,9 @@ The data layer is plain Postgres. To move: create the Supabase project; copy the
 | `GET /api/share` | anyone with a link | One shared film; `&play=1` for a fresh playback address |
 | `GET /api/connect` | owners | Frame.io's Adobe sign-in (start and return) |
 | `POST /api/connect?webhook=stripe` | Stripe | Payment events, signed with the webhook secret |
+| `POST /api/connect?webhook=frameio&c=…` | Frame.io | New comments and versions (live updates), signed per workspace |
 | `GET /api/cron` | Vercel | The daily job (needs `CRON_SECRET`) |
-| `GET/POST /api/admin` | staff, by role | Overview, `?demo=1` (sample data, anyone), `?sources=`, `?videos=`, `?audit=`, `?export=`, `?notion=`, `?health=1`; client, person, account request (`signupApprove`, `signupDecline`), project, video, payment (`paymentCreate`, `paymentCancel`, `paymentMarkPaid`), connection, Notion, settings, and roles actions (`api/admin.js`, `api/_admin_more.js`) |
+| `GET/POST /api/admin` | staff, by role | Overview, `?demo=1` (sample data, anyone), `?sources=`, `?videos=`, `?audit=`, `?export=`, `?notion=`, `?health=1`; client, person (including which projects a client sees), account request (`signupApprove`, `signupDecline`), project, project link (`joinLink`, `projectPersonRemove`), video, payment (`paymentCreate`, `paymentCancel`, `paymentMarkPaid`), connection, Notion, settings, and roles actions (`api/admin.js`, `api/_admin_more.js`) |
 
 ## Testing
 
@@ -287,7 +328,7 @@ The data layer is plain Postgres. To move: create the Supabase project; copy the
 
 ```bash
 npm ci && (cd tests && npm ci)
-cd tests && npm test        # 310 API checks, then 148 browser checks (desktop and phone)
+cd tests && npm test        # 362 API checks, then 164 browser checks (desktop and phone)
 npm run shots               # screenshots of every screen in tests/.work/shots
 ./run.sh && node crawl.mjs http://localhost:4401 demo-studio   # clicks every link and button, looking for screens that break
 ```

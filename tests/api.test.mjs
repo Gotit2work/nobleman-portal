@@ -327,6 +327,81 @@ check("Frame.io downloads: high quality and smaller copy (original off for this 
 r = await dana.act("decide", { projectId: OCEAN, videoId: "fv000000-0000-4000-8000-000000000002", decision: "changes", note: "Warmer grade." });
 check("decisions work on Frame.io versions", r.s === 201);
 
+// ---- Frame.io: notes both ways (_fio_sync.js)
+{
+  const fio = async (what, b) => (await fetch(B + "/__fio/" + what, { method: "POST", body: JSON.stringify(b) })).json();
+  const comments = async () => (await fake()).frameio.comments;
+  const V2 = "fv000000-0000-4000-8000-000000000002";
+  const notesOf = async (who) => (await who.get(`/api/portal?notes=${OCEAN}&video=${V2}`)).d.notes;
+  // Someone at Harbor Labs who hasn't opened the portal yet, so the emails below aren't held back for them.
+  const quinn = (await admin.admin("personCreate", { name: "Quinn Harbor", email: "quinn@harbor.test", role: "client", access: "reviewer", clientId: HARBOR_LABS, send: false })).d.id;
+  let fc = await comments();
+  check("a client's decision is copied to Frame.io, on that version", fc.some((c) => c.file_id === V2 && c.text === "Dana Whitfield (Harbor Labs) via the portal: Asked for changes to Version 2: Warmer grade."), J(fc));
+  r = await dana.act("note", { projectId: OCEAN, videoId: V2, at: 12.4, body: "Logo bigger here." });
+  const danaNote = r.d.id;
+  fc = await comments();
+  const copy = fc.find((c) => /Logo bigger here\./.test(c.text));
+  check("a note written in the portal appears in Frame.io at the same moment, signed with who wrote it", r.s === 201 && copy && copy.text === "Dana Whitfield (Harbor Labs) via the portal: Logo bigger here." && copy.timestamp === "00:00:12:00", J(copy));
+  const studioNote = await fio("comment", { file_id: V2, text: "Will do in the next version.", timestamp: "00:00:20:05" });
+  await fio("comment", { file_id: V2, text: "Bigger by 20%, and centred.", parent_id: copy.id });
+  let ns = await notesOf(dana);
+  const sn = ns.find((x) => x.body === "Will do in the next version.");
+  const dn = ns.find((x) => x.id === danaNote);
+  check("a comment made in Frame.io shows in the portal, under its author, at its moment", sn && sn.author === "Jean Gotay" && sn.role === "admin" && sn.at === 20 && sn.via === "frameio", J(ns));
+  check("…and a reply in Frame.io to a client's note shows as a reply to it in the portal", dn && dn.replies.length === 1 && dn.replies[0].body === "Bigger by 20%, and centred." && dn.replies[0].author === "Jean Gotay", J(dn));
+  check("…while the copies of portal notes and decisions aren't brought back twice", ns.filter((x) => /Logo bigger/.test(x.body)).length === 1 && !ns.some((x) => /via the portal/.test(x.body)), J(ns.map((x) => x.body)));
+  r = await dana.act("note", { parentId: sn.id, body: "Thank you!" });
+  fc = await comments();
+  check("a reply in the portal reaches Frame.io at the same moment, saying who it answers", r.s === 201 && fc.some((c) => c.text === "Dana Whitfield (Harbor Labs) via the portal, replying to Jean Gotay: Thank you!" && c.timestamp === "00:00:20:00"), J(fc.map((c) => [c.text, c.timestamp])));
+  ns = await notesOf(dana);
+  check("…and isn't brought back from Frame.io as a second reply", ns.find((x) => x.id === sn.id).replies.length === 1, J(ns.find((x) => x.id === sn.id)));
+  r = await admin.act("resolve", { id: danaNote, resolved: true });
+  fc = await comments();
+  check("marking a note done in the portal marks its Frame.io copy completed", r.s === 200 && !!fc.find((c) => c.id === copy.id).completed_at, J(fc.find((c) => c.id === copy.id)));
+
+  // Live updates: a webhook per workspace, signed.
+  r = await admin.admin("frameioLive", { id: FIOC, on: true });
+  let fk = await fake();
+  check("live updates: a webhook in each Frame.io workspace, pointing at the portal", r.s === 200 && r.d.on === true && fk.frameio.webhooks.length === 1 && fk.frameio.webhooks[0].url === `http://localhost:4400/api/connect?webhook=frameio&c=${FIOC}` && fk.frameio.webhooks[0].events.includes("comment.created"), J([r.d, fk.frameio.webhooks]));
+  r = await admin.get("/api/admin");
+  const fconn = r.d.connections.find((c) => c.id === FIOC);
+  check("…shown in Studio, without the signing secret", fconn.config.live && fconn.config.live.workspaces === 1 && !JSON.stringify(fconn).includes("whsec"), J(fconn));
+  await fio("edit", { id: studioNote.id, completed: true });
+  const statuses = await fio("fire", { type: "comment.completed", id: studioNote.id });
+  ns = await notesOf(dana);
+  check("Frame.io's signed event arrives, and completing a comment there marks the note done here", J(statuses) === J([200]) && ns.find((x) => x.id === sn.id).resolved === true, J([statuses, ns.find((x) => x.id === sn.id)]));
+  let mb0 = (await mails()).length;
+  const fresh = await fio("comment", { file_id: V2, text: "New grade is uploading now.", timestamp: "00:01:05:00", owner: "editor" });
+  await fio("fire", { type: "comment.created", id: fresh.id });
+  ns = await notesOf(dana);
+  let mm = (await mails()).slice(mb0);
+  check("a new Frame.io comment shows straight away, under the matching studio person", ns.some((x) => x.body === "New grade is uploading now." && x.author === "Eddie Editor" && x.at === 65), J(ns.map((x) => [x.body, x.author, x.at])));
+  check("…and the client is emailed about it, with a button to the notes", mm.some((x) => x.to[0] === "quinn@harbor.test" && /Eddie Editor left a note on Ocean Cut Version 2/.test(x.subject) && x.html.includes(`/review/${OCEAN}`)), J(mm.map((x) => [x.to[0], x.subject])));
+  await fio("edit", { id: fresh.id, delete: true });
+  await fio("fire", { type: "comment.deleted", id: fresh.id });
+  ns = await notesOf(dana);
+  check("deleting a comment in Frame.io removes it here", !ns.some((x) => x.body === "New grade is uploading now."), J(ns.map((x) => x.body)));
+  r = await dana.act("deleteNote", { id: danaNote });
+  fc = await comments();
+  check("deleting a note in the portal deletes its Frame.io copy (and the replies under it)", r.s === 200 && !fc.some((c) => c.id === copy.id) && !fc.some((c) => /Bigger by 20%/.test(c.text)), J(fc.map((c) => c.text)));
+  mb0 = (await mails()).length;
+  await fio("fire", { type: "file.ready", id: V2 });
+  await fio("fire", { type: "file.ready", id: V2 });
+  mm = (await mails()).slice(mb0).filter((x) => x.to[0] === "quinn@harbor.test" && /Ready for your review: Ocean Cut Version 2/.test(x.subject));
+  check("a new version finishing in Frame.io emails the client once", mm.length === 1, J((await mails()).slice(mb0).map((x) => [x.to[0], x.subject])));
+  const evtBody = JSON.stringify({ type: "comment.created", resource: { id: "x" } });
+  r = await anon.req("POST", `/api/connect?webhook=frameio&c=${FIOC}`, null, { "content-type": "application/json", "x-frameio-request-timestamp": String(Math.floor(Date.now() / 1000)), "x-frameio-signature": "v0=00" });
+  check("an event without Frame.io's signature is refused", r.s === 401 || r.s === 400, r.s);
+  check("…and so is one signed with another secret, or one more than five minutes old", J(await fio("fire", { type: "comment.created", id: "x", badSignature: true })) === J([401]) && J(await fio("fire", { type: "comment.created", id: "x", oldTimestamp: true })) === J([401]));
+  r = await anon.req("POST", `/api/connect?webhook=frameio&c=00000000-0000-4000-8000-000000000000`, null, { "content-type": "application/json" });
+  check("…and events for a connection without live updates are turned away", r.s === 404, r.s);
+  r = await admin.admin("frameioLive", { id: FIOC, on: false });
+  check("switching live updates off removes the webhooks from Frame.io", r.s === 200 && r.d.on === false && (await fake()).frameio.webhooks.length === 0, J(r.d));
+  r = await rae.act("frameioLive", { id: FIOC, on: true });
+  check("clients can't switch live updates", r.s === 400 || r.s === 403, r.s);
+  await admin.admin("personDelete", { id: quinn });   // later sections count Harbor Labs' people
+}
+
 // ---- Frame.io (Adobe sign-in)
 r = await admin.admin("connectionCreate", { provider: "frameio", name: "Frame.io (Adobe)", values: { auth: "oauth", clientId: "fio-client", clientSecret: "fio-secret" } });
 check("Adobe sign-in connection waits for sign-in", r.s === 201 && r.d.test.needsSignIn === true, J(r.d));
@@ -891,6 +966,78 @@ check("with sign-up off, the login screen doesn't offer it", r.d.signup === fals
 r = await newcomer.post("/api/session", { action: "signup", name: "Ann", email: "ann@x.test", company: "X" }, IP(6));
 check("…and the server refuses it", r.s === 403, J(r.d));
 await admin.admin("settingsSave", { section: "security", value: { signup: "request" } });
+
+// ================= a project's own link (/join/<token>) =================
+{
+  // The owner's session from the start (two-step is on for that account by now); fresh logins for the clients.
+  const st = admin, dd = new Agent(), rb = new Agent(), nia = new Agent(), lee = new Agent(), outsider = new Agent();
+  // Mia is at another company (Northwind, from the invitations section).
+  const okLogins = (await dd.login("dana@harbor.test")).s === 200 && (await rb.login("mia@northwind.test", "harbor-lights-2026")).s === 200;
+  r = await st.admin("projectCreate", { clientId: HARBOR_LABS, title: "Harbor Launch Film" });
+  const LAUNCH = r.d.id, link = r.d.link || "";
+  const token = (link.match(/\/join\/([\w-]+)$/) || [])[1];
+  check("a new project comes with its own link for the client", okLogins && r.s === 201 && !!token && link.startsWith("http://localhost:4400/join/"), J(r.d));
+  r = await outsider.get("/api/session?join=" + token);
+  check("the link says which project it opens and what joining gives, and nothing else", r.s === 200 && r.d.project.title === "Harbor Launch Film" && r.d.project.client === "Harbor Labs" && r.d.role === "approver" && r.d.can.includes("Approve a version, or ask for changes") && r.d.user === null && !r.d.project.id, J(r.d));
+  r = await outsider.get("/api/session?join=not-a-real-token-at-all-000");
+  check("a wrong link says so plainly", r.s === 404 && /isn’t working/.test(r.d.error), J(r.d));
+  r = await nia.post("/api/session", { action: "join", token, name: "Nia New", email: "nia@agency.test", password: "nia-password-1" }, IP(21));
+  check("joining needs the acknowledgement ticked", r.s === 400 && /Tick the box/.test(r.d.error), J(r.d));
+  r = await nia.post("/api/session", { action: "join", token, name: "Nia New", email: "nia@agency.test", password: "short", agree: true }, IP(21));
+  check("…and a password of 10 characters or more", r.s === 400 && /at least 10/.test(r.d.error), J(r.d));
+  r = await nia.post("/api/session", { action: "join", token, name: "Nia New", email: "Nia@Agency.test", password: "nia-password-1", agree: true }, IP(21));
+  check("someone with the link creates a login and is in straight away, nothing to approve", r.s === 200 && r.d.joined === true && r.d.projectId === LAUNCH && r.d.user.clientName === "Harbor Labs" && r.d.user.access === "approver" && r.d.user.allProjects === false && !r.d.user.mustChangePassword && !!nia.cookie, J(r.d));
+  r = await nia.get("/api/portal");
+  check("…and sees only that project, not the rest of the company's", r.s === 200 && r.d.projects.length === 1 && r.d.projects[0].id === LAUNCH, J(r.d && r.d.projects.map((p) => p.title)));
+  r = await nia.get(`/api/portal?thread=${HARBOR}`);
+  check("…and can't reach another of the company's projects directly", r.s === 404, r.s);
+  check("…and can't manage the company's team (that's for people who see all its projects)", (await nia.get("/api/portal")).d.user.perms.team === false && (await nia.act("teamAdd", { name: "X", email: "x@agency.test" })).s === 403);
+  r = await nia.login("nia@agency.test", "nia-password-1");
+  check("…and logs in again later with the password they chose", r.s === 200 && r.d.user.name === "Nia New", J(r.d));
+  r = await outsider.post("/api/session", { action: "join", token, name: "Dana", email: "dana@harbor.test", password: "any-password-1", agree: true }, IP(22));
+  check("an email that already has a login is asked to log in instead, never taken over", r.s === 409 && r.d.exists === true && /Log in/.test(r.d.error), J(r.d));
+  r = await rb.get("/api/session?join=" + token);
+  check("someone logged in sees the project isn't theirs yet", r.s === 200 && r.d.user && r.d.user.name === "Mia Chen" && r.d.member === false, J(r.d));
+  r = await rb.post("/api/session", { action: "join", token });
+  const robSees = (await rb.get("/api/portal")).d.projects.map((p) => p.id);
+  check("…and adds it to their login with one press, even from another company, keeping their own company's projects", r.s === 200 && r.d.joined === true && robSees.includes(LAUNCH) && robSees.includes(NW), J(robSees));
+  r = await dd.get("/api/session?join=" + token);
+  check("someone who already sees every company project is told it's already theirs", r.s === 200 && r.d.member === true, J(r.d));
+  r = await st.get("/api/admin");
+  let lp = r.d.projects.find((p) => p.id === LAUNCH);
+  const niaRow = r.d.people.find((p) => p.email === "nia@agency.test");
+  check("Studio shows the link and who joined with it", lp.join.link === link && lp.join.off === false && lp.join.access === "approver" && lp.join.people.map((x) => x.name).sort().join() === "Mia Chen,Nia New", J(lp.join));
+  check("…and each person's projects: Nia sees only the one she joined", niaRow.allProjects === false && J(niaRow.projects) === J([LAUNCH]), J(niaRow));
+  check("older projects get their own link too", r.d.projects.filter((p) => !p.archived).every((p) => /\/join\/[\w-]{20,}$/.test(p.join.link)), J(r.d.projects.map((p) => p.join)));
+  // (Staff using the portal right now aren't emailed: they see it there.)
+  check("staff are told when someone joins", (await mails()).some((x) => /Nia New joined Harbor Launch Film/.test(x.subject) && /@studio\.test$|@gotit2work\.com$/.test(x.to[0])), J((await mails()).slice(-5).map((x) => [x.to[0], x.subject])));
+  r = await st.admin("joinLink", { projectId: LAUNCH, op: "role", access: "reviewer" });
+  check("staff choose what people who join can do", r.s === 200 && r.d.access === "reviewer", J(r.d));
+  r = await lee.post("/api/session", { action: "join", token, name: "Lee Reviewer", email: "lee@agency.test", password: "lee-password-1", agree: true }, IP(23));
+  check("…and the next person joins with that role", r.s === 200 && r.d.user.access === "reviewer", J(r.d));
+  r = await st.admin("joinLink", { projectId: LAUNCH, op: "new" });
+  const token2 = (r.d.link.match(/\/join\/([\w-]+)$/) || [])[1];
+  check("“Make a new link”: the old one stops working at once", r.s === 200 && token2 && token2 !== token && (await outsider.get("/api/session?join=" + token)).s === 404 && (await outsider.get("/api/session?join=" + token2)).s === 200, J(r.d));
+  check("…and people who already joined keep the project", (await nia.get("/api/portal")).d.projects.some((p) => p.id === LAUNCH));
+  r = await st.admin("joinLink", { projectId: LAUNCH, op: "off" });
+  check("switching the link off stops it", r.s === 200 && r.d.off === true && r.d.link === null && (await outsider.get("/api/session?join=" + token2)).s === 404, J(r.d));
+  r = await st.admin("joinLink", { projectId: LAUNCH, op: "on" });
+  check("…and switching it on brings the same link back", r.s === 200 && r.d.link && r.d.link.endsWith(token2), J(r.d));
+  r = await rae.admin("joinLink", { projectId: LAUNCH, op: "new" });
+  check("clients can't change a project's link", r.s === 403, r.s);
+  r = await eddie.admin("joinLink", { projectId: LAUNCH, op: "new" });
+  check("…nor can staff whose role doesn't manage people", r.s === 403, r.s);
+  r = await st.admin("personUpdate", { id: niaRow.id, allProjects: true });
+  check("staff can let someone see every project of their company", r.s === 200 && (await nia.get("/api/portal")).d.projects.some((p) => p.id === HARBOR));
+  await st.admin("personUpdate", { id: niaRow.id, allProjects: false, projectIds: [LAUNCH] });
+  r = await st.admin("projectPersonRemove", { projectId: LAUNCH, userId: niaRow.id });
+  check("…or take someone off a project: they no longer see it, and their login stays", r.s === 200 && (await nia.get("/api/portal")).d.projects.length === 0 && (await nia.get("/api/session")).d.user.email === "nia@agency.test");
+  await st.admin("projectUpdate", { id: LAUNCH, archived: true });
+  check("an archived project's link doesn't work", (await outsider.get("/api/session?join=" + token2)).s === 404);
+  r = await st.get("/api/admin?audit=1&q=link");
+  check("joining and link changes are in the activity log", ["join", "project.link"].every((a) => r.d.entries.some((e) => e.action === a)), J(r.d.entries.map((e) => e.action)));
+  check("the activity log records the acknowledgement", r.d.entries.some((e) => e.action === "join" && /confirmed they’re working on it/.test(e.summary)), J(r.d.entries.filter((e) => e.action === "join").map((e) => e.summary)));
+}
 
 // ================= security edges =================
 r = await admin.post("/api/admin", { action: "clientCreate", name: "Evil" }, { origin: "https://evil.example" });

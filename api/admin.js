@@ -19,6 +19,7 @@ import { MORE_GETS, MORE_ACTIONS } from "./_admin_more.js";
 import { cleanDomains, domainOf } from "./_signup.js";
 import { demoAdmin } from "./_demo.js";
 import { paymentsFor, stripeConnection, liveMode, currencyOf, EVENTS } from "./_payments.js";
+import { joinToken, joinUrl, newJoinLink, joinRole, addToProject } from "./_join.js";
 
 /**
  * Studio: staff only. Each action checks the person's role (_roles.js).
@@ -36,7 +37,7 @@ const day = (d) => (d ? new Date(d).toISOString().slice(0, 10) : null);
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "private, no-store");
   // The demo's studio view: sample data only, no sign-in, nothing read from or written to the database.
-  if (req.method === "GET" && req.query && req.query.demo) return res.status(200).json(demoAdmin(req.query));
+  if (req.method === "GET" && req.query && req.query.demo) return res.status(200).json(demoAdmin(req.query, originOf(req)));
   if (!dbConfigured()) return res.status(503).json({ error: "The portal isn’t connected to its database yet." });
   try { await ready(); } catch (err) { console.error("db not ready", err); return res.status(500).json({ error: TROUBLE }); }
   const u = await requireStaff(req, res);
@@ -66,19 +67,31 @@ export default async function handler(req, res) {
 }
 
 async function overview(req, res, u, s) {
-  const [clients, people, projects, conns, signups] = await Promise.all([
+  const [clients, people, projects, conns, signups, members] = await Promise.all([
     sql`select c.id, c.name, c.logo_url, c.notes, c.domains, c.created_at,
                (select count(*)::int from users x where x.client_id = c.id) as people,
                (select count(*)::int from projects x where x.client_id = c.id and not x.archived) as projects
         from clients c order by lower(c.name)`,
-    sql`select u.id, u.name, u.email, u.title, u.role, u.access, u.client_id, u.last_login_at, u.must_change_password,
+    sql`select u.id, u.name, u.email, u.title, u.role, u.access, u.client_id, u.all_projects, u.last_login_at, u.must_change_password,
                u.totp_enabled, u.created_at, c.name as client_name
         from users u left join clients c on c.id = u.client_id order by u.role, lower(u.name)`,
     sql`select p.*, c.name as client_name from projects p join clients c on c.id = p.client_id
         order by p.archived, p.updated_at desc`,
     listConnections({ withCreds: true }),
     can(u, "people.manage", s) ? sql`select * from signup_requests where status = 'waiting' order by created_at` : [],
+    sql`select pp.project_id, pp.user_id, pp.how, pp.created_at, u.name, u.email, u.access, u.role, u.last_login_at
+        from project_people pp join users u on u.id = pp.user_id order by pp.created_at`,
   ]);
+  // Every project has its own link for the client (_join.js); older projects get theirs the first time Studio opens.
+  const origin = originOf(req);
+  const links = new Map(await Promise.all(projects.map(async (p) => [p.id, p.archived ? null : await joinToken(p)])));
+  const joinedBy = new Map(), joinedTo = new Map();
+  for (const m of members) {
+    if (!joinedBy.has(m.project_id)) joinedBy.set(m.project_id, []);
+    joinedBy.get(m.project_id).push({ id: m.user_id, name: m.name, email: m.email, roleLabel: roleLabel(m), at: iso(m.created_at), lastLogin: iso(m.last_login_at) });
+    if (!joinedTo.has(m.user_id)) joinedTo.set(m.user_id, []);
+    joinedTo.get(m.user_id).push(m.project_id);
+  }
   const names = stageNames(s);
   const connName = new Map(conns.map((c) => [c.id, c]));
   const [pays, stripeConn] = await Promise.all([paymentsFor(projects.map((p) => p.id)), stripeConnection()]);
@@ -96,6 +109,8 @@ async function overview(req, res, u, s) {
       id: p.id, name: p.name, email: p.email, title: p.title || "", role: p.role, access: accessOf(p), roleLabel: roleLabel(p),
       clientId: p.client_id, clientName: p.client_name || null, lastLogin: iso(p.last_login_at), twoStep: !!p.totp_enabled,
       invited: p.must_change_password && !p.last_login_at, mustChangePassword: p.must_change_password, created: iso(p.created_at),
+      // Clients see every project of their company, or only the ones listed (they joined by a project's link).
+      ...(p.role === "client" ? { allProjects: p.all_projects !== false, projects: joinedTo.get(p.id) || [] } : {}),
     })),
     projects: projects.map((p) => {
       const c = p.source_conn === LINKS_ID ? { id: LINKS_ID, provider: "links", name: "Video links" } : connName.get(p.source_conn);
@@ -107,6 +122,8 @@ async function overview(req, res, u, s) {
         source: p.source_conn ? { conn: p.source_conn, ref: p.source_ref || "", provider: c ? c.provider : null, connName: c ? c.name : "A removed connection" } : null,
         imageUrl: p.image_url || "", caps: capsOf(p.capabilities), archived: p.archived, notion: !!p.notion_page_id, updated: iso(p.updated_at),
         payments: pays.get(p.id) || [],
+        // The project's own link for the client, what it lets people do, and who joined with it.
+        join: { link: joinUrl(origin, links.get(p.id)), off: !!p.join_off, access: joinRole(p), people: joinedBy.get(p.id) || [] },
       };
     }),
     capabilities: CAPABILITIES,
@@ -287,11 +304,24 @@ const ACTIONS = {
     if (!EMAIL_RE.test(email)) return res.status(400).json({ error: "Enter a valid email." });
     const clientId = role === "client" ? (await clientFrom(b)) || cur.client_id : null;
     if (role === "client" && !clientId) return res.status(400).json({ error: "Choose which client this person belongs to." });
+    // Which projects a client sees: all of their company's, or only the ones chosen (projectIds).
+    const allProjects = role !== "client" ? true : b.allProjects === undefined ? cur.all_projects !== false : !!b.allProjects;
+    let picked = null;
+    if (role === "client" && !allProjects && Array.isArray(b.projectIds)) {
+      picked = b.projectIds.filter(isUuid).slice(0, 200);
+      const real = picked.length ? await sql`select id from projects where id = any(${picked})` : [];
+      picked = real.map((r) => r.id);
+    }
     // Changing what someone can see or how they log in restarts their sessions.
     const bump = role !== cur.role || access !== accessOf(cur) || clientId !== cur.client_id || email !== cur.email;
     await sql`update users set name = ${name}, title = ${title}, email = ${email}, role = ${role}, access = ${access}, client_id = ${clientId},
-              session_version = session_version + ${bump ? 1 : 0} where id = ${cur.id}`;
-    const what = [role !== cur.role || access !== accessOf(cur) ? `role to ${roleLabel({ role, access })}` : "", email !== cur.email ? `email to ${email}` : "", clientId !== cur.client_id ? "company" : ""].filter(Boolean);
+              all_projects = ${allProjects}, session_version = session_version + ${bump ? 1 : 0} where id = ${cur.id}`;
+    if (picked) {
+      await sql`delete from project_people where user_id = ${cur.id} and not (project_id = any(${picked}))`;
+      for (const pid of picked) await addToProject(cur.id, pid, "studio");
+    }
+    const scope = allProjects !== (cur.all_projects !== false) || picked ? (allProjects ? "sees every project of their company" : `sees ${picked ? picked.length : "only the chosen"} project${picked && picked.length === 1 ? "" : "s"}`) : "";
+    const what = [role !== cur.role || access !== accessOf(cur) ? `role to ${roleLabel({ role, access })}` : "", email !== cur.email ? `email to ${email}` : "", clientId !== cur.client_id ? "company" : "", scope].filter(Boolean);
     await audit(req, u, "person.update", `Updated ${name}${what.length ? ": " + what.join(", ") : ""}`, { clientId });
     return res.status(200).json({ ok: true });
   },
@@ -396,7 +426,9 @@ const ACTIONS = {
       returning id`;
     await audit(req, u, "project.create", `Created project ${title}`, { projectId: p.id, clientId });
     await later(() => syncProject(p.id), "notion sync");
-    return res.status(201).json({ id: p.id });
+    // Its own link for the client, ready to share straight away.
+    const token = await newJoinLink(p.id);
+    return res.status(201).json({ id: p.id, link: joinUrl(originOf(req), token) });
   },
 
   async projectUpdate(req, res, u, b, s) {
@@ -478,6 +510,37 @@ const ACTIONS = {
     await sql`delete from projects where id = ${p.id}`;
     await audit(req, u, "project.delete", `Deleted project ${p.title}`, { clientId: p.client_id });
     await later(() => trashProjectRow(p.notion_page_id), "notion trash");
+    return res.status(200).json({ ok: true });
+  },
+
+  /**
+   * A project's link for the client: op "new" (replace it; the old one stops working), "off", "on", or "role"
+   * (what people who join can do: access). People who already joined keep their access either way.
+   */
+  async joinLink(req, res, u, b, s, deny) {
+    if (deny("people.manage")) return;
+    const p = isUuid(b.projectId) && (await sql`select * from projects where id = ${b.projectId}`)[0];
+    if (!p) return res.status(404).json({ error: "That project was removed." });
+    let what;
+    if (b.op === "new") { await newJoinLink(p.id); what = "Made a new link (the old one stopped working)"; }
+    else if (b.op === "off") { await sql`update projects set join_off = true where id = ${p.id}`; what = "Switched the project link off"; }
+    else if (b.op === "on") { await sql`update projects set join_off = false where id = ${p.id}`; what = "Switched the project link on"; }
+    else if (b.op === "role" && CLIENT_ROLES.some((r) => r.key === b.access)) {
+      await sql`update projects set join_access = ${b.access} where id = ${p.id}`;
+      what = `People who join with the link are now ${roleLabel({ role: "client", access: b.access })}s`;
+    } else return res.status(400).json({ error: "That change isn’t valid." });
+    await audit(req, u, "project.link", `${what} for ${p.title}`, { projectId: p.id, clientId: p.client_id });
+    const fresh = (await sql`select * from projects where id = ${p.id}`)[0];
+    return res.status(200).json({ link: joinUrl(originOf(req), await joinToken(fresh)), off: !!fresh.join_off, access: joinRole(fresh) });
+  },
+
+  /** Takes someone off a project they joined (their login stays; they no longer see this project). */
+  async projectPersonRemove(req, res, u, b, s, deny) {
+    if (deny("people.manage")) return;
+    if (!isUuid(b.projectId) || !isUuid(b.userId)) return res.status(400).json({ error: "That isn’t valid." });
+    const r = (await sql`delete from project_people where project_id = ${b.projectId} and user_id = ${b.userId}
+                          returning (select title from projects where id = ${b.projectId}) as title, (select name from users where id = ${b.userId}) as name`)[0];
+    if (r) await audit(req, u, "project.person.remove", `Took ${r.name} off ${r.title}`, { projectId: b.projectId });
     return res.status(200).json({ ok: true });
   },
 

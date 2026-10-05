@@ -82,6 +82,8 @@ export function demoPortal() {
           { id: "demo-c2r", body: "Thank you. That one took three passes to catch the light.", author: "Justin", role: "admin", when: ago(2) },
         ] },
         { id: "demo-c3", at: 65, body: "Swapped to the alternate angle here, as you asked.", author: "Justin", role: "admin", resolved: true, when: ago(4), replies: [] },
+        // Written in Frame.io: notes go both ways (api/_fio_sync.js).
+        { id: "demo-c4", at: 88, body: "Music swells here in the final mix. This is the temp track.", author: "Sam Rivera", role: "admin", resolved: false, when: ago(1), replies: [], via: "frameio" },
       ],
     },
   };
@@ -179,7 +181,7 @@ const STUDIO_LOG = [
 ].map((e, i) => ({ id: 1000 - i, at: ago(0, e.h), ip: e.kind === "system" ? null : "203.0.113." + (10 + i), ...e }));
 
 /** Studio's data for the demo: GET /api/admin?demo=1 (overview), &videos=, &sources=, &audit=, &health=, &notion=. */
-export function demoAdmin(q) {
+export function demoAdmin(q, origin = "https://portal.noblemanproductions.gotit2work.com") {
   const portal = demoStudioPortal();
   if (q.videos) {
     const p = portal.projects.find((x) => x.id === q.videos);
@@ -216,7 +218,9 @@ export function demoAdmin(q) {
     { id: "demo-user", name: "Jonathan Reyes", email: "jonathan@meridian.example", title: "Marketing Director", role: "client", access: "approver", clientId: "demo-client", clientName: "Meridian", h: 20, twoStep: false },
     { id: "demo-priya", name: "Priya Shah", email: "priya@meridian.example", title: "Brand Manager", role: "client", access: "reviewer", clientId: "demo-client", clientName: "Meridian", h: 30, twoStep: false },
     { id: "demo-ceo", name: "Alex Moreno", email: "alex@meridian.example", title: "CEO", role: "client", access: "viewer", clientId: "demo-client", clientName: "Meridian", h: null, twoStep: false },
-  ].map((p) => ({ ...p, roleLabel: [...STAFF_ROLES, ...CLIENT_ROLES].find((r) => r.key === p.access).label, lastLogin: p.h ? ago(0, p.h) : null, invited: !p.h, mustChangePassword: !p.h, created: ago(40) }));
+    // Joined with Meridian Campaign's link: sees only that project.
+    { id: "demo-dev", name: "Dev Patel", email: "dev@harborlight.example", title: "Agency producer", role: "client", access: "approver", clientId: "demo-client", clientName: "Meridian", h: 5, twoStep: false, allProjects: false, projects: ["demo-meridian"] },
+  ].map((p) => ({ allProjects: p.role === "client" ? true : undefined, projects: p.role === "client" ? [] : undefined, ...p, roleLabel: [...STAFF_ROLES, ...CLIENT_ROLES].find((r) => r.key === p.access).label, lastLogin: p.h ? ago(0, p.h) : null, invited: !p.h, mustChangePassword: !p.h, created: ago(40) }));
   return {
     me: { id: STUDIO_USER.id, access: "owner", perms: portal.user.perms },
     clients: [{ id: "demo-client", name: "Meridian", logo: "", notes: "Billing: accounts@meridian.example. Logo only on the end card.", domains: ["meridian.example"], people: 3, projects: 2, created: ago(40) }],
@@ -224,8 +228,12 @@ export function demoAdmin(q) {
     signups: [{ id: "demo-req-1", name: "Kim Lowell", email: "kim@lowellmarine.example", company: "Lowell Marine", note: "A boat launch film in May.", created: ago(0, 3), confirmed: ago(0, 3), match: null }],
     projects: portal.projects.map((p) => ({
       id: p.id, title: p.title, type: p.type, summary: p.summary, clientId: p.clientId, clientName: p.clientName, stage: p.stage, pct: p.pct, next: p.next,
-      reviewDue: p.reviewDue, remindedAt: null, source: { conn: SOURCE.conn, ref: REFS[p.id], provider: "vimeo", connName: "Vimeo" },
+      reviewDue: p.reviewDue, remindedAt: null,
+      source: p.id === "demo-meridian" ? { conn: "demo-frameio", ref: "f0a1c2d3-meridian", provider: "frameio", connName: "Frame.io" } : { conn: SOURCE.conn, ref: REFS[p.id], provider: "vimeo", connName: "Vimeo" },
       imageUrl: "", caps: p.clientCaps, archived: false, notion: true, updated: p.updated, payments: p.payments || [],
+      // Each project's own link for the client; the demo's opens the sample link page.
+      join: { link: `${origin}/demo/join/${p.id === "demo-meridian" ? "meridian" : "social"}`, off: false, access: "approver",
+        people: p.id === "demo-meridian" ? [{ id: "demo-dev", name: "Dev Patel", email: "dev@harborlight.example", roleLabel: "Decision maker", at: ago(6), lastLogin: ago(0, 5) }] : [] },
     })),
     capabilities: CAPABILITIES,
     stages: STAGES,
@@ -233,6 +241,8 @@ export function demoAdmin(q) {
     providers: providerList(),
     connections: [
       { id: "env-vimeo", provider: "vimeo", name: "Vimeo", env: false, status: "ok", lastError: null, checked: ago(0, 2), config: { account: "Nobleman Productions" } },
+      { id: "demo-frameio", provider: "frameio", name: "Frame.io", env: false, status: "ok", lastError: null, checked: ago(0, 1), auth: "oauth", signedIn: true,
+        config: { account: "Jean Gotay", accountId: "demo-account", live: { at: ago(9), workspaces: 1 } } },
       { id: "demo-resend", provider: "resend", name: "Email (Resend)", env: false, status: "ok", lastError: null, checked: ago(0, 2), config: { from: "Nobleman Productions <portal@nobleman.example>", account: "Nobleman Productions <portal@nobleman.example>" } },
       { id: "demo-notion", provider: "notion", name: "Notion", env: false, status: "ok", lastError: null, checked: ago(0, 2), config: { account: "Nobleman HQ" } },
       { id: "demo-stripe", provider: "stripe", name: "Payments (Stripe)", env: false, status: "ok", lastError: null, checked: ago(0, 2), config: { account: "Nobleman Productions", currency: "usd" } },

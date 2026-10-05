@@ -70,8 +70,8 @@ export function cutsOut(p, split, rd, caps, staff) {
 
 /**
  * Everything the signed-in person can see: their projects (versions, films, files, counts, and what they may
- * do on each), recent activity, and the studio's settings the page needs. Clients get only their own
- * company's active projects; staff get every active project.
+ * do on each), recent activity, and the studio's settings the page needs. Clients get the active projects they
+ * may see (clientMaySee in _auth.js: their company's, or only the ones they joined by link); staff get every one.
  */
 export async function buildPortal(user) {
   const s = await getSettings();
@@ -81,7 +81,9 @@ export async function buildPortal(user) {
     ? await sql`select p.*, c.name as client_name, c.logo_url as client_logo from projects p join clients c on c.id = p.client_id
                 where p.archived = false order by p.updated_at desc`
     : await sql`select p.*, c.name as client_name, c.logo_url as client_logo from projects p join clients c on c.id = p.client_id
-                where p.client_id = ${user.client_id} and p.archived = false order by p.updated_at desc`;
+                where p.archived = false and ((p.client_id = ${user.client_id} and ${user.all_projects !== false})
+                  or exists (select 1 from project_people pp where pp.project_id = p.id and pp.user_id = ${user.id}))
+                order by p.updated_at desc`;
   const ids = projects.map((p) => p.id);
 
   const [rd, msgCounts, files, uploads, settingsRows, pays, stripeConn] = await Promise.all([
@@ -181,7 +183,8 @@ export async function buildPortal(user) {
   return {
     user: {
       ...publicUser(user), access: accessOf(user), roleLabel: roleLabel(user),
-      perms: { ...permsOf(user, s), ...(!staff ? { team: !!(permsOf(user, s).team && s.security.clientTeams) } : {}) },
+      // Managing teammates is for people who see all their company's projects, not those who joined one by link.
+      perms: { ...permsOf(user, s), ...(!staff ? { team: !!(permsOf(user, s).team && s.security.clientTeams && user.all_projects !== false) } : {}) },
       twoStepRequired: staff && !!s.security.staffTwoStep,
     },
     demo: false,

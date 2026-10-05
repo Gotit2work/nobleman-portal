@@ -13,6 +13,7 @@ import { createLink, emailLink } from "./_links.js";
 import { later } from "./_later.js";
 import { syncProject } from "./_notion.js";
 import { stripeConnection, checkout, reconcile, announce, paymentOut } from "./_payments.js";
+import { pullNotes, pushNote, pushDecision, pushDone, pushDelete } from "./_fio_sync.js";
 
 /**
  * GET  /api/portal                        everything the signed-in person can see (see _build.js)
@@ -94,18 +95,22 @@ async function notes(req, res, u, pid, videoId) {
   if (!p) return res.status(404).json(NOT_FOUND);
   if (!p.caps.review) return res.status(403).json(OFF("Review"));
   if (!/^[\w-]{1,80}$/.test(videoId)) return res.status(400).json({ error: "That video isn’t valid." });
+  // Frame.io projects: bring in comments made there first (_fio_sync.js). A slow Frame.io never holds the notes up
+  // for more than a few seconds; the read finishes in the background and shows next time.
+  await Promise.race([pullNotes(p, videoId).catch(() => {}), new Promise((r) => setTimeout(r, 4000))]);
   const rows = await sql`
-    select id, parent_id, at_seconds, body, author_id, author_name, author_role, resolved, created_at from comments
+    select id, parent_id, at_seconds, body, author_id, author_name, author_role, resolved, created_at, origin from comments
     where project_id = ${p.id} and video_id = ${videoId} order by created_at asc limit 500`;
   const mod = can(u, "notes.moderate", await getSettings());
   const top = rows.filter((r) => !r.parent_id).map((r) => ({
     id: r.id, at: r.at_seconds == null ? null : Number(r.at_seconds), body: r.body, author: r.author_name,
     role: r.author_role, mine: r.author_id === u.id, canRemove: mod || r.author_id === u.id, resolved: r.resolved, when: iso(r.created_at), replies: [],
+    via: r.origin === "frameio" ? "frameio" : null,
   }));
   const byId = new Map(top.map((t) => [t.id, t]));
   for (const r of rows.filter((x) => x.parent_id)) {
     const t = byId.get(r.parent_id);
-    if (t) t.replies.push({ id: r.id, body: r.body, author: r.author_name, role: r.author_role, mine: r.author_id === u.id, canRemove: mod || r.author_id === u.id, when: iso(r.created_at) });
+    if (t) t.replies.push({ id: r.id, body: r.body, author: r.author_name, role: r.author_role, mine: r.author_id === u.id, canRemove: mod || r.author_id === u.id, when: iso(r.created_at), via: r.origin === "frameio" ? "frameio" : null });
   }
   top.sort((a, b) => (a.at ?? 1e9) - (b.at ?? 1e9));
   return res.status(200).json({ notes: top });
@@ -151,6 +156,7 @@ const ACTIONS = {
       returning id, created_at`;
     await touch(p);
     await audit(req, u, parent ? "note.reply" : "note", `${parent ? "Replied to a note" : "Left a note"} on ${p.title}${video.title ? ": " + video.title : ""}`, { projectId: p.id, clientId: p.client_id });
+    await later(() => pushNote(p, row.id), "frame.io note");
     if (!isStaff(u)) {
       await later(() => notify({ audience: "staff", project: p, actor: u, origin: originOf(req), path: `/review/${p.id}`, button: "Open the notes",
         subject: `${u.name} left a note on ${p.title}`, lines: [`${u.name} (${p.client_name}) wrote:`, body] }), "notify");
@@ -162,7 +168,8 @@ const ACTIONS = {
     const x = await noteRow(u, b.id);
     if (!x || x.r.parent_id) return res.status(404).json({ error: "That note was removed." });
     if (!x.p.caps.notes) return res.status(403).json(OFF("Notes"));
-    await sql`update comments set resolved = ${!!b.resolved} where id = ${x.r.id}`;
+    const [row] = await sql`update comments set resolved = ${!!b.resolved} where id = ${x.r.id} returning frameio_id`;
+    if (row && row.frameio_id) await later(() => pushDone(x.p, row.frameio_id, !!b.resolved), "frame.io done");
     return res.status(200).json({ ok: true });
   },
 
@@ -170,7 +177,9 @@ const ACTIONS = {
     const x = await noteRow(u, b.id);
     if (!x) return res.status(404).json({ error: "That note was already removed." });
     if (x.r.author_id !== u.id && !can(u, "notes.moderate", await getSettings())) return res.status(403).json({ error: "You can only remove your own notes." });
-    await sql`delete from comments where id = ${x.r.id}`;
+    // Its replies go with it; their Frame.io copies too.
+    const copies = (await sql`delete from comments where id = ${x.r.id} or parent_id = ${x.r.id} returning frameio_id`).map((c) => c.frameio_id).filter(Boolean);
+    if (copies.length) await later(() => pushDelete(x.p, copies), "frame.io delete");
     if (x.r.author_id !== u.id) await audit(req, u, "note.remove", `Removed someone else’s note on ${x.p.title}`, { projectId: x.p.id, clientId: x.p.client_id });
     return res.status(200).json({ ok: true });
   },
@@ -189,7 +198,7 @@ const ACTIONS = {
     const [row] = await sql`
       insert into approvals (project_id, video_id, version, decision, note, user_id, user_name)
       values (${p.id}, ${video.id}, ${video.version}, ${decision}, ${note}, ${u.id}, ${u.name})
-      returning created_at`;
+      returning id, created_at`;
     await touch(p);
     const what = `${video.baseTitle || video.title} Version ${video.version}`;
     await audit(req, u, decision === "approved" ? "approved" : "changes",
@@ -203,6 +212,7 @@ const ACTIONS = {
           : [`${u.name} (${p.client_name}) asked for changes to ${what}:`, note] });
       if (decision === "approved") await receipt(u, p, what, note, row.created_at, origin);
       await syncProject(p.id);
+      await pushDecision(p, row.id);
     }, "after decision");
     return res.status(201).json({ decision: { decision, note: note || "", by: u.name, at: iso(row.created_at) } });
   },
@@ -386,7 +396,7 @@ const ACTIONS = {
 async function teamAllowed(u) {
   if (isStaff(u)) return false;
   const s = await getSettings();
-  return !!(permsOf(u, s).team && s.security.clientTeams);
+  return !!(permsOf(u, s).team && s.security.clientTeams && u.all_projects !== false);
 }
 
 async function teammate(u, id) {

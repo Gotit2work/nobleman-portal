@@ -6,7 +6,7 @@ const auth = (init) => { const h = (init && init.headers) || {}; return h.Author
 const ago = (d) => new Date(Date.now() - d * 86400e3).toISOString();
 
 export const state = {
-  frameio: { tokens: new Set(), refresh: new Set(["fio-refresh-0"]), grants: [] },
+  frameio: { tokens: new Set(), refresh: new Set(["fio-refresh-0"]), grants: [], comments: new Map(), webhooks: new Map(), n: 0, calls: [] },
   notion: { databases: new Map(), dataSources: new Map(), pages: new Map(), calls: [] },
   stripe: { sessions: new Map(), n: 0, calls: [] },
 };
@@ -122,7 +122,71 @@ export async function frameio(u, init) {
     return json({ data: [fioFile("fv000000-0000-4000-8000-000000000002", inc), fioFile("fv000000-0000-4000-8000-000000000001", inc)], links: {} });
   }
   if ((m = new RegExp(`^/accounts/${FIO.account}/files/([\\w-]+)$`).exec(p)) && FIO.files[m[1]]) return json({ data: fioFile(m[1], inc) });
+  // Comments and webhooks (the portal's two-way notes, _fio_sync.js).
+  const F = state.frameio, method = init.method || "GET";
+  F.calls.push(method + " " + p);
+  if ((m = new RegExp(`^/accounts/${FIO.account}/files/([\\w-]+)/comments$`).exec(p)) && FIO.files[m[1]]) {
+    if (method === "POST") {
+      const d = body(init).data || {};
+      if (!d.text) return json({ errors: [{ detail: "text is required" }] }, 422);
+      return json({ data: fioComment(addComment({ file_id: m[1], text: d.text, timestamp: d.timestamp ?? null })) }, 201);
+    }
+    const top = [...F.comments.values()].filter((c) => c.file_id === m[1] && !c.parent_id);
+    return json({ data: top.map((c) => fioComment(c, inc)), links: {} });
+  }
+  if ((m = new RegExp(`^/accounts/${FIO.account}/comments/([\\w-]+)$`).exec(p))) {
+    const c = F.comments.get(m[1]);
+    if (!c) return json({ errors: [{ detail: "Not found" }] }, 404);
+    if (method === "DELETE") { for (const [k, x] of F.comments) if (k === c.id || x.parent_id === c.id) F.comments.delete(k); return new Response(null, { status: 204 }); }
+    if (method === "PATCH") { const d = body(init).data || {}; if (d.completed !== undefined) c.completed_at = d.completed ? new Date().toISOString() : null; if (d.text) c.text = d.text; }
+    return json({ data: fioComment(c, inc) });
+  }
+  if (p === `/accounts/${FIO.account}/workspaces`) return json({ data: [{ id: "ws-1", name: "Nobleman" }], links: {} });
+  if ((m = new RegExp(`^/accounts/${FIO.account}/workspaces/([\\w-]+)/webhooks$`).exec(p)) && method === "POST") {
+    const d = body(init).data || {};
+    const w = { id: "wh-" + (++F.n), workspace_id: m[1], name: d.name, url: d.url, events: d.events, secret: "whsec-fio-" + F.n };
+    F.webhooks.set(w.id, w);
+    return json({ data: w }, 201);
+  }
+  if ((m = new RegExp(`^/accounts/${FIO.account}/webhooks/([\\w-]+)$`).exec(p)) && method === "DELETE") { F.webhooks.delete(m[1]); return new Response(null, { status: 204 }); }
   return json({ errors: [{ detail: "Not found " + p }] }, 404);
+}
+
+// A comment as Frame.io's V4 API returns it: owner and replies when asked for, timestamp as stored (a timecode).
+const FIO_USERS = { jean: { id: "user-1", name: "Jean Gotay", email: "jean@nobleman.test" }, editor: { id: "user-2", name: "Eddie Editor", email: "eddie@studio.test" } };
+function fioComment(c, inc = "") {
+  const o = { id: c.id, file_id: c.file_id, text: c.text, timestamp: c.timestamp, created_at: c.created_at, updated_at: c.created_at, completed_at: c.completed_at || null };
+  if (inc.includes("owner")) o.owner = c.owner;
+  if (inc.includes("replies")) o.replies = [...state.frameio.comments.values()].filter((x) => x.parent_id === c.id).map((x) => fioComment(x, inc.replace("replies", "")));
+  return o;
+}
+/** A comment made "in Frame.io": by the connected account (Jean) unless owner says otherwise. */
+export function addComment({ file_id, text, timestamp = null, parent_id = null, owner = "jean" }) {
+  const F = state.frameio;
+  const c = { id: "fc-" + String(++F.n).padStart(4, "0"), file_id, text, timestamp, parent_id, owner: FIO_USERS[owner] || FIO_USERS.jean, created_at: new Date().toISOString(), completed_at: null };
+  F.comments.set(c.id, c);
+  return c;
+}
+export function editComment(id, patch) {
+  const c = state.frameio.comments.get(id);
+  if (!c) return null;
+  if (patch.completed !== undefined) c.completed_at = patch.completed ? new Date().toISOString() : null;
+  if (patch.text) c.text = patch.text;
+  if (patch.delete) for (const [k, x] of state.frameio.comments) if (k === id || x.parent_id === id) state.frameio.comments.delete(k);
+  return c;
+}
+/** Plays Frame.io's webhook: a signed POST of { type, resource } to every webhook the portal created. */
+export async function fireWebhook(type, resourceId, { badSignature = false, oldTimestamp = false } = {}) {
+  const { createHmac } = await import("node:crypto");
+  const out = [];
+  for (const w of state.frameio.webhooks.values()) {
+    const raw = JSON.stringify({ type, resource: { id: resourceId, type: type.split(".")[0] }, account: { id: FIO.account }, workspace: { id: w.workspace_id }, user: { id: "user-1" } });
+    const ts = String(Math.floor(Date.now() / 1000) - (oldTimestamp ? 3600 : 0));
+    const sig = "v0=" + createHmac("sha256", badSignature ? "wrong-secret" : w.secret).update(`v0:${ts}:${raw}`).digest("hex");
+    const r = await fetch(w.url, { method: "POST", headers: { "content-type": "application/json", "x-frameio-request-timestamp": ts, "x-frameio-signature": sig, "user-agent": "Frame.io V4 API" }, body: raw });
+    out.push(r.status);
+  }
+  return out;
 }
 
 // ---------- YouTube Data API ----------
@@ -239,7 +303,7 @@ export async function oembed(u) {
 
 export function snapshot() {
   return {
-    frameio: { grants: state.frameio.grants, tokens: state.frameio.tokens.size },
+    frameio: { grants: state.frameio.grants, tokens: state.frameio.tokens.size, comments: [...state.frameio.comments.values()], webhooks: [...state.frameio.webhooks.values()].map(({ secret, ...w }) => w), calls: state.frameio.calls },
     notion: { pages: [...state.notion.pages.values()], dataSources: [...state.notion.dataSources.values()], calls: state.notion.calls },
     stripe: { sessions: [...state.stripe.sessions.values()], calls: state.stripe.calls },
   };

@@ -122,7 +122,7 @@ export function effectiveCaps(u, projectCaps, settings) {
     share: !!(c.share && r.share),
     upload: !!(c.upload && r.upload),
     messages: !!(c.messages && r.messages),
-    team: !!(r.team && settings.security.clientTeams),
+    team: !!(r.team && settings.security.clientTeams && u.all_projects !== false),
     pay: !!(c.payments && r.pay),
   };
 }

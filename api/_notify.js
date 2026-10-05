@@ -62,7 +62,7 @@ export function originOf(req) {
 
 /**
  * Tells people about something on a project.
- *   audience "staff": every staff member; "client": the project's client people.
+ *   audience "staff": every staff member; "client": the people who may see the project (clientMaySee, _auth.js).
  *   need: a capability the recipient must have on this project to care ("messages", "files", "review").
  *   staffPerm: for staff, a permission they must have to act on it ("people.manage").
  *   path: where the button goes ("/review/<project>"), button: its label.
@@ -74,8 +74,10 @@ export async function notify({ audience, project, actor, subject, lines, origin,
     const people = audience === "staff"
       ? await sql`select id, email, name, role, access, client_id, last_seen_at from users where role = 'admin' and notify_email
                   and id is distinct from ${actor ? actor.id : null}::uuid`
-      : await sql`select id, email, name, role, access, client_id, last_seen_at from users where role = 'client' and client_id = ${project.client_id}
-                  and notify_email and id is distinct from ${actor ? actor.id : null}::uuid`;
+      : await sql`select id, email, name, role, access, client_id, last_seen_at from users u where role = 'client' and notify_email
+                  and id is distinct from ${actor ? actor.id : null}::uuid
+                  and ((client_id = ${project.client_id} and all_projects)
+                    or exists (select 1 from project_people pp where pp.user_id = u.id and pp.project_id = ${project.id || null}::uuid))`;
     const caps = capsOf(project.capabilities);
     const recent = Date.now() - ACTIVE_MINUTES * 60 * 1000;
     const to = people.filter((u) => {

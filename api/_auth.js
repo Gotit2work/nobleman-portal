@@ -141,7 +141,7 @@ export async function currentUser(req) {
   if (!c) return null;
   await ready();
   const rows = await sql`
-    select u.id, u.email, u.name, u.title, u.role, u.access, u.client_id, u.must_change_password, u.session_version,
+    select u.id, u.email, u.name, u.title, u.role, u.access, u.client_id, u.all_projects, u.must_change_password, u.session_version,
            u.notify_email, u.totp_enabled, u.welcomed_at, u.last_seen_at, c.name as client_name, c.logo_url as client_logo
     from users u left join clients c on c.id = u.client_id
     where u.id = ${c.sub} limit 1`;
@@ -155,6 +155,7 @@ export const publicUser = (u) => ({
   id: u.id, email: u.email, name: u.name, title: u.title || "", role: u.role, access: accessOf(u),
   clientId: u.client_id || null, clientName: u.client_name || null, clientLogo: u.client_logo || null,
   mustChangePassword: !!u.must_change_password, notifyEmail: u.notify_email !== false, twoStep: !!u.totp_enabled,
+  allProjects: u.role !== "client" || u.all_projects !== false,
 });
 
 /** Staff who must use two-step verification (Studio → Settings → Security) but haven't turned it on yet. */
@@ -210,8 +211,18 @@ export async function requireStaff(req, res, perm) {
 export const requireAdmin = (req, res) => requireStaff(req, res);
 
 /**
- * A project this person may see, with its effective capabilities, or null. Clients only ever reach their own
- * client's active projects; admins reach every project (and have every capability).
+ * Whether a client may see a project: an active one of their company (unless they see only the projects they
+ * joined by link, all_projects = false), or one they joined (project_people), whichever company it belongs to.
+ */
+export async function clientMaySee(user, p) {
+  if (!p || p.archived) return false;
+  if (p.client_id === user.client_id && user.all_projects !== false) return true;
+  return !!(await sql`select 1 from project_people where project_id = ${p.id} and user_id = ${user.id}`)[0];
+}
+
+/**
+ * A project this person may see, with its effective capabilities, or null. Clients reach only what
+ * clientMaySee allows; staff reach every project (and have every capability).
  */
 export async function projectFor(user, projectId) {
   if (!isUuid(projectId)) return null;
@@ -220,7 +231,7 @@ export async function projectFor(user, projectId) {
     where p.id = ${projectId} limit 1`;
   const p = rows[0];
   if (!p) return null;
-  if (!isStaff(user) && (p.client_id !== user.client_id || p.archived)) return null;
+  if (!isStaff(user) && !(await clientMaySee(user, p))) return null;
   p.clientCaps = capsOf(p.capabilities);
   p.caps = effectiveCaps(user, p.clientCaps, await getSettings());
   return p;

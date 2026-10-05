@@ -14,6 +14,9 @@ import { isStaff, roleLabel } from "./_roles.js";
 import { clientForEmail } from "./_signup.js";
 import { notify } from "./_notify.js";
 import { randomToken } from "./_crypto.js";
+import { projectByJoin, addToProject, joinRole } from "./_join.js";
+import { capsOf } from "./_caps.js";
+import { effectiveCaps } from "./_roles.js";
 
 /**
  * GET  /api/session                        who is logged in, plus what the login screen shows
@@ -24,6 +27,9 @@ import { randomToken } from "./_crypto.js";
  * POST /api/session {action:"signup"}      name, email, company, note → emails a link to confirm the address
  * POST /api/session {action:"redeem"}      token → logged in (invite and reset links then ask for a password);
  *                                          a sign-up confirmation joins the company or waits for the studio
+ * GET  /api/session?join=<token>          which project a project link opens, and what joining it gives
+ * POST /api/session {action:"join"}        token + name, email, password, agree → a login for that project, already
+ *                                          let in; or, logged in, adds the project to that login
  * POST /api/session {action:"logout"}
  * POST /api/session {action:"setup"}       code, name, email, password: the first owner (once)
  * POST /api/session {action:"password"}    current, next
@@ -39,7 +45,7 @@ const safeNext = (n) => (typeof n === "string" && /^\/(?!\/)[\w\-./%?=&]*$/.test
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "private, no-store");
-  if (req.method === "GET") return req.query && req.query.loginImage ? loginImage(req, res) : status(req, res);
+  if (req.method === "GET") return req.query && req.query.loginImage ? loginImage(req, res) : req.query && req.query.join ? joinInfo(req, res) : status(req, res);
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
   if (rejectCrossOrigin(req, res)) return;
   const b = readBody(req, res);
@@ -54,6 +60,7 @@ export default async function handler(req, res) {
       case "requestLink": return await requestLink(req, res, b);
       case "redeem": return await redeem(req, res, b);
       case "signup": return await signup(req, res, b);
+      case "join": return await join(req, res, b);
       case "setup": return await setup(req, res, b);
       case "password": return await password(req, res, b);
       case "profile": return await profile(req, res, b);
@@ -308,6 +315,89 @@ async function confirmSignup(req, res, token, b) {
     lines: [`${r.name} (${r.email}) from ${r.company || "an unnamed company"} confirmed their email and asked for an account.`, ...(r.note ? [`They wrote: “${r.note}”`] : []), "Approve them (and choose their company and role) or decline in Studio → People."] });
   res.status(200).json({ signup: "waiting", name: r.name, email: r.email, studio: s.brand.studio });
   return true;
+}
+
+// ---------- a project's own link (/join/<token>, _join.js) ----------
+const JOIN_DEAD = "This link isn’t working any more. Ask the person who sent it for the project’s current link.";
+
+/** What a project link's person can do there, in plain words, from the project's switches and the link's role. */
+function joinCan(p, s) {
+  const c = effectiveCaps({ role: "client", access: joinRole(p) }, capsOf(p.capabilities), s);
+  return [
+    c.review && "Watch each new version",
+    c.notes && "Leave notes on any moment",
+    c.approve && "Approve a version, or ask for changes",
+    !c.review && "Watch the finished films",
+    c.download && "Download the finished films",
+    c.messages && "Message the studio",
+  ].filter(Boolean).slice(0, 4);
+}
+
+/** GET ?join=<token>: the page behind a project link. Only what the link's holder needs; never other projects. */
+async function joinInfo(req, res) {
+  if (!dbConfigured()) return res.status(503).json({ error: "The portal is still being set up. Try the link again soon." });
+  try {
+    await ready();
+    const p = await projectByJoin(req.query.join);
+    if (!p) return res.status(404).json({ error: JOIN_DEAD });
+    const [s, me] = await Promise.all([getSettings(), currentUser(req).catch(() => null)]);
+    const member = me ? isStaff(me) || (await sql`select 1 from users u where u.id = ${me.id} and ((u.client_id = ${p.client_id} and u.all_projects)
+      or exists (select 1 from project_people pp where pp.user_id = u.id and pp.project_id = ${p.id}))`).length > 0 : false;
+    return res.status(200).json({
+      project: { title: p.title, client: p.client_name, type: p.type || "" },
+      studio: s.brand.studio, role: joinRole(p), roleLabel: roleLabel({ role: "client", access: joinRole(p) }), can: joinCan(p, s),
+      minPassword: MIN_PASSWORD, privacy: s.brand.privacy,
+      user: me ? { name: me.name, email: me.email, staff: isStaff(me) } : null, member,
+    });
+  } catch (err) {
+    console.error("join info failed", err);
+    return res.status(500).json({ error: TROUBLE });
+  }
+}
+
+/**
+ * POST {action:"join"}: someone with a project's link. Logged in: the project is added to their login (staff see
+ * it anyway). Otherwise: a new login, already let in, that sees only this project; their company is the project's
+ * client. An email that already has a login is asked to log in instead, so nobody takes over an account.
+ */
+async function join(req, res, b) {
+  const p = await projectByJoin(b.token);
+  if (!p) return res.status(404).json({ error: JOIN_DEAD });
+  const me = await currentUser(req).catch(() => null);
+  if (me) {
+    if (!isStaff(me) && (await addToProject(me.id, p.id, "link"))) {
+      await audit(req, me, "join", `Added ${p.title} with the project link`, { projectId: p.id, clientId: p.client_id });
+    }
+    return res.status(200).json({ joined: true, projectId: p.id, user: publicUser(me) });
+  }
+  const name = text(b.name, 100);
+  const email = String(b.email || "").trim().toLowerCase().slice(0, 320);
+  const pass = String(b.password || "");
+  if (!name) return res.status(400).json({ error: "Enter your name." });
+  if (!EMAIL_RE.test(email)) return res.status(400).json({ error: "Enter your email address." });
+  if (pass.length < MIN_PASSWORD) return res.status(400).json({ error: `Choose a password of at least ${MIN_PASSWORD} characters.` });
+  if (!b.agree) return res.status(400).json({ error: "Tick the box to confirm you’re working on this project." });
+  const ip = clientIp(req) || "unknown";
+  if (await throttled("join", email, ip)) return res.status(429).json({ error: "Several logins were made from here already. Wait an hour, or ask the studio to add you." });
+  await recordAttempt("join", email, ip);
+  if (await userByEmail(email)) return res.status(409).json({ exists: true, error: "That email already has a login. Log in, and this project is added to it." });
+  const access = joinRole(p);
+  let u;
+  try {
+    [u] = await sql`
+      insert into users (email, name, role, access, client_id, all_projects, password_hash, must_change_password)
+      values (${email}, ${name}, 'client', ${access}, ${p.client_id}, false, ${await bcrypt.hash(pass, 10)}, false)
+      returning *`;
+  } catch (err) {
+    if (err && err.code === "23505") return res.status(409).json({ exists: true, error: "That email already has a login. Log in, and this project is added to it." });
+    throw err;
+  }
+  u.client_name = p.client_name;
+  await addToProject(u.id, p.id, "link");
+  await audit(req, u, "join", `Created a login with the link for ${p.title}, as ${roleLabel(u)}, and confirmed they’re working on it`, { projectId: p.id, clientId: p.client_id });
+  await notify({ audience: "staff", project: p, actor: null, origin: originOf(req), path: "/studio/projects/" + p.id, button: "See who joined",
+    subject: `${name} joined ${p.title}`, lines: [`${name} (${email}) used the link for ${p.title} and can now see it in the portal, as ${roleLabel(u)}.`] });
+  return signIn(req, res, u, "project link", { joined: true, projectId: p.id });
 }
 
 async function setup(req, res, b) {

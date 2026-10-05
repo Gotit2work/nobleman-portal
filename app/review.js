@@ -220,11 +220,11 @@ function Note({ note, admin, canAct, onSeek, onToggle, onDelete, onReply }) {
     <div class="top">
       ${note.at != null ? html`<button class="tc" onClick=${onSeek} aria-label=${"Play from " + tc(note.at)}>${tc(note.at)}</button>` : null}
       <${Avatar} name=${note.author} staff=${note.role === "admin"} size=${26} />
-      <span class="small"><b>${note.author}</b>${note.role === "admin" ? html` <span class="faint">· studio</span>` : null}</span>
+      <span class="small"><b>${note.author}</b>${note.role === "admin" ? html` <span class="faint">· studio</span>` : null}${note.via === "frameio" ? html` <span class="faint">· in Frame.io</span>` : null}</span>
       <span class="faint small" style=${{ marginLeft: "auto" }}>${fmtAgo(note.when)}</span>
     </div>
     <div class="body">${note.body}</div>
-    ${note.replies.map((r) => html`<div class="reply" key=${r.id}><span class="small"><b>${r.author}</b>${r.role === "admin" ? html` <span class="faint">· studio</span>` : null} <span class="faint">· ${fmtAgo(r.when)}</span></span><span style=${{ whiteSpace: "pre-wrap" }}>${r.body}</span></div>`)}
+    ${note.replies.map((r) => html`<div class="reply" key=${r.id}><span class="small"><b>${r.author}</b>${r.role === "admin" ? html` <span class="faint">· studio</span>` : null}${r.via === "frameio" ? html` <span class="faint">· in Frame.io</span>` : null} <span class="faint">· ${fmtAgo(r.when)}</span></span><span style=${{ whiteSpace: "pre-wrap" }}>${r.body}</span></div>`)}
     ${replying ? html`<div class="stack" style=${{ gap: "8px" }}>
       <textarea class="textarea" rows="2" value=${text} onInput=${(e) => setText(e.target.value)} placeholder="Write a reply" aria-label="Reply"></textarea>
       <div class="row"><button class="btn primary sm" disabled=${!text.trim()} onClick=${() => { onReply(text.trim()); setText(""); setReplying(false); }}>Reply</button><button class="btn ghost sm" onClick=${() => setReplying(false)}>Cancel</button></div>
