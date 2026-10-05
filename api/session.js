@@ -2,11 +2,11 @@ import bcrypt from "bcryptjs";
 import { issueSignedToken, presignUrl } from "@vercel/blob";
 import { sql, ready, dbConfigured } from "./_db.js";
 import {
-  DEMO_MODE, TROUBLE, MIN_PASSWORD, readBody, rejectCrossOrigin, currentUser, requireUser, publicUser, text,
+  TROUBLE, MIN_PASSWORD, readBody, rejectCrossOrigin, currentUser, requireUser, publicUser, text,
   signSession, setSessionCookie, clearSessionCookie, signTicket, readTicket, needsTwoStepSetup,
 } from "./_auth.js";
-import { sameText, seal, open, totpSecret, totpUri, verifyTotp, recoveryCodes, hashToken } from "./_crypto.js";
-import { getSettings, DEFAULTS, LOGIN_UPLOAD, resolveBrand, instanceId } from "./_settings.js";
+import { seal, open, totpSecret, totpUri, verifyTotp, recoveryCodes, hashToken } from "./_crypto.js";
+import { getSettings, DEFAULTS, LOGIN_UPLOAD, OWNER_EMAILS, resolveBrand, instanceId } from "./_settings.js";
 import { emailReady, originOf } from "./_notify.js";
 import { createLink, redeemLink, emailLink, emailSignup, throttled, recordAttempt, clearAttempts } from "./_links.js";
 import { audit, clientIp } from "./_audit.js";
@@ -61,7 +61,6 @@ export default async function handler(req, res) {
       case "redeem": return await redeem(req, res, b);
       case "signup": return await signup(req, res, b);
       case "join": return await join(req, res, b);
-      case "setup": return await setup(req, res, b);
       case "password": return await password(req, res, b);
       case "profile": return await profile(req, res, b);
       case "twoStepBegin": return await twoStepBegin(req, res);
@@ -112,16 +111,18 @@ async function loginImage(req, res) {
   }
 }
 
+// The portal has no owner yet: only the first owner can create an account (OWNER_EMAILS).
+const noOwner = async () => !(await sql`select 1 from users where role = 'admin' limit 1`)[0];
+
 async function status(req, res) {
-  const base = { demoAtRoot: DEMO_MODE };
-  if (!dbConfigured()) return res.status(200).json({ ...base, ...DEFAULT_SCREEN, user: null, db: false, setup: false });
+  const base = {};
+  if (!dbConfigured()) return res.status(200).json({ ...base, ...DEFAULT_SCREEN, user: null, db: false, firstRun: false });
   try {
     await ready();
     const [user, sc, email, instance] = await Promise.all([currentUser(req), screen(), emailReady(), instanceId()]);
     const out = { ...base, ...sc, email, db: true, instance };
-    if (user) return res.status(200).json({ ...out, setup: false, user: publicUser(user), needsTwoStep: await needsTwoStepSetup(user) });
-    const owners = await sql`select 1 from users where role = 'admin' limit 1`;
-    return res.status(200).json({ ...out, user: null, setup: owners.length === 0, setupReady: !!process.env.BOOTSTRAP_SECRET });
+    if (user) return res.status(200).json({ ...out, firstRun: false, user: publicUser(user), needsTwoStep: await needsTwoStepSetup(user) });
+    return res.status(200).json({ ...out, user: null, firstRun: await noOwner() });
   } catch (err) {
     console.error("session status failed", err);
     return res.status(500).json({ ...base, error: TROUBLE });
@@ -136,9 +137,10 @@ async function signIn(req, res, user, how, extra = {}) {
   return res.status(200).json({ user: publicUser(user), needsTwoStep: await needsTwoStepSetup(user), ...extra });
 }
 
+/** The person who logs in with this address: their main email, or an extra one (user_emails). */
 async function userByEmail(email) {
   return (await sql`select u.*, c.name as client_name, c.logo_url as client_logo from users u left join clients c on c.id = u.client_id
-                    where u.email = ${email} limit 1`)[0] || null;
+                    where u.email = ${email} or u.id = (select user_id from user_emails where email = ${email}) limit 1`)[0] || null;
 }
 
 async function login(req, res, b) {
@@ -239,14 +241,17 @@ const SIGNUP_SENT = "Check your email. We’ve sent a link to confirm it’s you
  */
 async function signup(req, res, b) {
   const s = await getSettings();
-  if (s.security.signup === "off") return res.status(403).json({ error: "New accounts are by invitation. Ask the studio to invite you." });
-  if (!(await emailReady())) return res.status(409).json({ error: "Accounts can’t be created here yet. Ask the studio to invite you." });
   const name = text(b.name, 100);
   const email = String(b.email || "").trim().toLowerCase().slice(0, 320);
   const company = text(b.company, 120);
+  // Until there's an owner, only the first owner's addresses may create an account (they then confirm by email).
+  const first = await noOwner();
+  if (first && EMAIL_RE.test(email) && !OWNER_EMAILS.includes(email)) return res.status(403).json({ error: "The portal isn’t open for new accounts yet." });
+  if (!first && s.security.signup === "off") return res.status(403).json({ error: "New accounts are by invitation. Ask the studio to invite you." });
+  if (!(await emailReady())) return res.status(409).json({ error: first ? "The portal can’t send email yet, so this account can’t be confirmed. Email needs setting up first (Vercel: RESEND_API_KEY and PORTAL_EMAIL_FROM)." : "Accounts can’t be created here yet. Ask the studio to invite you." });
   if (!name) return res.status(400).json({ error: "Enter your name." });
   if (!EMAIL_RE.test(email)) return res.status(400).json({ error: "Enter your work email address." });
-  if (!company) return res.status(400).json({ error: "Enter your company’s name." });
+  if (!company && !first) return res.status(400).json({ error: "Enter your company’s name." });
   const ip = clientIp(req) || "unknown";
   if (await throttled("link", email, ip)) return res.status(429).json({ error: "Several emails were sent already. Check your inbox and spam, or wait an hour." });
   await recordAttempt("link", email, ip);
@@ -290,6 +295,23 @@ async function confirmSignup(req, res, token, b) {
     if (existing.totp_enabled) { res.status(200).json({ twoStep: true, ticket: await signTicket(existing) }); return true; }
     await signIn(req, res, existing, "sign-up link");
     return true;
+  }
+  // The first owner: their confirmed address makes them the owner (only while there is none), with both addresses.
+  if (OWNER_EMAILS.includes(r.email) && (await noOwner())) {
+    const [u] = await sql`
+      insert into users (email, name, role, access, password_hash, must_change_password)
+      select ${r.email}, ${r.name}, 'admin', 'owner', ${await bcrypt.hash(randomToken(), 10)}, true
+      where not exists (select 1 from users where role = 'admin')
+      returning *`;
+    if (u) {
+      for (const e of OWNER_EMAILS) if (e !== r.email) {
+        await sql`insert into user_emails (email, user_id) select ${e}, ${u.id} where not exists (select 1 from users where email = ${e}) on conflict do nothing`;
+      }
+      await sql`update signup_requests set status = 'joined', user_id = ${u.id}, decided_at = now(), decided_by = 'First owner' where id = ${r.id}`;
+      await audit(req, u, "setup", `Became the portal’s first owner (${OWNER_EMAILS.join(" or ")})`);
+      await signIn(req, res, u, "first owner");
+      return true;
+    }
   }
   const s = await getSettings();
   const company = s.security.domainJoin ? await clientForEmail(r.email) : null;
@@ -398,28 +420,6 @@ async function join(req, res, b) {
   await notify({ audience: "staff", project: p, actor: null, origin: originOf(req), path: "/studio/projects/" + p.id, button: "See who joined",
     subject: `${name} joined ${p.title}`, lines: [`${name} (${email}) used the link for ${p.title} and can now see it in the portal, as ${roleLabel(u)}.`] });
   return signIn(req, res, u, "project link", { joined: true, created: true, projectId: p.id });
-}
-
-async function setup(req, res, b) {
-  const expected = process.env.BOOTSTRAP_SECRET;
-  if (!expected) return res.status(409).json({ error: "Setup isn’t switched on. Add BOOTSTRAP_SECRET in Vercel and redeploy (README, “Going live”)." });
-  if (!sameText(b.code || "", expected)) return res.status(403).json({ error: "That setup code isn’t right." });
-  const name = text(b.name, 100);
-  const email = String(b.email || "").trim().toLowerCase().slice(0, 320);
-  const pass = String(b.password || "");
-  if (!name || !EMAIL_RE.test(email)) return res.status(400).json({ error: "Enter your name and a valid email." });
-  if (pass.length < MIN_PASSWORD) return res.status(400).json({ error: `Choose a password of at least ${MIN_PASSWORD} characters.` });
-  const hash = await bcrypt.hash(pass, 10);
-  // One statement: insert only if there is still no staff account, so two people racing can't both win.
-  const rows = await sql`
-    insert into users (email, name, role, access, password_hash)
-    select ${email}, ${name}, 'admin', 'owner', ${hash}
-    where not exists (select 1 from users where role = 'admin')
-    returning *`;
-  if (!rows.length) return res.status(409).json({ error: "The portal is already set up. Log in instead." });
-  await audit(req, rows[0], "setup", "Set up the portal and became its first owner");
-  await setSessionCookie(res, await signSession(rows[0]));
-  return res.status(201).json({ user: publicUser(rows[0]) });
 }
 
 async function password(req, res, b) {

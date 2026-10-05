@@ -60,17 +60,27 @@ async function as(email, path = "/", opts) {
 {
   const page = await newPage();
   await page.goto(FRESH + "/");
-  check("empty portal opens on first-time setup", await waitText(page, "Set up the portal"));
-  await page.locator('input[name="code"]').fill("not-the-code");
-  await page.locator('input[name="name"]').fill("Sam Staff");
-  await page.locator('input[name="email"]').fill("sam@nobleman.test");
-  await page.locator('input[name="new-password"]').fill("sam-password-123");
-  await page.locator('input[name="again"]').fill("sam-password-123");
-  await page.getByRole("button", { name: "Create the owner account" }).click();
-  check("a wrong setup code is refused on screen", await waitText(page, "That setup code isn’t right."));
-  await page.locator('input[name="code"]').fill("setup-code-123");
-  await page.getByRole("button", { name: "Create the owner account" }).click();
-  check("the right code creates the owner and opens the portal", await waitText(page, hello("Sam")));
+  await page.getByRole("tab", { name: "Create an account" }).waitFor();
+  const door = await page.evaluate(() => document.body.innerText);
+  check("an empty portal opens on Log in / Create an account, with Create an account chosen and nothing about a demo",
+    (await page.getByRole("tab", { name: "Create an account" }).getAttribute("aria-selected")) === "true" && await visible(page.getByRole("tab", { name: "Log in" })) && !/demo|sample|setup code/i.test(door), door.slice(0, 300));
+  check("…asking only for a name and an email", (await page.locator('.signup input[name="company"]').count()) === 0 && await visible(page.locator('.signup input[name="email"]')));
+  await page.locator('input[name="name"]').fill("Someone Else");
+  await page.locator('input[name="email"]').fill("someone@else.test");
+  await page.getByRole("button", { name: "Create my account" }).click();
+  check("anyone but the studio's owner is told the portal isn't open yet", await waitText(page, "The portal isn’t open for new accounts yet."));
+  await page.locator('input[name="name"]').fill("Jean Gotay");
+  await page.locator('input[name="email"]').fill("jeancgotay@gmail.com");
+  await page.getByRole("button", { name: "Create my account" }).click();
+  check("the owner's address is asked to confirm by email", await waitText(page, "We sent a link to"));
+  await page.waitForTimeout(400);
+  const ownerLink = linkIn((await (await fetch(FRESH + "/__mail")).json()).reverse().find((m) => [].concat(m.to).includes("jeancgotay@gmail.com")));
+  await page.goto(ownerLink);
+  check("the link proves it's them; then they choose a password", await waitText(page, "Choose your password"));
+  await page.locator('input[name="new-password"]').fill("jean-owner-password-1");
+  await page.locator('input[name="again"]').fill("jean-owner-password-1");
+  await page.getByRole("button", { name: "Save and open the portal" }).click();
+  check("…and the portal opens for its owner", await waitText(page, hello("Jean")) && await visible(nav(page, "Studio")));
   check("a new owner's first Home starts the studio tutorial, at the setup checklist (no projects yet: 2 steps)", /1 of 2/i.test(await tourCard(page)) && await page.locator(".tour-ring").waitFor().then(() => true, () => false) && await page.evaluate(() => { const r = document.querySelector(".tour-ring").getBoundingClientRect(), el = document.querySelector('[data-tour="next"]'), s = el.getBoundingClientRect(); return Math.abs(r.top - (s.top - 8)) < 3 && el.classList.contains("setup"); }));
   await page.getByRole("button", { name: "Skip tutorial" }).click();
   check("…and Skip tutorial ends it, saying where it is", await waitText(page, "Tutorial skipped.") && await stepIs(page, null) && !(await page.locator(".tour-veil").count()));
@@ -80,6 +90,17 @@ async function as(email, path = "/", opts) {
   await waitText(page, "No projects yet.");
   const tabs = (await page.locator(".studio-tabs a").allInnerTexts()).join("|").replace(/\s+/g, "");
   check("an owner sees every Studio tab", tabs === "Projects|Clients|People|Connections|Settings|Activity", tabs);
+  check("staff see Tutorial and Client's view at the top", await visible(page.locator(".tour-corner .tour-btn", { hasText: "Tutorial" })) && await visible(page.locator(".tour-corner a", { hasText: "Client’s view" })));
+  await page.locator(".tour-corner a", { hasText: "Client’s view" }).click();
+  check("Client's view opens the sample project as a client sees it", await waitText(page, hello("Jonathan")) && await waitText(page, "A sample project: click anything.") && new URL(page.url()).pathname === "/demo");
+  await page.getByRole("link", { name: "Back to my portal" }).click();
+  check("…and Back to my portal returns to theirs", await waitText(page, hello("Jean")));
+  await page.goto(FRESH + "/account");
+  await page.getByRole("button", { name: "Log out" }).click();
+  await page.locator('input[name="email"]').fill("jean@noblemanproductions.com");
+  await page.locator('input[name="password"]').fill("jean-owner-password-1");
+  await page.getByRole("button", { name: "Log in", exact: true }).click();
+  check("the owner's second address logs into the same account", await waitText(page, hello("Jean")) && await visible(nav(page, "Studio")));
   await page.context().close();
 }
 
@@ -532,8 +553,10 @@ const PHONE = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch:
 // ---------- 9. The demo ----------
 {
   const page = await newPage();
-  await page.goto(DEMO + "/");
-  check("demo mode: the sample project opens without signing in", await waitText(page, hello("Jonathan")));
+  await page.goto(DEMO + "/demo");
+  check("logged out, the sample portal shows the login instead: it's for the studio", await page.locator('input[name="password"]').waitFor().then(() => true, () => false) && !(await waitText(page, /Jonathan/, 800)));
+  await signIn(page, "alexis@gotit2work.com");
+  check("after a studio login, the sample project opens", await waitText(page, hello("Jonathan")) && new URL(page.url()).pathname === "/demo");
   check("the demo says it's a sample", await waitText(page, "A sample project: click anything."));
   check("the demo never starts the tutorial by itself", !(await tourCard(page, 1200)));
   await page.locator(".tour-btn:visible").first().click();
@@ -570,36 +593,36 @@ const PHONE = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch:
     await page.locator(".studio-tabs").getByRole("link", { name: t, exact: true }).click();
     check(`demo Studio ${t} opens`, await waitText(page, t === "Projects" ? "Meridian Campaign" : t === "Connections" ? "Video sources" : t === "Settings" ? "System check" : "Asked to join|Watched Campaign Film".split("|")[1]));
   }
-  await page.goto(DEMO + "/studio/projects");
+  await page.goto(DEMO + "/demo/studio/projects");
   check("reloading a Studio page in the demo keeps the studio's view", await waitText(page, "Meridian Campaign") && await visible(nav(page, "Studio")));
-  await page.goto(DEMO + "/payments/demo-meridian");
+  await page.goto(DEMO + "/demo/payments/demo-meridian");
   check("demo payments: what's due and what's paid, with a Pay button", await waitText(page, "$9,000.00 due.") && await waitText(page, "Balance (50%)") && await visible(page.getByRole("button", { name: "Pay", exact: true })) && await waitText(page, /Paid .* Jonathan Reyes/));
   await page.getByRole("button", { name: "Pay", exact: true }).click();
   check("…paying in the demo says what would happen", await waitText(page, /Demo only: in the real portal this opens Stripe’s secure checkout/));
-  await page.goto(DEMO + "/projects/demo-meridian");
+  await page.goto(DEMO + "/demo/projects/demo-meridian");
   check("the project page shows what's due", await waitText(page, "$9,000.00 due"));
-  await page.goto(DEMO + "/studio/projects/demo-meridian?view=studio");
+  await page.goto(DEMO + "/demo/studio/projects/demo-meridian?view=studio");
   await page.locator(".parts").getByRole("button", { name: "Payments", exact: true }).click();
   check("demo Studio: a project's payments, with ways to ask, cancel, or mark paid", await waitText(page, "Ask for a payment") && await visible(page.getByRole("button", { name: "Mark paid…" })) && await waitText(page, "Stripe live"));
-  await page.goto(DEMO + "/studio/connections?view=studio");
+  await page.goto(DEMO + "/demo/studio/connections?view=studio");
   const hidden = await waitText(page, "Payments (Stripe)") && !(await page.getByText("/api/connect?webhook=stripe").count());
   await page.getByRole("button", { name: "Show the setup" }).click();
   check("demo Studio: Stripe is a connection; its connected webhook's setup folds away until asked for", hidden && await waitText(page, "/api/connect?webhook=stripe"));
   // Simple by design: one or two buttons per row, one flag per project card, rare things folded away.
-  await page.goto(DEMO + "/studio/people?view=studio");
+  await page.goto(DEMO + "/demo/studio/people?view=studio");
   await waitText(page, "Jonathan Reyes");
   const rowBtns = await page.locator("table.table tbody tr").evaluateAll((rs) => Math.max(...rs.map((r) => r.querySelectorAll("td:last-child > button, td:last-child > a, td:last-child > .more > button").length)));
   await page.locator("table.table tbody tr", { hasText: "Justin" }).getByRole("button", { name: "More" }).click();
   check("People: at most two buttons per person, with a password reset in More", rowBtns <= 2 && await visible(page.getByRole("menuitem", { name: "Reset password" })));
-  await page.goto(DEMO + "/studio/projects/demo-meridian?view=studio");
+  await page.goto(DEMO + "/demo/studio/projects/demo-meridian?view=studio");
   await page.locator(".parts").getByRole("button", { name: "Videos", exact: true }).click();
   await waitText(page, "Campaign Film V3");
   check("Videos: one menu per video instead of a row of buttons", await page.locator(".vrow").first().evaluate((r) => r.querySelectorAll("button.btn").length) === 1);
   await page.locator(".demo-switch").first().getByRole("button", { name: "Client’s view" }).click();
-  await page.goto(DEMO + "/");
+  await page.goto(DEMO + "/demo");
   await waitText(page, "Your projects");
   check("Home: each project card shows one flag at most", (await page.locator(".pcard").evaluateAll((cs) => cs.map((c) => c.querySelectorAll(".pill").length))).every((n) => n <= 1));
-  await page.goto(DEMO + "/messages/demo-meridian");
+  await page.goto(DEMO + "/demo/messages/demo-meridian");
   const box = page.getByRole("textbox", { name: /^Message to/ });
   await box.fill("Draft for Meridian");
   await page.locator(".tabs").getByRole("link", { name: /Social Content Package/ }).click();
@@ -607,41 +630,40 @@ const PHONE = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch:
   await page.locator(".tabs").getByRole("link", { name: /Meridian Campaign/ }).click();
   check("Messages: a half-written message stays with its own project", empty && await page.waitForURL(/demo-meridian$/).then(async () => (await box.inputValue()) === "Draft for Meridian", () => false));
   // Addresses are decoded once: a film title with a "%" in it, and a mistyped address, must still open.
-  await page.goto(DEMO + "/review/demo-meridian/" + encodeURIComponent("spring sale 20% off") + "/1");
+  await page.goto(DEMO + "/demo/review/demo-meridian/" + encodeURIComponent("spring sale 20% off") + "/1");
   check("Review opens for a film whose title has a % in it", await waitText(page, "Campaign Film"));
-  await page.goto(DEMO + "/review/%E0%A4%A");
+  await page.goto(DEMO + "/demo/review/%E0%A4%A");
   check("…and a mistyped address with a stray % still opens the portal", await waitText(page, "Campaign Film"));
   // The client's link, in the demo, and notes from Frame.io.
-  await page.goto(DEMO + "/demo/join/meridian".replace("/demo/demo", "/demo"));
-  check("demo: a project's link shows what the client sees, marked as the demo", await waitText(page, "Meridian Campaign") && await waitText(page, /This is the demo/) && await waitText(page, "Create your login"));
+  await page.goto(DEMO + "/demo/join/meridian");
+  check("demo: a project's link shows what the client sees, marked as a sample", await waitText(page, "Meridian Campaign") && await waitText(page, /A sample: here’s what a client sees/) && await waitText(page, "Create your login"));
   await page.locator('input[name="name"]').fill("Sam Sample");
   await page.locator('input[name="email"]').fill("sam@sample.test");
   await page.locator('input[name="new-password"]').fill("sample-password-1");
   await page.locator(".ack input").check();
   await page.getByRole("button", { name: "Create my login" }).click();
   check("…and creating a login there says nothing was saved, then shows the client's side", await waitText(page, /Demo only:/) && await visible(page.getByRole("link", { name: "See what they see" })));
-  await page.goto(DEMO + "/review/demo-meridian");
+  await page.goto(DEMO + "/demo/review/demo-meridian");
   check("demo: a comment written in Frame.io shows in the notes, marked as such", await waitText(page, "Music swells here in the final mix.") && await waitText(page, "· in Frame.io"));
-  await page.goto(DEMO + "/studio/connections?view=studio");
+  await page.goto(DEMO + "/demo/studio/connections?view=studio");
   check("demo Studio: Frame.io notes go both ways, with live updates on", await waitText(page, "Notes go both ways") && (await page.getByRole("switch", { name: "Live updates from Frame.io" }).getAttribute("aria-checked")) === "true");
-  await page.goto(DEMO + "/studio/projects/demo-meridian?view=studio");
+  await page.goto(DEMO + "/demo/studio/projects/demo-meridian?view=studio");
   check("demo Studio: each project has its client link at the top", /\/demo\/join\/meridian$/.test(await page.locator(".linkbar input").inputValue().catch(() => "")));
-  await page.goto(DEMO + "/account");
+  await page.goto(DEMO + "/demo/account");
   const pwHidden = !(await page.locator('input[autocomplete="current-password"]').count());
   await page.getByRole("button", { name: "Change my password" }).click();
   check("Account: the password form opens only when asked for", pwHidden && await visible(page.locator('input[autocomplete="current-password"]')));
-  await page.goto(DEMO + "/signin");
-  check("/signin still reaches the real login in demo mode", await page.getByRole("heading", { name: "Log in" }).waitFor().then(() => true, () => false));
-  await page.goto(B + "/demo");
-  check("/demo works on the live portal too", await waitText(page, /Jonathan/));
   await page.context().close();
+  const client = await as("dana@harbor.test", "/demo");
+  check("a client who opens /demo gets their own portal, not the sample", await waitText(client, hello("Dana")) && !(await waitText(client, "A sample project", 800)) && new URL(client.url()).pathname === "/");
+  await client.context().close();
 }
 
 // ---------- 10. A dropped connection while loading ----------
 {
   const page = await newPage();
   await page.route("**/app/films.js", (r) => r.abort());
-  await page.goto(DEMO + "/");
+  await page.goto(B + "/");
   check("if a portal file doesn't arrive, the page says so and offers a reload", await waitText(page, /didn’t finish loading/) && await visible(page.getByRole("button", { name: "Reload the page" })));
   await page.context().close();
 }
@@ -652,7 +674,8 @@ const PHONE = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch:
     const res = await r.fetch();
     r.fulfill({ response: res, body: (await res.text()).replace("export function Payments({ pid }) {", "$& throw new Error(\"test fault\");") });
   });
-  await page.goto(DEMO + "/payments/demo-meridian");
+  await page.goto(DEMO + "/demo/payments/demo-meridian");
+  await signIn(page, "alexis@gotit2work.com");
   check("a screen that breaks says so, not 'weak connection', and offers a reload", await waitText(page, "This screen stopped working.") && await waitText(page, "not your connection") && await visible(page.getByRole("button", { name: "Reload the page" })) && !(await page.getByText(/didn’t finish loading/).count()));
   await nav(page, "Home").click();
   check("…while the navigation still works, and the next screen opens fresh", await waitText(page, hello("Jonathan")) && !(await page.getByText("This screen stopped working.").count()));
@@ -660,23 +683,17 @@ const PHONE = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch:
   await page.context().close();
 }
 
-// ---------- 11. Before go-live: sign-up shows its steps as a preview ----------
+// ---------- 11. Before go-live: the door says so, with nothing about a demo ----------
 {
   const page = await newPage();
   await page.route("**/api/session", async (r) => {
     if (r.request().method() !== "GET") return r.continue();
     const real = await (await fetch(B + "/api/session")).json();
-    return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ demoAtRoot: false, brand: real.brand, signin: real.signin, signinLinks: false, signup: false, user: null, db: false, setup: false }) });
+    return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ brand: real.brand, signin: real.signin, signinLinks: false, signup: false, user: null, db: false, firstRun: false }) });
   });
-  await page.goto(B + "/signup");
-  await page.locator('input[name="name"]').fill("Pre View");
-  await page.locator('input[name="email"]').fill("pre@view.test");
-  await page.locator('input[name="company"]').fill("Preview Co");
-  const before = (await mails()).length;
-  await page.getByRole("button", { name: "Create my account" }).click();
-  check("before go-live, sign-up previews its steps and says nothing was sent", await waitText(page, "Preview only: the portal isn’t live yet") && (await mails()).length === before);
-  await page.getByRole("button", { name: "See the next step" }).click();
-  check("…and can show what comes after confirming", await waitText(page, "You’re on the list, Pre."));
+  await page.goto(B + "/");
+  const text = await page.waitForTimeout(800).then(() => page.evaluate(() => document.body.innerText));
+  check("before go-live, the login says the portal is being set up, and nothing else", await waitText(page, "The portal is still being set up. Try again soon.") && !/demo|sample/i.test(text) && !(await page.getByRole("tab", { name: "Create an account" }).count()), text.slice(0, 300));
   await page.context().close();
 }
 

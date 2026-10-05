@@ -181,7 +181,7 @@ table.small { font-size: 7.9pt; }
       <a href="#ch4"><i>04</i><span><b>Running the studio</b><span class="d">Studio: projects and their client links, people, settings, and the activity log.</span></span><span class="pn" data-toc="ch4"></span></a>
       <a href="#ch5"><i>05</i><span><b>Connections</b><span class="d">Video sources, Frame.io notes both ways, Notion, email, file storage, Stripe.</span></span><span class="pn" data-toc="ch5"></span></a>
       <a href="#ch6"><i>06</i><span><b>Payments</b><span class="d">Asking, paying, and how a payment is marked paid.</span></span><span class="pn" data-toc="ch6"></span></a>
-      <a href="#ch7"><i>07</i><span><b>Going live</b><span class="d">From the sample to the real portal, step by step.</span></span><span class="pn" data-toc="ch7"></span></a>
+      <a href="#ch7"><i>07</i><span><b>Going live</b><span class="d">Database, email, Jean’s owner account, then every connection.</span></span><span class="pn" data-toc="ch7"></span></a>
       <a href="#ch8"><i>08</i><span><b>Moving to noblemanproductions.com</b><span class="d">The studio’s own domain, without breaking a link or the email.</span></span><span class="pn" data-toc="ch8"></span></a>
       <a href="#ch9"><i>09</i><span><b>Everyday playbooks</b><span class="d">The routine jobs, as do-this, see-this checklists.</span></span><span class="pn" data-toc="ch9"></span></a>
       <a href="#ch10"><i>10</i><span><b>If something goes wrong</b><span class="d">What you see, and what to do about it.</span></span><span class="pn" data-toc="ch10"></span></a>
@@ -214,7 +214,7 @@ table.small { font-size: 7.9pt; }
       <tr><th style="width:20%">What</th><th>Before the move</th><th>After the move (chapter 8)</th></tr>
       <tr><td>Website</td><td><code>noblemanproductions.gotit2work.com</code></td><td><code>noblemanproductions.com</code></td></tr><!-- move-domain:keep -->
       <tr><td>Portal</td><td><code>portal.noblemanproductions.gotit2work.com</code></td><td><code>portal.noblemanproductions.com</code></td></tr><!-- move-domain:keep -->
-      <tr><td>Sample project</td><td>the portal’s address + <code>/demo</code></td><td>the same</td></tr>
+      <tr><td>Sample project</td><td><span class="ui">Client’s view</span>, at the top of the portal: staff only, after logging in</td><td>the same</td></tr>
     </table>
     <p class="small muted">Old addresses keep working after the move: the website forwards page for page, and the portal sends people on to its new address. Bookmarks and old emails never break.</p>
     <div class="cols">
@@ -301,7 +301,7 @@ table.small { font-size: 7.9pt; }
         <li><b>Any time again.</b> <span class="ui">Tutorial</span> at the top (next to the logo on a phone), or in Help.</li>
         <li><b>Pressing the pulsing spot.</b> Start here, Videos, and See it as the client does open as usual. New project and Approve only move the tutorial on: nothing is created or approved.</li>
         <li><b>Only what they have.</b> A step someone can’t use is skipped (a viewer has no note box).</li>
-        <li><b>Skip tutorial</b>, or Escape, ends it. The demo never starts it by itself.</li>
+        <li><b>Skip tutorial</b>, or Escape, ends it. The sample project never starts it by itself.</li>
       </ul>
     </div>
   </div>
@@ -498,7 +498,7 @@ table.small { font-size: 7.9pt; }
         <h3>Getting started</h3>
         <p>On a new, empty portal, owners see a checklist instead: file storage, email, a video source, the first client, the first project, the first invitation, plus Stripe, Notion, and a second owner as options. Each line links to where it’s done, and the list goes away by itself.</p>
       </div>
-      <figure><img src="img/studio-home.jpg" alt=""><figcaption>The studio’s Home in the demo: someone asking to join comes first.</figcaption></figure>
+      <figure><img src="img/studio-home.jpg" alt=""><figcaption>The studio’s Home in the sample project: someone asking to join comes first.</figcaption></figure>
     </div>
     <table>
       <tr><th style="width:16%">Tab</th><th style="width:17%">Who, by default</th><th>What you do there</th></tr>
@@ -711,7 +711,7 @@ table.small { font-size: 7.9pt; }
       <div class="card"><h3><img class="ic" src="../../media/icons/key.png" alt="">Payments (Stripe)</h3>
         <p class="small">The secret key (test or live), the currency, and the webhook signing secret. Until the webhook is connected, the card shows its address (with a Copy button) and the four events to choose in Stripe; after that, they fold under <span class="ui">Show the setup</span>. Test mode first, then live (chapter 7, step 12).</p></div>
     </div>
-    <figure><div class="crop" style="height:4.05in"><img src="img/connections.jpg" alt="" style="width:118%;margin-left:-14.5%;margin-top:-3.5%"></div><figcaption>Studio → Connections in the demo: each card shows whether it’s working, when it was checked, and what to change.</figcaption></figure>
+    <figure><div class="crop" style="height:4.05in"><img src="img/connections.jpg" alt="" style="width:118%;margin-left:-14.5%;margin-top:-3.5%"></div><figcaption>Studio → Connections in the sample project: each card shows whether it’s working, when it was checked, and what to change.</figcaption></figure>
   </div>
   <div class="hd"><span><img src="../../assets/Nobleman_Mark_Black.png" alt="">Client portal manual</span><span>Connections</span></div>
   <div class="ft"><span>Nobleman Productions · The screening room</span><span class="n"></span></div>
@@ -784,7 +784,7 @@ table.small { font-size: 7.9pt; }
   <div class="cband" id="ch7" style="background-image:url('../../media/a01.jpg');background-position:70% 50%">
     <img class="logo" src="../../assets/Nobleman_Logo_White.png" alt="">
     <div class="in"><span class="num"><i></i>Chapter 07</span><h1>Going <em>live</em></h1>
-      <p>From the public sample to the real, empty portal, then every connection. Settings in Vercel, Stripe, and Studio only: no code, and no help needed. About 90 minutes for steps 1 to 11; Stripe takes longer the first time, while it reviews the new account.</p></div>
+      <p>The portal’s database, storage, and email, then Jean claims it as its owner, then every connection. Settings in Vercel, Stripe, and Studio only: no code, and no help needed. About 90 minutes for steps 1 to 11; Stripe takes longer the first time, while it reviews the new account.</p></div>
   </div>
   <div class="body">
     <div class="cols">
@@ -793,9 +793,9 @@ table.small { font-size: 7.9pt; }
         <ul class="check">
           <li><b>Vercel Pro.</b> Hobby is for non-commercial use; a portal that bills clients is commercial. Team Gotit2Work → Settings → Billing.</li>
           <li>Vercel access to <b>nobleman-portal</b> in team Gotit2Work.</li>
-          <li>A password manager open, for five secrets.</li>
+          <li>A password manager open, for three secrets and an email key.</li>
           <li>A terminal on your own computer.</li>
-          <li>Later: Jean for the Vimeo token; GoDaddy for email records; the Stripe login.</li>
+          <li>Jean, by phone, for step 6. Later: Jean for the Vimeo token; GoDaddy for email records; the Stripe login.</li>
         </ul>
       </div>
       <div class="stack">
@@ -808,7 +808,7 @@ table.small { font-size: 7.9pt; }
     <h3>The path</h3>
     <table>
       <tr><th style="width:24%">Part</th><th style="width:9%">Steps</th><th style="width:27%">Where</th><th>What you end with</th></tr>
-      <tr><td>A. The empty portal</td><td>1 to 8</td><td>Vercel</td><td>The login at the portal’s address, your owner account, and two-step verification.</td></tr>
+      <tr><td>A. The empty portal</td><td>1 to 8</td><td>Vercel, then Jean</td><td>The login at the portal’s address, Jean as its owner, the team invited, and two-step verification.</td></tr>
       <tr><td>B. Connections</td><td>9 to 12</td><td>Resend, Vimeo, Notion, Stripe, then Studio → Connections</td><td>Email, videos, project tracking, and payments, each tested.</td></tr>
       <tr><td>C. People and projects</td><td>13 and 14</td><td>Studio</td><td>Real clients, projects, and invitations; the login screen and settings.</td></tr>
     </table>
@@ -822,23 +822,22 @@ table.small { font-size: 7.9pt; }
 <section class="page" data-title="Going live">
   <div class="body">
     <span class="eyebrow">Going live · Part A · The empty portal</span>
-    <h2>Vercel: database, storage, <em>secrets, first owner</em></h2>
+    <h2>Vercel, then <em>Jean, the first owner</em></h2>
     <ol class="steps">
       <li><b>Database.</b> Vercel → nobleman-portal → Storage → <b>Create Database → Neon</b>; region Washington, D.C. (iad1); name <code>nobleman-portal-db</code>; connect to Production and Preview. <span class="muted">Expected: <code>DATABASE_URL</code> appears. No SQL to run; the portal makes its own tables.</span></li>
       <li><b>File storage.</b> Storage → <b>Create → Blob</b>, access <b>Private</b>, name <code>nobleman-portal-files</code>, connect to Production and Preview. <span class="muted">Expected: <code>BLOB_READ_WRITE_TOKEN</code> appears.</span></li>
-      <li><b>Secrets.</b> Add four, each Sensitive, Production and Preview:
+      <li><b>Secrets.</b> Add three, each Sensitive, Production and Preview:
         <table style="margin-top:4px">
           <tr><th>Key</th><th>What it’s for</th><th>After setup</th></tr>
           <tr><td><code>SESSION_SECRET</code></td><td>Signs logins. Changing it logs everyone out.</td><td>Keep</td></tr>
           <tr><td><code>PORTAL_ENCRYPTION_KEY</code></td><td>Encrypts the keys pasted into Studio. Never change it once connections exist.</td><td>Keep</td></tr>
           <tr><td><code>CRON_SECRET</code></td><td>Lets Vercel run the daily job.</td><td>Keep</td></tr>
-          <tr><td><code>BOOTSTRAP_SECRET</code></td><td>The one-time setup code for the first owner.</td><td>Delete</td></tr>
         </table></li>
-      <li><b>Turn off the sample at the front door.</b> Delete <code>PORTAL_MODE</code>. The sample stays at <code>/demo</code>.</li>
-      <li><b>Redeploy.</b> <span class="muted">Expected: <code>/api/session</code> shows <code>"demoAtRoot":false</code>, <code>"db":true</code>, <code>"setup":true</code>, <code>"setupReady":true</code>; the address shows <b>Set up the portal</b>.</span></li>
-      <li><b>First owner.</b> Enter the <code>BOOTSTRAP_SECRET</code> value as the setup code, your name, email, and a password of 10+ characters → <b>Create the owner account</b>. <span class="muted">Home shows Getting started. Setup only works while no staff account exists.</span></li>
-      <li><b>Remove the setup code.</b> Delete <code>BOOTSTRAP_SECRET</code> → redeploy. <span class="muted">System check → Setup code: “Removed after setup”.</span></li>
-      <li><b>Two-step for yourself.</b> Account → <b>Set up two-step verification</b>; save the recovery codes in the password manager.</li>
+      <li><b>Email key.</b> resend.com → API Keys → Create: name “Nobleman portal”, <b>Sending access</b>, domain <code>gotit2work.com</code> (Domains must show it Verified). Add <code>RESEND_API_KEY</code> = that key (Sensitive) and <code>PORTAL_EMAIL_FROM</code> = <code>Nobleman Productions &lt;portal@gotit2work.com&gt;</code>. If <code>PORTAL_MODE</code> is listed, delete it. <span class="muted">The first account is confirmed by email, so this comes first.</span></li>
+      <li><b>Redeploy.</b> <span class="muted">Expected: <code>/api/session</code> shows <code>"db":true</code>, <code>"email":true</code>, <code>"firstRun":true</code>; the address shows only <b>Log in</b> and <b>Create an account</b>.</span></li>
+      <li><b>Jean creates the owner account.</b> Tell him by phone: <b>Create an account</b> with <code>jeancgotay@gmail.com</code> (or <code>jean@noblemanproductions.com</code>: the same login) → open <b>Confirm your email</b> → <b>Choose your password</b>. <span class="muted">Expected: he’s in as the owner, with Studio; the studio tutorial starts. Until then, no other address can create an account.</span></li>
+      <li><b>Jean invites the team.</b> Studio → People → <b>Invite a person</b>: Justin as Owner (two owners, so nobody is locked out), Alexis as Owner or Producer.</li>
+      <li><b>Two-step for each of you.</b> Account → <b>Set up two-step verification</b>; save the recovery codes in the password manager.</li>
     </ol>
     <div class="note"><b>Screenshots for your records:</b> Environment Variables before step 1, and the System check after step 8.</div>
   </div>
@@ -851,7 +850,7 @@ table.small { font-size: 7.9pt; }
     <span class="eyebrow">Going live · Part B · Connections</span>
     <h2>Email, Vimeo, Notion, <em>and Stripe</em></h2>
     <ol class="steps" style="counter-reset:s 8">
-      <li><b>Email.</b> resend.com → Domains: <code>gotit2work.com</code> should already be <b>Verified</b> for the website’s form (if not, do the website runbook’s Phase 5 first; its records never change the root SPF, the Microsoft 365 MX, or the apex). API Keys → Create: name “Nobleman portal”, <b>Sending access</b>. Studio → Connections → <b>Connect email</b>: the key; send from <code>Nobleman Productions &lt;portal@gotit2work.com&gt;</code>; replies to the address Jean and Justin read. <span class="muted">Expected: Send a test email arrives.</span></li>
+      <li><b>Email.</b> Already working from step 4 (Connections shows it “from Vercel settings”). Only to manage it in Studio instead: resend.com → Domains: <code>gotit2work.com</code> should already be <b>Verified</b> for the website’s form (if not, do the website runbook’s Phase 5 first; its records never change the root SPF, the Microsoft 365 MX, or the apex). API Keys → Create: name “Nobleman portal”, <b>Sending access</b>. Studio → Connections → <b>Connect email</b>: the key; send from <code>Nobleman Productions &lt;portal@gotit2work.com&gt;</code>; replies to the address Jean and Justin read. <span class="muted">Expected: Send a test email arrives.</span></li>
       <li><b>Vimeo and Frame.io.</b> <b>Vimeo (Jean):</b> developer.vimeo.com → Create an app → Generate an access token (Authenticated, scopes Public, Private, Edit, Upload, Video Files, Stats). Studio → Connections → Add a connection → Vimeo. <span class="muted">Expected: Test it ticks each scope.</span>
         <p style="margin-top:3px"><b>Frame.io:</b> developer.adobe.com/console → Create new project → Add API → Frame.io API → OAuth Web App, with the redirect URI copied from the Frame.io card. Paste the Client ID and secret in Studio → Add a connection → Frame.io → <b>Sign in with Adobe</b> → Test it → switch on live updates. <span class="muted">Expected: Working, and “Live updates are on”.</span></p></li>
       <li><b>Notion (optional).</b> Create an internal connection (Read, Update, Insert content) → paste its token in <b>Connect Notion</b> → in Notion, add the connection to the page → in Studio, create the database or use yours. <span class="muted">Expected: “Projects sync to …”.</span></li>
@@ -874,7 +873,7 @@ table.small { font-size: 7.9pt; }
     <span class="eyebrow">Going live · Part C · People, checks, rollback</span>
     <h2>People and projects, <em>then check it all</em></h2>
     <ol class="steps" style="counter-reset:s 12">
-      <li><b>People and projects.</b> Studio → People: invite Jean and Justin as Owner or Producer (at least two owners). Studio → Clients: add each company, with its email domain if its people may join by themselves. Studio → Projects → <b>New project</b>: the client, the Vimeo or Frame.io folder, then What they can do (Payments on; Downloads after payment if final files wait for the balance). Send the client the project’s link, or invite their decision maker.</li>
+      <li><b>Clients and projects.</b> Studio → Clients: add each company, with its email domain if its people may join by themselves. Studio → Projects → <b>New project</b>: the client, the Vimeo or Frame.io folder, then What they can do (Payments on; Downloads after payment if final files wait for the balance). Send the client the project’s link, or invite their decision maker.</li>
       <li><b>Settings.</b> Studio details, Login screen, Review reminders. Once every staff member has two-step verification, turn on <b>Two-step verification for staff</b>.</li>
     </ol>
     <div class="cols">
@@ -893,7 +892,6 @@ table.small { font-size: 7.9pt; }
       <div class="stack">
         <h3>Rolling back</h3>
         <ul>
-          <li><b>The sample at the front door again:</b> add <code>PORTAL_MODE</code> = <code>demo</code> and redeploy. Nothing in the database is touched; delete it again to return.</li>
           <li><b>A bad deployment:</b> Deployments → the previous good one → … → <b>Promote to Production</b>. The database only ever gains tables and columns, so an earlier version runs safely.</li>
           <li><b>Payments:</b> remove the Stripe connection. Pay disappears at once; payment records stay; nothing is refunded or canceled in Stripe.</li>
         </ul>
@@ -902,9 +900,9 @@ table.small { font-size: 7.9pt; }
     <h3>If something goes wrong</h3>
     <table>
       <tr><th style="width:34%">What you see</th><th>What to do</th></tr>
-      <tr><td>The address still shows the sample</td><td><code>PORTAL_MODE</code> is still set, or there was no redeploy.</td></tr>
       <tr><td>“The portal is still being set up”</td><td>No database: step 1, then redeploy.</td></tr>
-      <tr><td>“Setup is switched off”</td><td>Add <code>BOOTSTRAP_SECRET</code>, redeploy, reload.</td></tr>
+      <tr><td>“The portal isn’t open for new accounts yet”</td><td>Before there’s an owner, only Jean’s two addresses can create one.</td></tr>
+      <tr><td>“The portal can’t send email yet…”</td><td>No email key: step 4, then redeploy.</td></tr>
       <tr><td>A connection says Not working</td><td>Change → paste a fresh key → Test it.</td></tr>
       <tr><td>A payment stays Due after paying</td><td>Set up the webhook (12c) with the secret from the same mode as the key. The return and the daily job also catch it.</td></tr>
       <tr><td>Every connection stopped working</td><td><code>PORTAL_ENCRYPTION_KEY</code> changed: put the old value back, or re-enter each key.</td></tr>
@@ -985,7 +983,7 @@ table.small { font-size: 7.9pt; }
           <li>Leave Website and Privacy page empty: they follow the portal.</li>
           <li><span class="ui">Settings → System check</span>.<span class="see">You’ll see: Portal address, and Website and privacy page, both green.</span></li>
         </ol>
-        <p class="small muted">Before go-live (the sample at the front door) there’s nothing to do here: step 5 changed it. After the move everyone logs in once more, because a login belongs to an address.</p>
+        <p class="small muted">Before go-live (no database yet) there’s nothing to do here: step 5 changed it. After the move everyone logs in once more, because a login belongs to an address.</p>
       </div>
       <div class="stack">
         <h3>If something goes wrong</h3>
@@ -1094,9 +1092,9 @@ table.small { font-size: 7.9pt; }
       <tr><td>A Frame.io comment isn’t in the portal</td><td>Open that version’s notes: the portal reads Frame.io each time. To get them straight away, Connections → Frame.io → live updates on.</td></tr>
       <tr><td>Notion stopped updating</td><td>Connections → Notion → <b>Sync now</b>; if that fails, <b>Test it</b> and check the database is still shared with the connection.</td></tr>
       <tr><td>“The portal is still being set up”</td><td>No database yet: chapter 7, step 1, then redeploy.</td></tr>
-      <tr><td>The address still shows the sample</td><td><code>PORTAL_MODE</code> is still set in Vercel, or there was no redeploy after deleting it.</td></tr>
+      <tr><td>“The portal isn’t open for new accounts yet”</td><td>No owner yet: only Jean’s two addresses can create the first account (chapter 7, step 6).</td></tr>
       <tr><td>Someone lands on an old address</td><td>That’s fine: the portal sends them on to its address once that answers. System check → Portal address shows which one leads.</td></tr>
-      <tr><td>A button seems to do nothing</td><td>Look for the message at the bottom of the screen. In the demo, nothing is saved: it says so.</td></tr>
+      <tr><td>A button seems to do nothing</td><td>Look for the message at the bottom of the screen. In the sample project (Client’s view), nothing is saved: it says so.</td></tr>
       <tr><td>Something isn’t on this list</td><td>Studio → Activity shows who did what and when. Then write to the help email in Studio details, with a screenshot.</td></tr>
     </table>
     <div class="law"><span>Murphy’s Law, support edition</span><q>The problem disappears the moment you show someone.</q><p>So take the screenshot first, then ask.</p></div>

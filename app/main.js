@@ -152,8 +152,11 @@ function App() {
     if (await movedOn(s)) return;
     try {
       // A project's own link: the client's way in (gate.js, Join). The demo shows a sample one.
-      if (p.startsWith("/join/") || p.startsWith("/demo/join")) return setSt({ phase: "gate", gate: "join", session: s, demoJoin: p.startsWith("/demo/") });
-      if (wantsDemo) return await loadDemo("/demo");
+      // The sample portal is for studio staff (Client's view at the top). Anyone else gets the login, or their portal.
+      const staffReady = s.user && isStaff(s.user) && !s.user.mustChangePassword && !s.needsTwoStep;
+      if (p.startsWith("/join/")) return setSt({ phase: "gate", gate: "join", session: s, demoJoin: false });
+      if (wantsDemo && staffReady) return p.startsWith("/demo/join") ? setSt({ phase: "gate", gate: "join", session: s, demoJoin: true }) : await loadDemo("/demo");
+      if (wantsDemo && s.user) history.replaceState(null, "", "/");
       if (p.startsWith("/link/")) return setSt({ phase: "gate", gate: "link", session: s });
       if (s.user) {
         if (wantsSignIn) history.replaceState(null, "", "/");
@@ -161,10 +164,8 @@ function App() {
         if (s.needsTwoStep) return setSt({ phase: "gate", gate: "twostep", session: s });
         return await loadPortal(s);
       }
-      if (s.demoAtRoot && !wantsSignIn) return await loadDemo("");
       if (s.error) return setSt({ phase: "gate", gate: "login", session: s, problem: s.error, start });
-      if (s.db === false) return setSt({ phase: "gate", gate: "login", session: s, problem: "The portal is still being set up. Try again soon, or see the demo.", start });
-      if (s.setup) return setSt({ phase: "gate", gate: "setup", session: s });
+      if (s.db === false) return setSt({ phase: "gate", gate: "login", session: s, problem: "The portal is still being set up. Try again soon.", start });
       return setSt({ phase: "gate", gate: "login", session: s, start });
     } catch (e) {
       setSt({ phase: "gate", gate: "login", session: s, problem: e.message });
@@ -197,12 +198,13 @@ function App() {
     try {
       const fresh = await api("/api/session");
       if (fresh.needsTwoStep) return setSt({ phase: "gate", gate: "twostep", session: fresh, next });
+      if (/^\/demo(\/|$|\?)/.test(next || "")) { if (isStaff(fresh.user)) return location.assign(next); next = "/"; }
       await loadPortal(fresh, next);
     } catch (e) { toast(e.message, { err: true }); }
   }, [st.session]);
 
   const signOut = useCallback(async () => {
-    if (st.demo) { toast("This is the demo. There’s nothing to log out of. Log in at the top of the page."); return; }
+    if (st.demo) { toast("This is the sample project. Back to my portal is at the top."); return; }
     setTour(0);
     await api("/api/session", { method: "POST", body: { action: "logout" } }).catch(() => {});
     history.replaceState(null, "", "/");
@@ -220,7 +222,7 @@ function App() {
   if (st.phase === "watch") return html`<${Watch} token=${location.pathname.split("/")[2] || ""} /><${Toasts} items=${toasts} />`;
   if (st.phase === "gate") {
     return html`<${Gate} mode=${st.gate} session=${st.session} problem=${st.problem} start=${st.start} demo=${st.demoJoin}
-      onSignedIn=${signedIn} onSetupDone=${signedIn}
+      onSignedIn=${signedIn}
       onPasswordNeeded=${(user, next) => setSt({ phase: "gate", gate: "password", session: { ...(st.session || {}), user }, next })}
       onPasswordDone=${(user) => signedIn(user, st.next)}
       onTwoStepDone=${() => signedIn(st.session.user, st.next)}
@@ -313,7 +315,7 @@ function Shell({ route, more, setMore }) {
       <${Link} to="/account" cls="round" label=${"Your account: " + user.name}><${Avatar} name=${user.name} size=${30} /><//>
     </header>
 
-    ${demo ? html`<${DemoRibbon} />` : html`<div class="tour-corner rail-only-desktop"><${TourButton} /></div>`}
+    ${demo ? html`<${DemoRibbon} />` : html`<div class="tour-corner rail-only-desktop row" style=${{ gap: "8px" }}><${TourButton} />${isStaff(user) ? html`<a class="tour-btn" href="/demo">Client’s view</a>` : null}</div>`}
 
     ${data.announcement ? html`<div class=${"announce " + (data.announcement.tone === "warning" ? "warn" : "")} role="status">${data.announcement.text}</div>` : null}
     <main id="main"><${Broke} at=${route.join("/")} atHome=${!top} support=${data.brand && data.brand.support}>${screen}<//></main>
@@ -350,7 +352,7 @@ function DemoRibbon() {
     <div class="row" style=${{ gap: "8px" }}>
       <${DemoSwitch} />
       <${TourButton} />
-      <a class="btn primary sm" href="/signin">Log in</a>
+      <a class="btn primary sm" href="/">Back to my portal</a>
     </div>
   </div>`;
 }
@@ -383,12 +385,12 @@ function Help({ onClose }) {
   const staff = isStaff(app.user);
   const support = brand.support || "alexis@gotit2work.com";
   return html`<${Modal} title=${staff ? "How the portal works" : "How your portal works"} onClose=${onClose} wide>
-    ${app.demo ? html`<div class="alert"><b>This is a demo</b> with made-up projects. Click anything: nothing is saved or sent.</div>
+    ${app.demo ? html`<div class="alert"><b>A sample project</b> with made-up clients. Click anything: nothing is saved or sent.</div>
       <div class="stack" style=${{ gap: "8px" }}><span class="muted small">See both sides:</span><${DemoSwitch} /></div>` : null}
     <div class="list">${(staff ? STAFF_HELP : HELP.filter((h) => !h.payments || app.data.projects.some((p) => p.caps.payments && (p.payments || []).length))).map((h) => html`<div class="li" key=${h.t}><${Icon} name=${h.icon} size=${30} /><div class="grow"><div class="name">${h.t}</div><div class="meta" style=${{ lineHeight: 1.55 }}>${h.d}</div></div></div>`)}</div>
     ${!staff && app.user.roleLabel ? html`<p class="muted small" style=${{ margin: 0, lineHeight: 1.6 }}>You’re a <b>${app.user.roleLabel}</b> for ${app.user.clientName || "your company"}.${app.user.access === "reviewer" ? " Your notes reach the studio and your company’s decision makers, who approve each version." : app.user.access === "viewer" ? " You can watch and download; your colleagues leave notes and approve." : ""}</p>` : null}
     <p class="muted small" style=${{ margin: 0, lineHeight: 1.6 }}>Stuck? ${staff ? "Email" : "Use Messages, or email"} <a href=${"mailto:" + support}>${support}</a>. <a href=${brand.privacy || "https://noblemanproductions.gotit2work.com/privacy#portal"}>Privacy</a></p>
-    <div class="row"><button class="btn primary" onClick=${app.startTour}>Watch the tutorial</button><button class="btn ghost" onClick=${onClose}>Got it</button></div>
+    <div class="row"><button class="btn primary" onClick=${app.startTour}>Watch the tutorial</button>${app.demo ? html`<a class="btn ghost" href="/">Back to my portal</a>` : staff ? html`<a class="btn ghost" href="/demo">Client’s view</a>` : html`<button class="btn ghost" onClick=${onClose}>Got it</button>`}</div>
   <//>`;
 }
 

@@ -1,6 +1,6 @@
-# Going live: from the demo to the real portal
+# Going live: the real portal
 
-**Purpose.** Turn the portal at `portal.noblemanproductions.gotit2work.com` from the public sample into the real, empty portal, then connect everything it can use (videos, email, Notion, payments) so the studio can start loading clients and projects. No code changes and no AI are needed: every step is a setting in Vercel, Stripe, or the portal's own Studio.
+**Purpose.** Give the portal at `portal.noblemanproductions.gotit2work.com` its database, storage, secrets, and email, let Jean claim it as its first owner, then connect everything it can use (videos, email, Notion, payments) so the studio can start loading clients and projects. No code changes and no AI are needed: every step is a setting in Vercel, Stripe, or the portal's own Studio.
 
 **Scope.** The portal only. The marketing website already runs and isn't touched. DNS isn't touched either, except the optional email records in step 9, which add new names and never change the existing ones.
 
@@ -8,13 +8,14 @@
 
 | Who | Does |
 |---|---|
-| Alexis (GotIT2Work) | Vercel steps 1–7, the first owner, Resend, Notion, the checks |
+| Alexis (GotIT2Work) | Vercel steps 1–5 (including the email key), Notion, the checks |
+| Jean | Creating the first owner account (step 6) with his own email, then inviting the team (step 7) |
 | Jean | The Vimeo token (step 10), because the films are in Jean's Vimeo account |
 | Jean or Justin | The Stripe account and its bank details (step 12), because the money goes to Nobleman |
 
 **Time.** About 90 minutes for steps 1–11. Stripe takes longer the first time, because Stripe reviews a new account's business details before paying out.
 
-**What you'll end with.** The login page at the portal's address instead of the sample; the sample still at `/demo` for the website's "See a sample project" link; an empty database; and Studio → Settings → System check showing everything working.
+**What you'll end with.** The portal's address shows only **Log in** and **Create an account** (no demo); Jean is its owner; the sample project is inside the portal for staff (**Client's view** at the top); and Studio → Settings → System check shows everything working.
 
 ---
 
@@ -22,7 +23,7 @@
 
 - [ ] **Vercel Pro.** Vercel's Hobby plan is for non-commercial use, and a portal that bills clients is commercial. Vercel → Team **Gotit2Work** → Settings → Billing → **Upgrade to Pro**. Check Vercel's current pricing on that page.
 - [ ] You can log in to Vercel as `amangual1` and see the project **nobleman-portal** in team Gotit2Work.
-- [ ] A password manager is open: you'll create five secrets and save them there.
+- [ ] A password manager is open: you'll create three secrets and an email key and save them there.
 - [ ] A terminal on your own computer, for generating secrets: Terminal on a Mac, or PowerShell 7 on Windows.
 - [ ] Moving to `noblemanproductions.com` is a separate job, before or after this one; the order doesn't matter (`docs/MOVE.md` in the website repo). If it's already done, read `portal.noblemanproductions.com` wherever this guide says `portal.noblemanproductions.gotit2work.com`. <!-- move-domain:keep -->
 - [ ] Optional for later steps: Jean available for the Vimeo token; access to GoDaddy DNS for `gotit2work.com` (email, step 9); the Nobleman Stripe login (step 12).
@@ -70,37 +71,43 @@ Generate each value on your own computer, one at a time, and save each one in yo
 | `SESSION_SECRET` | Signs logins. Changing it later logs everyone out. | Keep |
 | `PORTAL_ENCRYPTION_KEY` | Encrypts the keys you paste into Studio (Vimeo, Resend, Notion, Stripe). **Never change it** once connections exist, or they all need re-entering. | Keep |
 | `CRON_SECRET` | Lets Vercel run the daily job: reminders, Notion catch-up, payment catch-up. | Keep |
-| `BOOTSTRAP_SECRET` | The one-time setup code for the first owner (step 6). | **Delete** (step 7) |
 
-Add all four as described above, marked **Sensitive**, for Production and Preview.
+Add all three as described above, marked **Sensitive**, for Production and Preview.
 
-### 4. Turn off the public sample at the front door
+### 4. Add the email key
 
-In Environment Variables, find `PORTAL_MODE` (value `demo`) → **⋯** → **Delete**.
+The first account is confirmed by email, so the portal needs to send email before anyone can claim it.
 
-*What it changes:* visitors to the portal's address get the login instead of the sample. The sample stays at `/demo`, unchanged.
+1. resend.com → **Domains**: `gotit2work.com` should show **Verified** (it already sends the website's contact form). If not, see step 9.1 first.
+2. Resend → **API Keys → Create API Key**: name `Nobleman portal`, permission **Sending access**, domain `gotit2work.com`. Copy it once into the password manager.
+3. Add two environment variables: `RESEND_API_KEY` = that key (**Sensitive**), and `PORTAL_EMAIL_FROM` = `Nobleman Productions <portal@gotit2work.com>` (not secret).
+
+*If `PORTAL_MODE` is still listed* (value `demo`), delete it: the portal no longer uses it, and the front door never shows a demo.
 
 ### 5. Redeploy
 
 Redeploy as described above and wait for **Ready**.
 
-*Expected:* `/api/session` shows `"demoAtRoot":false`, `"db":true`, `"setup":true` and `"setupReady":true`. The portal's address shows **Set up the portal**.
+*Expected:* `/api/session` shows `"db":true`, `"email":true`, and `"firstRun":true`. The portal's address shows **Log in** and **Create an account**, with Create an account chosen, and nothing else.
 
-### 6. Create the first owner
+### 6. Jean creates the first owner account
 
-1. Open `https://portal.noblemanproductions.gotit2work.com`.
-2. **Setup code:** the `BOOTSTRAP_SECRET` value from your password manager. Then your name, email, and a password of at least 10 characters (a short phrase works well).
-3. **Create the owner account.** You're logged in as the owner, and Home shows **Getting started**: the checklist for the rest of this runbook.
+Tell Jean (by voice): open the portal, choose **Create an account**, and use **jeancgotay@gmail.com** (or **jean@noblemanproductions.com**; they're the same login).
 
-Setup only works while no staff account exists, so nobody can run it again later.
+1. Open `https://portal.noblemanproductions.gotit2work.com` → **Create an account**.
+2. **Your name**, **Email** (one of the two above) → **Create my account**.
+3. Open the email **Confirm your email** → press its button (it works for an hour).
+4. **Choose your password** (at least 10 characters; a short phrase works well) → **Save and open the portal**.
 
-### 7. Remove the setup code
+*Expected:* Jean is in, as the owner, with **Studio** in the menu; the studio tutorial starts. Either address logs in from now on.
 
-Environment Variables → `BOOTSTRAP_SECRET` → **Delete** → redeploy.
+*Why it's safe:* until the portal has an owner, only those two addresses can create an account (anyone else sees "The portal isn't open for new accounts yet."), and the account only exists once the link in that inbox is pressed. The addresses live in `OWNER_EMAILS` (`api/_settings.js`).
 
-*Expected:* Studio → Settings → System check → **Setup code** shows "Removed after setup".
+### 7. Jean invites the team
 
-### 8. Turn on two-step verification for yourself
+Studio → People → **Invite a person**: Justin as **Owner** (two owners, so the studio is never locked out), and Alexis as **Owner** or **Producer**. They get an email to choose a password. **Client's view** at the top shows the sample project as a client sees it.
+
+### 8. Turn on two-step verification
 
 Portal → your initials (Account) → **Set up two-step verification** → scan the QR code with your authenticator app → type the code → save the recovery codes in your password manager.
 
@@ -115,6 +122,8 @@ Every connection is added in the portal, tested with **Test it**, and stored enc
 ### 9. Email (Resend)
 
 Email sends invitations, login links, password resets, reminders, receipts, and updates. Without it, invitation links are shown in Studio to copy and send by hand.
+
+If the email key from step 4 is set, email already works (Studio → Connections shows it "from Vercel settings"). Do this step only to manage it from Studio instead.
 
 1. **The sending domain.** The website's contact form already sends through Resend from `gotit2work.com` (the website's `docs/DEPLOYMENT.md`, Phase 5). If resend.com → **Domains** shows `gotit2work.com` as **Verified**, skip to 2. If not, do Phase 5 first. It adds three records at GoDaddy (`send` MX and TXT, and `resend._domainkey` TXT) and **doesn't change** the root SPF, the Microsoft 365 MX, or the apex record.
 2. Resend → **API Keys → Create API Key**: name `Nobleman portal`, permission **Sending access**, domain `gotit2work.com`. Copy it once. A separate key from the website's means either one can be replaced without touching the other.
@@ -197,7 +206,7 @@ Clients pay deposits and balances by card or bank on Stripe's own checkout page.
 
 ### 13. Clients, projects, and people
 
-- **Staff:** Studio → People → **Invite a person**. Jean and Justin as **Owner** or **Producer**. Make sure there are at least two owners, so the studio is never locked out. Once every staff member has two-step verification, turn on Settings → Logins and accounts → **Two-step verification for staff**.
+- **Staff:** Studio → People → **Invite a person** (step 7 did Justin and Alexis). Make sure there are at least two owners, so the studio is never locked out. Once every staff member has two-step verification, turn on Settings → Logins and accounts → **Two-step verification for staff**.
 - **Clients:** Studio → Clients → **Add a client** (the company). Add its email domain (such as `harborlabs.com`) if its people should be able to join by themselves.
 - **Projects:** Studio → Projects → **New project** → the client, the video folder (Frame.io or Vimeo). The next screen shows the project's **link for the client**: **Copy link** or **Email it**. Then check **What they can do**: Payments on, and **Downloads after payment** if final files should wait for the balance.
 - **The client's people:** send them the project's link. Whoever opens it creates their own login (name, email, password) and lands on that project, already let in; they can pass the link to their team, and you're emailed as each one joins. Studio → the project → **Client link** shows who joined and what they can do (Decision maker unless you change it). To give someone **every** project of their company instead, use Studio → People → **Invite a person**, or Edit → **Sees: Every … project**.
@@ -231,10 +240,10 @@ On a phone and a laptop, as a test client:
 
 | What you see | Why | What to do |
 |---|---|---|
-| The address still shows the sample | `PORTAL_MODE` is still set, or there was no redeploy | Delete `PORTAL_MODE`, then redeploy |
 | "The portal is still being set up" | No database | Step 1, then redeploy |
-| "Setup is switched off" | `BOOTSTRAP_SECRET` is missing | Add it (step 3), redeploy, reload |
-| "That setup code isn't right" | Typo or extra spaces | Copy it from the password manager again |
+| "The portal isn't open for new accounts yet" | Another address was used before the portal has an owner | Use jeancgotay@gmail.com or jean@noblemanproductions.com |
+| "The portal can't send email yet…" | No email key | Step 4, then redeploy |
+| Jean's confirmation email never arrives | Spam, or the domain isn't verified in Resend | Check spam; Resend → Domains shows Verified? The link works for an hour: **Create my account** again sends a new one |
 | A connection says "Not working" | Wrong or expired key | **Change** → paste a fresh key → **Test it** |
 | The test email never arrives | The domain isn't verified yet, or it went to spam | Resend → Domains shows Verified? Check spam |
 | A payment stays "Due" after paying | The webhook isn't set up, or its secret is from the other mode | Step 12c, using the secret from the same mode (test or live) as the key. The client's return from Stripe and the daily job also mark it paid. |
@@ -245,6 +254,5 @@ On a phone and a laptop, as a test client:
 
 ## Rolling back
 
-- **Back to the sample at the front door:** add `PORTAL_MODE` = `demo` and redeploy. Visitors see the sample again. The database, people, and projects aren't touched, and deleting `PORTAL_MODE` again brings them back.
 - **A bad deployment:** Vercel → Deployments → the previous good one → **⋯** → **Promote to Production**. The database only ever gains tables and columns, so an earlier version runs against it safely.
 - **Payments:** Studio → Connections → the Stripe card → **Remove**. Clients stop seeing **Pay** at once; payment records stay. Removing it never refunds or cancels anything in Stripe.

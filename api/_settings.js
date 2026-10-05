@@ -10,6 +10,10 @@ import { CAPABILITIES } from "./_caps.js";
 // a live portal switches with Studio → Settings → Studio details → Portal address, which is checked before saving.
 export const HOME = "noblemanproductions.gotit2work.com";
 
+// The studio's first owner (Jean): until a staff account exists, only these addresses can create an account, and
+// the one confirmed becomes the owner. It's one person with two addresses: either one logs in (user_emails).
+export const OWNER_EMAILS = ["jeancgotay@gmail.com", "jean@noblemanproductions.com"];
+
 export const DEFAULTS = {
   brand: {
     studio: "Nobleman Productions",

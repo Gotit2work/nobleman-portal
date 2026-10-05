@@ -49,7 +49,9 @@ check("signed out: portal data refused (401)", r.s === 401, r.s);
 r = await anon.get("/api/session");
 check("sign-in screen gets the studio's name and the Murphy's Law line", r.s === 200 && r.d.brand.studio === "Nobleman Productions" && /frame nobody checked/.test(r.d.signin.quote) && r.d.email === true && r.d.signinLinks === true, J(r.d));
 r = await anon.get("/api/portal?demo=1");
-check("demo data is public, marked demo, and shows only the newest version", r.s === 200 && r.d.demo === true && r.d.projects[0].cuts[0].versions.length === 1 && r.d.projects[0].cuts[0].total === 3, r.s);
+check("the sample portal isn't public: logged out gets 401", r.s === 401, r.s);
+r = await anon.get("/api/admin?demo=1");
+check("…nor the sample Studio", r.s === 401, r.s);
 r = await anon.login("dana@harbor.test", "wrong-password");
 check("wrong password: 401 with a helpful message", r.s === 401 && /don’t match/.test(r.d.error), J(r.d));
 const dana = new Agent(), rae = new Agent(), vic = new Agent(), rob = new Agent(), admin = new Agent(), pat = new Agent(), eddie = new Agent();
@@ -58,6 +60,10 @@ check("client signs in, with their role", r.s === 200 && r.d.user.role === "clie
 await Promise.all([rae.login("rae@harbor.test"), vic.login("vic@harbor.test"), rob.login("rob@moto.test"), pat.login("pat@studio.test"), eddie.login("eddie@studio.test")]);
 r = await admin.login("Alexis@GotIT2Work.com");
 check("owner signs in (email is case-insensitive)", r.s === 200 && r.d.user.role === "admin" && r.d.user.access === "owner", J(r.d));
+r = await admin.get("/api/portal?demo=1");
+check("studio staff open the sample portal: marked demo, newest version only", r.s === 200 && r.d.demo === true && r.d.projects[0].cuts[0].versions.length === 1 && r.d.projects[0].cuts[0].total === 3, r.s);
+r = await dana.get("/api/portal?demo=1");
+check("…clients can't", r.s === 403, r.s);
 
 // ================= what Dana sees =================
 r = await dana.get("/api/portal");
@@ -734,7 +740,7 @@ check("a client's data exports as one file (for privacy requests), without passw
 r = await admin.req("GET", "/api/admin?export=projects", null, {}, true);
 check("projects export as CSV", r.s === 200 && r.text.startsWith("Project,Client,Kind,Stage"));
 r = await admin.get("/api/admin?health=1");
-check("system health lists every check, with warnings in plain words", r.s === 200 && r.d.checks.length >= 10 && r.d.checks.some((c) => c.label === "Setup code" && c.ok === "warn"), J(r.d && r.d.checks.map((c) => [c.label, c.ok])));
+check("system health lists every check, with warnings in plain words", r.s === 200 && r.d.checks.length >= 10 && r.d.checks.some((c) => c.label === "Owners" && c.ok === "warn") && !r.d.checks.some((c) => /Setup code|demo/i.test(c.label)), J(r.d && r.d.checks.map((c) => [c.label, c.ok])));
 
 // ================= payments (Stripe) =================
 {
@@ -1062,18 +1068,46 @@ check("every email carries the studio's name and a button to the right page", m.
   check("a garbled session cookie reads as logged out, not a server error", g.status === 200 && !d.user, g.status);
 }
 
-// ================= first-run setup =================
+// ================= first run: the studio's first owner (OWNER_EMAILS) claims the empty portal =================
+const fm = async () => (await (await fetch(FRESH + "/__mail")).json());
 const f = new Agent(FRESH);
 r = await f.get("/api/session");
-check("an empty portal asks for setup", r.d.setup === true && r.d.setupReady === true);
-r = await f.post("/api/session", { action: "setup", code: "wrong", name: "Alexis", email: "alexis@gotit2work.com", password: "a-good-long-password" });
-check("wrong setup code refused", r.s === 403);
-r = await f.post("/api/session", { action: "setup", code: "setup-code-123", name: "Alexis", email: "alexis@gotit2work.com", password: "a-good-long-password" });
-check("setup creates the first owner and signs them in", r.s === 201 && r.d.user.role === "admin" && r.d.user.access === "owner" && !!f.cookie, J(r.d));
-r = await (new Agent(FRESH)).post("/api/session", { action: "setup", code: "setup-code-123", name: "Eve", email: "eve@x.test", password: "a-good-long-password" });
-check("setup can't run twice", r.s === 409);
+check("an empty portal opens for its first owner, with no setup code and no demo", r.d.firstRun === true && r.d.signup === true && !("setup" in r.d) && !("demoAtRoot" in r.d), J(r.d));
+r = await f.post("/api/session", { action: "signup", name: "Eve", email: "eve@x.test" });
+check("…nobody else can create an account yet", r.s === 403 && /isn’t open/.test(r.d.error), J(r.d));
+r = await f.post("/api/session", { action: "setup", code: "anything", name: "Eve", email: "eve@x.test", password: "a-good-long-password" });
+check("…and the old setup code no longer exists", r.s >= 400 && !(await f.get("/api/session")).d.user);
+let fmb = (await fm()).length;
+r = await f.post("/api/session", { action: "signup", name: "Jean Gotay", email: "  JeanCGotay@gmail.com " });
+const jeanMail = (await fm()).slice(fmb).find((x) => x.to[0] === "jeancgotay@gmail.com");
+check("the owner's address (any capitals) gets a confirmation email, with no company asked", r.s === 200 && !!jeanMail && !!linkIn(jeanMail), J(r.d));
+r = await f.post("/api/session", { action: "redeem", token: linkIn(jeanMail) });
+check("confirming makes them the owner, who then chooses a password", r.s === 200 && r.d.user.role === "admin" && r.d.user.access === "owner" && r.d.user.mustChangePassword === true, J(r.d));
+r = await f.post("/api/session", { action: "password", next: "jean-owner-password-1" });
+check("…and the password is saved", r.s === 200, J(r.d));
+const jean2 = new Agent(FRESH);
+r = await jean2.post("/api/session", { action: "login", email: "jean@noblemanproductions.com", password: "jean-owner-password-1" });
+check("the owner's second address logs into the same account", r.s === 200 && r.d.user.email === "jeancgotay@gmail.com" && r.d.user.access === "owner", J(r.d));
+r = await f.get("/api/session");
+check("once there's an owner, the portal is no longer in its first run", r.d.firstRun === false);
+r = await (new Agent(FRESH)).get("/api/session");
+check("…for anyone", r.d.firstRun === false);
+fmb = (await fm()).length;
+r = await (new Agent(FRESH)).post("/api/session", { action: "signup", name: "Imposter", email: "jean@noblemanproductions.com", company: "Imposter Co" });
+const again = (await fm()).slice(fmb).find((x) => x.to[0] === "jean@noblemanproductions.com");
+check("signing up again with the second address only emails the owner a way to log in, never a second owner", r.s === 200 && !!again && !/Confirm your email/.test(again.subject), J(again && again.subject));
+r = await f.admin("personCreate", { name: "Other", email: "jean@noblemanproductions.com", role: "admin", access: "editor" });
+check("nobody else can be given the owner's second address", r.s === 409, J(r));
+r = await f.admin("personCreate", { name: "Justin", email: "justin@nobleman.test", role: "admin", access: "owner" });
+check("the owner can add the rest of the team (Justin, as an owner)", r.s === 200 || r.s === 201, J(r));
 r = await f.get("/api/admin");
-check("the new owner's Studio works on the fresh database", r.s === 200 && r.d.people.length === 1 && r.d.me.perms["settings.manage"] === true);
+check("the owner's Studio works on the fresh database", r.s === 200 && r.d.people.length === 2 && r.d.me.perms["settings.manage"] === true);
+r = await (new Agent(FRESH)).post("/api/session", { action: "signup", name: "Ana", email: "ana@client.test", company: "Client Co" });
+check("after that, new accounts follow the studio's setting (asking to join)", r.s === 200, J(r.d));
+r = await (new Agent(FRESH)).get("/api/portal?demo=1");
+check("the sample portal is only for logged-in studio staff", r.s === 401);
+r = await f.get("/api/portal?demo=1");
+check("…which the owner can open", r.s === 200 && r.d.demo === true);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

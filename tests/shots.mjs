@@ -34,9 +34,6 @@ async function login(c, email, pass = "portal-test-pass") {
 for (const [tag, vp, mobile] of [["d", { width: 1440, height: 900 }, false], ["m", { width: 390, height: 844 }, true]]) {
   const anon = await ctxFor(vp, mobile);
   await shoot(anon, "/", tag + "-signin", 1500);
-  await shoot(anon, "/demo", tag + "-demo-home", 1500);
-  await shoot(anon, "/demo?view=studio", tag + "-demo-studio-home", 1800);
-  await shoot(anon, "/demo/studio/people", tag + "-demo-studio-people", 1800);
   await shoot(anon, "/signup", tag + "-signup", 1500);
   await shoot(anon, "/signup", tag + "-signup-sent", 1500, async (p) => {
     await p.locator('input[name="name"]').fill("Kim Lowell"); await p.locator('input[name="email"]').fill("kim@lowellmarine.test");
@@ -48,7 +45,7 @@ for (const [tag, vp, mobile] of [["d", { width: 1440, height: 900 }, false], ["m
   for (const [path, name] of [["/", "home"], ["/projects/cccccccc-0000-4000-8000-000000000001", "project"], ["/review", "review"], ["/films", "films"], ["/films/cccccccc-0000-4000-8000-000000000001/5101", "film"], ["/files", "files"], ["/messages", "messages"], ["/account", "account"]]) await shoot(dana, path, `${tag}-client-${name}`);
   await dana.close();
   const admin = await ctxFor(vp, mobile); await login(admin, "alexis@gotit2work.com");
-  for (const [path, name] of [["/", "home"], ["/studio", "studio-projects"], ["/studio/projects/cccccccc-0000-4000-8000-000000000001", "studio-project"], ["/studio/people", "studio-people"], ["/studio/people/roles", "studio-roles"], ["/studio/clients", "studio-clients"], ["/studio/connections", "studio-connections"], ["/studio/settings", "studio-settings"], ["/studio/settings/signin", "studio-settings-login"], ["/studio/settings/security", "studio-settings-security"], ["/studio/activity", "studio-activity"]]) await shoot(admin, path, `${tag}-admin-${name}`);
+  for (const [path, name] of [["/", "home"], ["/studio", "studio-projects"], ["/studio/projects/cccccccc-0000-4000-8000-000000000001", "studio-project"], ["/studio/people", "studio-people"], ["/studio/people/roles", "studio-roles"], ["/studio/clients", "studio-clients"], ["/studio/connections", "studio-connections"], ["/studio/settings", "studio-settings"], ["/studio/settings/signin", "studio-settings-login"], ["/studio/settings/security", "studio-settings-security"], ["/studio/activity", "studio-activity"], ["/demo", "demo-home"], ["/demo?view=studio", "demo-studio-home"], ["/demo/studio/people", "demo-studio-people"]]) await shoot(admin, path, `${tag}-admin-${name}`);
   await admin.close();
 }
 await browser.close();

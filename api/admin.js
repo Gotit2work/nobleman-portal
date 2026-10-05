@@ -36,12 +36,12 @@ const day = (d) => (d ? new Date(d).toISOString().slice(0, 10) : null);
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "private, no-store");
-  // The demo's studio view: sample data only, no sign-in, nothing read from or written to the database.
-  if (req.method === "GET" && req.query && req.query.demo) return res.status(200).json(demoAdmin(req.query, originOf(req)));
   if (!dbConfigured()) return res.status(503).json({ error: "The portal isn’t connected to its database yet." });
   try { await ready(); } catch (err) { console.error("db not ready", err); return res.status(500).json({ error: TROUBLE }); }
   const u = await requireStaff(req, res);
   if (!u) return;
+  // The demo's studio view, for staff: sample data only, nothing read from or written to the database.
+  if (req.method === "GET" && req.query && req.query.demo) return res.status(200).json(demoAdmin(req.query, originOf(req)));
   const s = await getSettings();
   const deny = (perm) => (can(u, perm, s) ? false : (res.status(403).json({ error: "Your role doesn’t allow that. Ask an owner." }), true));
   try {
@@ -381,7 +381,7 @@ const ACTIONS = {
     const access = validAccess("client", b.access) ? b.access : "approver";
     const clientId = await clientFrom(b);
     if (!clientId) return res.status(400).json({ error: "Choose which client they belong to, or type a new client’s name." });
-    if ((await sql`select 1 from users where email = ${r.email}`)[0]) {
+    if ((await sql`select 1 from users where email = ${r.email} union all select 1 from user_emails where email = ${r.email}`)[0]) {
       await sql`update signup_requests set status = 'joined', decided_by = ${u.name}, decided_at = now() where id = ${r.id}`;
       return res.status(409).json({ error: `${r.email} already has an account.` });
     }

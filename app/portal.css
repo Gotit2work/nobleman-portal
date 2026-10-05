@@ -364,14 +364,9 @@ a.li:hover .name { text-decoration: underline; text-underline-offset: 3px; text-
 .door .foot { display: flex; flex-direction: column; gap: 8px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; line-height: 1.6; color: var(--mute); }
 .door .foot a { color: var(--ink); }
 .door .foot .faint a { color: var(--mute); }
-.door .demo-line { text-decoration: none; color: var(--ink); font-size: 14px; }
-.door .demo-line u { text-underline-offset: 3px; text-decoration-color: rgba(244, 244, 242, .4); }
-.door .demo-line:hover u { text-decoration-color: currentColor; }
 .pw { position: relative; }
 .pw .input { padding-right: 76px; }
 .pw button { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); height: 34px; padding: 0 12px; border-radius: 10px; border: 0; background: var(--card-2); cursor: pointer; font-size: 12.5px; }
-.demo-entry { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border-radius: 16px; border: 1px solid var(--line); background: var(--card); text-decoration: none; transition: border-color .2s ease, background-color .2s ease; }
-.demo-entry:hover { border-color: var(--line-2); background: var(--card-2); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
