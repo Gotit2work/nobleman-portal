@@ -15,7 +15,7 @@ export function Films({ pid, vid }) {
   const groups = scope.filter((p) => p.films.length);
   return html`<div class="page">
     <${Head} eyebrow="Films" title="Your finished films.">
-      Watch them here${scope.some((p) => p.caps.download) ? ", download the sizes you need" : ""}${scope.some((p) => p.caps.share) ? ", or send a link to someone outside your company" : ""}.
+      Watch${scope.some((p) => p.caps.download) ? ", download" : ""}${scope.some((p) => p.caps.share) ? ", or share" : ""} them here.
     <//>
     ${pid && data.projects.length > 1 ? html`<p style=${{ marginTop: "-18px", marginBottom: "28px" }}><${Link} to="/films" cls="link">See films from every project<//></p>` : null}
     ${scope.some((p) => p.videosError) ? html`<div class="alert" style=${{ marginBottom: "20px" }}>${scope.find((p) => p.videosError).videosError}</div>` : null}
@@ -147,7 +147,7 @@ function Share({ p, f }) {
   const old = (links || []).filter((l) => !l.url);
   return html`<div class="card pad stack" style=${{ gap: "12px" }}>
     <b class="row" style=${{ gap: "10px" }}><${Icon} name="send" size=${22} />Share</b>
-    <span class="muted small" style=${{ lineHeight: 1.55 }}>A link to a page with just this film. Whoever has it can watch; they can’t see anything else in your portal. You can turn a link off at any time.</span>
+    <span class="muted small" style=${{ lineHeight: 1.55 }}>Anyone with the link can watch this film, and nothing else. Turn it off any time.</span>
     <div class="row" style=${{ gap: "8px", flexWrap: "wrap" }}>
       <label class="sr" for="share-days">The link works for</label>
       <select id="share-days" class="select" style=${{ width: "auto", flex: "1 1 140px" }} value=${days} onChange=${(e) => setDays(e.target.value)}>

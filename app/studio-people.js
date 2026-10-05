@@ -17,7 +17,7 @@ export function Clients({ admin }) {
   };
   return html`
     <${Head} eyebrow="Studio" title="Clients" actions=${may ? html`<button class="btn primary" onClick=${() => setEdit({ name: "", logo: "", notes: "", domains: "" })}>Add a client</button>` : null}>
-      Each client is a company. Its people see only its own projects, with its logo at the top of their portal.
+      Each client is a company.
     <//>
     ${!d.clients.length ? html`<${Empty} icon="anchor" title="No clients yet.">Add one here, or create it while making its first project.<//>`
     : html`<table class="table"><thead><tr><th>Client</th><th>People</th><th>Projects</th><th>Added</th><th></th></tr></thead>
@@ -29,8 +29,10 @@ export function Clients({ admin }) {
         <td data-label="Projects">${c.projects}</td><td class="muted small" data-label="Added">${fmtDate(c.created)}</td>
         <td style=${{ textAlign: "right", whiteSpace: "nowrap" }}>
           ${may ? html`<button class="btn ghost sm" onClick=${() => setEdit({ id: c.id, name: c.name, logo: c.logo, notes: c.notes, domains: (c.domains || []).join(", ") })}>Edit</button>` : null}
-          ${admin.can("data.export") && !d.demo ? html`<a class="btn ghost sm" href=${"/api/admin?export=client&id=" + c.id} download title="Everything the portal holds about this client, as a file">Export data</a>` : null}
-          ${admin.can("clients.delete") ? html`<button class="btn ghost sm" onClick=${() => { setConfirmText(""); setDel(c); }}>Delete…</button>` : null}
+          ${admin.can("data.export") && !d.demo || admin.can("clients.delete") ? html`<${More} items=${[
+            admin.can("data.export") && !d.demo && ["Export data", () => { location.href = "/api/admin?export=client&id=" + c.id; }],
+            admin.can("clients.delete") && ["Delete…", () => { setConfirmText(""); setDel(c); }],
+          ].filter(Boolean)} />` : null}
         </td>
       </tr>`)}</tbody></table>`}
     ${edit ? html`<${Modal} title=${edit.id ? "Edit " + edit.name : "Add a client"} onClose=${() => setEdit(null)}>
@@ -238,7 +240,7 @@ export function People({ admin, view }) {
     <${Head} eyebrow="Studio" title=${roles ? "What roles can do" : "People"} actions=${roles ? html`<${Link} to="/studio/people" cls="btn ghost">← Everyone<//>` : html`
       <${Link} to="/studio/people/roles" cls="btn ghost">What roles can do<//>
       ${admin.can("people.manage") || admin.can("staff.manage") ? html`<button class="btn primary" onClick=${() => setForm({ defaults: { clientId } })}>Invite a person</button>` : null}`}>
-      ${roles ? "What staff and client people may do. A project’s own switches come first." : "Everyone with a login. New people get a link to choose their own password."}
+      ${roles ? "What staff and client people may do. A project’s own switches come first." : "Everyone with a login."}
     <//>
     ${!roles && admin.can("people.manage") ? html`<${Requests} admin=${admin} onLink=${setLinkOut} />` : null}
     ${!roles ? html`<div class="row" style=${{ marginBottom: "18px", justifyContent: "space-between" }}>

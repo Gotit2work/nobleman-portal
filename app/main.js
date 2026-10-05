@@ -12,6 +12,7 @@ import { Account } from "./account.js";
 import { Studio } from "./studio.js";
 import { Watch } from "./watch.js";
 import { Payments } from "./payments.js";
+import { Tour, TourButton } from "./tour.js";
 
 const R = window.React;
 
@@ -72,6 +73,8 @@ function App() {
   const [toasts, setToasts] = useState([]);
   const [help, setHelp] = useState(false);
   const [more, setMore] = useState(false);
+  const [tour, setTour] = useState(0);   // the tutorial that is running (a new number restarts it), or 0
+  const toured = useRef(false);
 
   const toast = useCallback((text, opts = {}) => {
     const id = Math.random().toString(36).slice(2);
@@ -110,6 +113,7 @@ function App() {
   }, []);
   const switchDemo = useCallback(async (view) => {
     if (view === st.demoView) return;
+    setTour(0);
     // The switch moves at once; the page follows as soon as that view's sample data is in (it usually already is).
     setSt((x) => ({ ...x, demoView: view }));
     try {
@@ -199,11 +203,18 @@ function App() {
 
   const signOut = useCallback(async () => {
     if (st.demo) { toast("This is the demo. There’s nothing to log out of. Log in at the top of the page."); return; }
+    setTour(0);
     await api("/api/session", { method: "POST", body: { action: "logout" } }).catch(() => {});
     history.replaceState(null, "", "/");
     setPath("/");
     setSt({ phase: "gate", gate: "login", session: {} });
   }, [st.demo]);
+
+  // The first time someone opens Home, the tutorial starts by itself, once.
+  const top = st.phase === "app" ? routeOf(path, st.base)[0] || "" : null;
+  useEffect(() => {
+    if (st.phase === "app" && !st.demo && st.data.tour && !toured.current && top === "") { toured.current = true; setTour(Date.now()); }
+  }, [st.phase, top]);
 
   if (st.phase === "boot") return html`<div class="boot" role="status" aria-label="Loading the portal"><img src="/assets/Nobleman_Mark_White.png" alt="" /><div class="bar"><i></i></div><div class="eyebrow">Private screening room</div></div>`;
   if (st.phase === "watch") return html`<${Watch} token=${location.pathname.split("/")[2] || ""} /><${Toasts} items=${toasts} />`;
@@ -217,10 +228,12 @@ function App() {
       <${Toasts} items=${toasts} />`;
   }
 
-  const ctx = { ...st, user: st.data.user, go, toast, say, reload, setData, signOut, openHelp: () => setHelp(true), path, switchDemo };
+  const startTour = () => { setHelp(false); setMore(false); setTour(Date.now()); };
+  const ctx = { ...st, user: st.data.user, go, toast, say, reload, setData, signOut, openHelp: () => setHelp(true), path, switchDemo, startTour };
   return html`<${AppCtx.Provider} value=${ctx}>
     <${Shell} route=${routeOf(path, st.base)} more=${more} setMore=${setMore} />
     ${help ? html`<${Help} onClose=${() => setHelp(false)} />` : null}
+    ${tour ? html`<${Tour} key=${tour} onEnd=${() => setTour(0)} />` : null}
     <${Toasts} items=${toasts} />
   <//>`;
 }
@@ -276,7 +289,7 @@ function Shell({ route, more, setMore }) {
       <div class="rail-sep"></div>
       <div class="rail-items">
         <div class="rail-glow" aria-hidden="true" style=${{ transform: `translateY(calc(${activeIdx} * (var(--rh) + 4px)))`, opacity: isNavTop ? 1 : 0 }}></div>
-        ${items.map((it, i) => html`<${Link} key=${it.key} to=${"/" + it.key} cls="rail-item" current=${isNavTop && i === activeIdx}>
+        ${items.map((it, i) => html`<${Link} key=${it.key} to=${"/" + it.key} cls="rail-item" current=${isNavTop && i === activeIdx} tour=${"nav-" + (it.key || "home")}>
           <${Icon} name=${it.icon} size=${26} />
           <span class="lbl">${it.label}</span>
           ${it.badge ? html`<span class="badge" aria-label=${plural(it.badge, "new item")}>${it.badge}</span>` : null}
@@ -295,18 +308,18 @@ function Shell({ route, more, setMore }) {
 
     <header class="topbar">
       <${Link} to="/" cls="brand" label="Portal home"><img src="/assets/Nobleman_Logo_White.png" alt="Nobleman Productions" /><//>
-      ${demo ? html`<button class="demo-chip" onClick=${app.openHelp}>Demo</button>` : null}
+      <${TourButton} />
       <button class="round" onClick=${app.openHelp} aria-label="Help: how this portal works">?</button>
       <${Link} to="/account" cls="round" label=${"Your account: " + user.name}><${Avatar} name=${user.name} size=${30} /><//>
     </header>
 
-    ${demo ? html`<${DemoRibbon} />` : null}
+    ${demo ? html`<${DemoRibbon} />` : html`<div class="tour-corner rail-only-desktop"><${TourButton} /></div>`}
 
     ${data.announcement ? html`<div class=${"announce " + (data.announcement.tone === "warning" ? "warn" : "")} role="status">${data.announcement.text}</div>` : null}
     <main id="main"><${Broke} at=${route.join("/")} atHome=${!top} support=${data.brand && data.brand.support}>${screen}<//></main>
 
     <nav class="bottombar" aria-label="Main">
-      ${mobileItems.map((it) => html`<${Link} key=${it.key} to=${"/" + it.key} cls="tab" current=${isNavTop && it.key === (items[activeIdx] || {}).key}>
+      ${mobileItems.map((it) => html`<${Link} key=${it.key} to=${"/" + it.key} cls="tab" current=${isNavTop && it.key === (items[activeIdx] || {}).key} tour=${"nav-" + (it.key || "home")}>
         <${Icon} name=${it.icon} size=${26} /><span class="lbl">${it.label}</span>
         ${it.badge ? html`<span class="badge">${it.badge}</span>` : null}
       <//>`)}
@@ -333,11 +346,10 @@ function DemoSwitch() {
 }
 
 function DemoRibbon() {
-  const app = R.useContext(AppCtx);
   return html`<div style=${{ position: "fixed", top: "18px", right: "22px", zIndex: 55 }} class="rail-only-desktop">
     <div class="row" style=${{ gap: "8px" }}>
       <${DemoSwitch} />
-      <button class="demo-chip" onClick=${app.openHelp} title="Nothing here is saved or sent. Click for what that means.">Demo · sample project</button>
+      <${TourButton} />
       <a class="btn primary sm" href="/signin">Log in</a>
     </div>
   </div>`;
@@ -352,17 +364,17 @@ function NotFound() {
 }
 
 const HELP = [
-  { icon: "anchor", t: "Home", d: "Starts with your next step: the one thing that needs you now. Below it, each project and how far along it is." },
-  { icon: "play", t: "Review", d: "Watch the newest version of each film. Pause anywhere and leave a note pinned to that moment. When it’s right, approve it; if not, ask for changes." },
-  { icon: "growth", t: "Films", d: "Your finished films. Watch them here and, where it’s switched on, download them, get caption files, or create a link to share." },
-  { icon: "send", t: "Files", d: "Documents from the studio, like quotes and schedules, and anything you send: logos, footage, references." },
-  { icon: "bottle", t: "Messages", d: "Write to the studio about a project. Your conversation stays with the project." },
-  { icon: "key", t: "Payments", d: "When the studio asks for a payment, it shows on Home and on the project, with a button to pay by card or bank on Stripe’s secure checkout.", payments: true },
+  { icon: "anchor", t: "Home", d: "Your next step, then your projects." },
+  { icon: "play", t: "Review", d: "Watch the newest version, leave notes, then approve it." },
+  { icon: "growth", t: "Films", d: "Finished films to watch, download, or share." },
+  { icon: "send", t: "Files", d: "Documents from the studio, and files you send." },
+  { icon: "bottle", t: "Messages", d: "Write to the studio about a project." },
+  { icon: "key", t: "Payments", d: "Pay by card or bank when the studio asks.", payments: true },
 ];
 const STAFF_HELP = [
-  { icon: "anchor", t: "Home", d: "What needs you: versions waiting on clients, change requests, unread messages, and what clients did lately." },
-  { icon: "key", t: "Studio", d: "Projects (each with its own client link, plus video sources, progress, payments, and what the client can do), clients, people and roles, connections (Vimeo, Frame.io with notes both ways, YouTube, Wistia, Notion, email, Stripe), settings, and the activity log." },
-  { icon: "play", t: "Review and Films", d: "See every version, reply to notes, and check what the client sees. Clients see only the newest version unless Earlier versions is on." },
+  { icon: "anchor", t: "Home", d: "What needs you, and what’s waiting on clients." },
+  { icon: "key", t: "Studio", d: "Projects and their client links, clients, people, connections, and settings." },
+  { icon: "play", t: "Review and Films", d: "Every version and its notes. Clients see only the newest." },
 ];
 
 function Help({ onClose }) {
@@ -371,12 +383,12 @@ function Help({ onClose }) {
   const staff = isStaff(app.user);
   const support = brand.support || "alexis@gotit2work.com";
   return html`<${Modal} title=${staff ? "How the portal works" : "How your portal works"} onClose=${onClose} wide>
-    ${app.demo ? html`<div class="alert"><b>This is a demo.</b> The client, projects, and files are made up. Click anything you like: nothing here is saved or sent.</div>
-      <div class="stack" style=${{ gap: "8px" }}><span class="muted small" style=${{ lineHeight: 1.55 }}>Everyone logs in at the same door; what they see depends on who they are. Switch to see both sides:</span><${DemoSwitch} /></div>` : null}
+    ${app.demo ? html`<div class="alert"><b>This is a demo</b> with made-up projects. Click anything: nothing is saved or sent.</div>
+      <div class="stack" style=${{ gap: "8px" }}><span class="muted small">See both sides:</span><${DemoSwitch} /></div>` : null}
     <div class="list">${(staff ? STAFF_HELP : HELP.filter((h) => !h.payments || app.data.projects.some((p) => p.caps.payments && (p.payments || []).length))).map((h) => html`<div class="li" key=${h.t}><${Icon} name=${h.icon} size=${30} /><div class="grow"><div class="name">${h.t}</div><div class="meta" style=${{ lineHeight: 1.55 }}>${h.d}</div></div></div>`)}</div>
     ${!staff && app.user.roleLabel ? html`<p class="muted small" style=${{ margin: 0, lineHeight: 1.6 }}>You’re a <b>${app.user.roleLabel}</b> for ${app.user.clientName || "your company"}.${app.user.access === "reviewer" ? " Your notes reach the studio and your company’s decision makers, who approve each version." : app.user.access === "viewer" ? " You can watch and download; your colleagues leave notes and approve." : ""}</p>` : null}
-    <p class="muted small" style=${{ margin: 0, lineHeight: 1.6 }}>Some parts only appear when the studio switches them on for your project. Stuck? Use Messages, or email <a href=${"mailto:" + support}>${support}</a>. How we handle your information: <a href=${brand.privacy || "https://noblemanproductions.gotit2work.com/privacy#portal"}>Privacy</a>.</p>
-    <div><button class="btn primary" onClick=${onClose}>Got it</button></div>
+    <p class="muted small" style=${{ margin: 0, lineHeight: 1.6 }}>Stuck? ${staff ? "Email" : "Use Messages, or email"} <a href=${"mailto:" + support}>${support}</a>. <a href=${brand.privacy || "https://noblemanproductions.gotit2work.com/privacy#portal"}>Privacy</a></p>
+    <div class="row"><button class="btn primary" onClick=${app.startTour}>Watch the tutorial</button><button class="btn ghost" onClick=${onClose}>Got it</button></div>
   <//>`;
 }
 

@@ -10,6 +10,9 @@ insert into users (id,email,name,title,role,access,client_id,password_hash) valu
  ('22222222-0000-4000-8000-000000000003','rae@harbor.test','Rae Reviewer','Brand Manager','client','reviewer','aaaaaaaa-0000-4000-8000-000000000001','$2a$10$yBZZjb9tBj3ora2./79LGO57SKZWZiZp0dKSGWoe9vAKrfNR7aXgS'),
  ('22222222-0000-4000-8000-000000000004','vic@harbor.test','Vic Viewer','CEO','client','viewer','aaaaaaaa-0000-4000-8000-000000000001','$2a$10$yBZZjb9tBj3ora2./79LGO57SKZWZiZp0dKSGWoe9vAKrfNR7aXgS'),
  ('33333333-0000-4000-8000-000000000003','rob@moto.test','Rob Vance','Owner','client','approver','bbbbbbbb-0000-4000-8000-000000000002','$2a$10$yBZZjb9tBj3ora2./79LGO57SKZWZiZp0dKSGWoe9vAKrfNR7aXgS');
+-- Everyone but Dana (a client) and Alexis (an owner) has seen the tutorial, so it starts by itself only where a
+-- test walks through it (e2e.test.mjs).
+update users set welcomed_at = now() where email not in ('dana@harbor.test', 'alexis@gotit2work.com');
 insert into projects (id,client_id,title,type,summary,stage_idx,source_conn,source_ref,next_label,next_date,next_what,capabilities) values
  ('cccccccc-0000-4000-8000-000000000001','aaaaaaaa-0000-4000-8000-000000000001','Harbor Summit','Conference film','Keynotes, interviews, and the recap film for Harbor Summit 2026.',3,'env-vimeo','222','Next','October 9','Final polish once Version 3 is approved','{"download_source":true,"share":true,"stats":true,"upload":true}'),
  ('dddddddd-0000-4000-8000-000000000002','bbbbbbbb-0000-4000-8000-000000000002','Desert Shoot','Brand film',null,2,'env-vimeo','333',null,null,null,'{"download":false,"messages":false}');

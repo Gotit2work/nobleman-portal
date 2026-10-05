@@ -170,7 +170,7 @@ export const STATEMENTS = [
   `alter table users add column if not exists totp_enabled boolean not null default false`,
   `alter table users add column if not exists totp_last_step bigint not null default 0`,
   `alter table users add column if not exists recovery_codes jsonb not null default '[]'::jsonb`,
-  // When a client closed the welcome card, so it shows once.
+  // When someone finished or skipped the tutorial, so it starts by itself only once.
   `alter table users add column if not exists welcomed_at timestamptz`,
 
   `alter table clients add column if not exists logo_url text`,

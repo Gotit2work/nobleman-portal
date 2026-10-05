@@ -183,10 +183,10 @@ export function More({ items, label = "More" }) {
   </span>`;
 }
 
-export function Link({ to, children, cls, current, label, onClick }) {
+export function Link({ to, children, cls, current, label, onClick, tour }) {
   const { go, base } = useApp();
   const href = base + to;
-  return html`<a href=${href} class=${cls} aria-current=${current ? "page" : undefined} aria-label=${label}
+  return html`<a href=${href} class=${cls} data-tour=${tour} aria-current=${current ? "page" : undefined} aria-label=${label}
     onClick=${(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; e.preventDefault(); if (onClick) onClick(); go(to); }}>${children}</a>`;
 }
 

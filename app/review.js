@@ -15,7 +15,7 @@ export function Review({ pid, cut, n }) {
   }
   if (!ps.length) {
     return html`<div class="page">
-      <${Head} eyebrow="Review" title="Nothing to review yet.">When the studio shares a version of your film, it appears here. You’ll be able to pause on any moment and leave a note right there.<//>
+      <${Head} eyebrow="Review" title="Nothing to review yet.">New versions show up here.<//>
       ${admin ? html`<p class="muted">Versions come from each project’s video source: a video titled with a version number (“Harbor Spot V2”), or a Frame.io version stack, shows up here.</p>` : null}
     </div>`;
   }
@@ -29,7 +29,7 @@ export function Review({ pid, cut, n }) {
 
   return html`<div class="page wide">
     <${Head} eyebrow=${p.title} title=${html`Review <span class="np-it">${c.title}</span>`}>
-      ${!p.caps.notes ? "Watch the newest version here." : html`Watch it, pause anywhere, and leave a note on that exact moment.${p.caps.approve && !admin ? " When it’s right, approve it." : ""}`}
+      ${!p.caps.notes ? "Watch the newest version here." : `Pause anywhere to leave a note.${p.caps.approve && !admin ? " Approve when it’s right." : ""}`}
     <//>
     ${ps.length > 1 ? html`<div class="tabs" style=${{ marginBottom: "14px" }} aria-label="Projects">${ps.map((x) => html`<${Link} key=${x.id} to=${"/review/" + x.id} cls="tab-btn" current=${x.id === p.id}>${x.title}${waiting(x) ? html`<span class="d" aria-label="waiting for you"></span>` : null}<//>`)}</div>` : null}
     ${p.cuts.length > 1 ? html`<div class="tabs" style=${{ marginBottom: "18px" }} aria-label="Films in review">${p.cuts.map((x) => {
@@ -128,7 +128,7 @@ function Stage({ p, c, v, latest }) {
                 ${[...c.versions].reverse().map((x) => html`<option key=${x.n} value=${String(x.n)}>Version ${x.n}${x.n === latest.n ? " (newest)" : x.decision ? " · " + decisionLabel(x.decision) : ""}</option>`)}
               </select>
             </label>` : html`<b>Version ${v.n}</b>`}
-            ${isLatest && c.total > 1 ? html`<span class="faint small">The newest version${admin ? (p.clientCaps && p.clientCaps.history ? "; clients can open earlier ones too" : ", and the only one clients see") : `. It replaces Version ${v.n - 1}${c.total > 2 ? " and earlier" : ""}`}.</span>` : null}
+            ${isLatest && c.total > 1 && admin ? html`<span class="faint small">The newest version${p.clientCaps && p.clientCaps.history ? "; clients can open earlier ones too" : ", and the only one clients see"}.</span>` : null}
           </div>
           <span class="muted small">${v.video.durationLabel}${v.video.created ? " · shared " + fmtDate(v.video.created) : ""}</span>
         </div>
@@ -142,14 +142,14 @@ function Stage({ p, c, v, latest }) {
           </div>`
         : !isLatest ? html`<div class="decision"><span class="muted">This is an older version. The newest is <${Link} to=${`/review/${p.id}/${encodeURIComponent(c.key)}/${latest.n}`} cls="link">Version ${latest.n}<//>.</span></div>`
         : admin ? html`<div class="decision"><span class="muted">Waiting for ${p.clientName} to approve Version ${v.n} or ask for changes${p.reviewDue ? `, planned by ${fmtDay(p.reviewDue)}` : ""}.</span></div>`
-        : p.caps.approve ? html`<div class="decision">
-            <div class="stack" style=${{ gap: "4px" }}><b>Is Version ${v.n} right?</b><span class="muted small">${p.reviewDue ? `Please decide by ${fmtDay(p.reviewDue)}. ` : ""}${open ? `Your ${plural(open, "open note")} go${open === 1 ? "es" : ""} with any request for changes.` : "Approve it, or tell the studio what to change."}</span></div>
+        : p.caps.approve ? html`<div class="decision" data-tour="decide">
+            <div class="stack" style=${{ gap: "4px" }}><b>Is Version ${v.n} right?</b>${p.reviewDue || open ? html`<span class="muted small">${p.reviewDue ? `Please decide by ${fmtDay(p.reviewDue)}. ` : ""}${open ? `Your ${plural(open, "open note")} go${open === 1 ? "es" : ""} with any request for changes.` : ""}</span>` : null}</div>
             <div class="row">
               <button class="btn primary" onClick=${() => setConfirming(true)}>Approve Version ${v.n}</button>
               <button class="btn ghost" onClick=${() => setAsking(true)}>Ask for changes</button>
             </div>
           </div>`
-        : p.caps.notes ? html`<div class="decision"><span class="muted">Your company’s decision makers approve each version. Leave a note on anything you’d change: they and the studio will see it.</span></div>`
+        : p.caps.notes ? html`<div class="decision"><span class="muted">Your decision maker approves. Your notes reach them and the studio.</span></div>`
         : null}
       </div>
 
@@ -157,12 +157,12 @@ function Stage({ p, c, v, latest }) {
         <div class="nh">
           <div class="row" style=${{ justifyContent: "space-between" }}>
             <b>Notes on Version ${v.n}</b>
-            <div class="tabs">
-              <button class="tab-btn" aria-pressed=${show === "all"} onClick=${() => setShow("all")}>All ${notes ? notes.length : ""}</button>
-              <button class="tab-btn" aria-pressed=${show === "open"} onClick=${() => setShow("open")}>Open ${notes ? open : ""}</button>
-            </div>
+            ${notes && notes.length ? html`<div class="tabs">
+              <button class="tab-btn" aria-pressed=${show === "all"} onClick=${() => setShow("all")}>All ${notes.length}</button>
+              <button class="tab-btn" aria-pressed=${show === "open"} onClick=${() => setShow("open")}>Open ${open}</button>
+            </div>` : null}
           </div>
-          ${p.caps.notes ? html`<label class="field">
+          ${p.caps.notes ? html`<label class="field" data-tour="note">
             <span>${stamp != null ? html`Add a note at <span class="mono" style=${{ color: "var(--ink)" }}>${tc(stamp)}</span>` : "Add a note about this version"}</span>
             <textarea class="textarea" rows="3" placeholder="What would you change at this moment?" value=${draft}
               onFocus=${() => { if (at == null) { setAt(time); if (player.current) player.current.pause(); } }}
@@ -173,7 +173,7 @@ function Stage({ p, c, v, latest }) {
             <button class="btn primary sm" disabled=${busy || !draft.trim()} onClick=${post}>Add note</button>
             ${at != null ? html`<button class="btn ghost sm" onClick=${() => { setAt(null); setDraft(""); if (player.current) player.current.play(); }}>Cancel</button>` : null}
             <span class="faint small">${timed ? "The film pauses while you write." : "This player can’t mark the moment; say it in your note (“at 1:20…”)."}</span>
-          </div>` : html`<p class="muted small" style=${{ margin: 0, lineHeight: 1.55 }}>You can watch and read the notes. Your colleagues and the studio leave them.</p>`}
+          </div>` : html`<p class="muted small" style=${{ margin: 0, lineHeight: 1.55 }}>You can read the notes here.</p>`}
         </div>
         <div class="nl">
           ${err ? html`<div class="alert" style=${{ margin: "12px 20px" }}>${err}</div>` : null}
@@ -201,7 +201,7 @@ function Stage({ p, c, v, latest }) {
       </div>
     <//>` : null}
     ${asking ? html`<${Modal} title=${`What should change in Version ${v.n}?`} onClose=${() => setAsking(false)}>
-      <p class="muted" style=${{ margin: 0, lineHeight: 1.6 }}>Sum up what you’d like changed. Your notes on specific moments go along with it.</p>
+      <p class="muted" style=${{ margin: 0, lineHeight: 1.6 }}>Sum it up. Your notes on the film go along with it.</p>
       <${Field} label="Your changes"><textarea class="textarea" rows="5" value=${askNote} onInput=${(e) => setAskNote(e.target.value)} placeholder="For example: shorten the middle section, and try warmer music."></textarea><//>
       <div class="row">
         <button class="btn primary" disabled=${busy || !askNote.trim()} onClick=${() => decide("changes", askNote.trim())}>${busy ? "Sending…" : "Send my changes"}</button>

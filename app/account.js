@@ -44,7 +44,7 @@ export function Account() {
   };
 
   return html`<div class="page">
-    <${Head} eyebrow="Account" title="Your account">Your details, how the studio reaches you, and how you log in.<//>
+    <${Head} eyebrow="Account" title="Your account" />
     <div class="grid c2">
       <section class="card pad stack" style=${{ gap: "18px" }}>
         <div class="row"><${Avatar} name=${user.name} size=${52} /><div><div class="h3">${user.name}</div>
@@ -117,12 +117,12 @@ function TwoStep() {
       <span class=${"pill " + (on ? "green" : "")}>${on ? "On" : "Off"}</span>
     </div>
     ${mode === "setup" ? html`<${TwoStepSetup} toast=${toast} onDone=${() => { set(true); setMode(null); toast("Two-step verification is on."); }} />`
-      : on ? html`<p class="muted" style=${{ margin: 0, lineHeight: 1.6 }}>After your password, the portal asks for the code from your authenticator app. Lost your phone? Use a recovery code instead.</p>
+      : on ? html`<p class="muted" style=${{ margin: 0, lineHeight: 1.6 }}>After your password, enter the code from your phone. Lost it? Use a recovery code.</p>
           <div class="row">
             <button class="btn ghost" onClick=${() => setMode("codes")}>Make new recovery codes</button>
             ${user.twoStepRequired ? html`<span class="faint small">Staff must keep it on.</span>` : html`<button class="btn ghost" onClick=${() => setMode("off")}>Turn it off</button>`}
           </div>`
-      : html`<p class="muted" style=${{ margin: 0, lineHeight: 1.6 }}>Adds a six-digit code from your phone after your password, so a leaked password alone can’t open your portal. Takes about a minute.</p>
+      : html`<p class="muted" style=${{ margin: 0, lineHeight: 1.6 }}>A code from your phone after your password, so a stolen password isn’t enough. Takes a minute.</p>
           <div><button class="btn primary" onClick=${() => demo ? say("", "two-step verification can’t be turned on in the demo.") : setMode("setup")}>Set up two-step verification</button></div>`}
     ${mode === "off" ? html`<${CodeAsk} title="Turn off two-step verification?" yes="Turn it off" action="twoStepDisable" toast=${toast}
       onClose=${() => setMode(null)} onDone=${() => { set(false); setMode(null); toast("Two-step verification is off."); }} />` : null}

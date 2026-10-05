@@ -12,11 +12,11 @@ export function nextStep(data) {
   const admin = isStaff(data.user);
   const ps = data.projects;
   // People waiting to be let in come first: they're standing at the door.
-  if (admin && data.signups) return { title: `${data.signups === 1 ? "Someone is" : data.signups + " people are"} asking to join.`, text: "They created an account and confirmed their email. Choose their company and role, or decline.", btn: data.signups === 1 ? "Review the request" : "Review the requests", to: "/studio/people" };
+  if (admin && data.signups) return { title: `${data.signups === 1 ? "Someone is" : data.signups + " people are"} asking to join.`, text: "Choose their company and role, or decline.", btn: data.signups === 1 ? "Review the request" : "Review the requests", to: "/studio/people" };
   if (!ps.length) {
     return admin
-      ? { title: "Add your first project.", text: "Create a client, choose where its videos come from, and set what they can do. They see it the moment they log in.", btn: "Open Studio", to: "/studio/projects" }
-      : { calm: true, title: "Your project is being set up.", text: "The studio is getting it ready. It appears here as soon as it’s set up; you don’t need to do anything yet." };
+      ? { title: "Add your first project.", text: "Create one, then send the client its link.", btn: "Open Studio", to: "/studio/projects" }
+      : { calm: true, title: "Your project is being set up.", text: "It shows up here when it’s ready. Nothing to do yet." };
   }
   if (admin) {
     for (const p of ps) for (const c of p.cuts) {
@@ -26,21 +26,21 @@ export function nextStep(data) {
     const unread = ps.find((p) => p.messages && p.messages.unread);
     if (unread) return { title: `New message from ${unread.clientName}.`, text: `About ${unread.title}.`, btn: "Read it", to: `/messages/${unread.id}` };
     const notes = ps.find((p) => p.cuts.some((c) => newest(c).comments.open));
-    if (notes) return { title: `${notes.clientName} left notes on ${notes.title}.`, text: "Open the version to see each note at its moment in the film.", btn: "See the notes", to: `/review/${notes.id}` };
+    if (notes) return { title: `${notes.clientName} left notes on ${notes.title}.`, text: "Each note sits at its moment in the film.", btn: "See the notes", to: `/review/${notes.id}` };
     return { calm: true, title: "Nothing needs you right now.", text: "Clients’ notes, decisions, and messages show up here first.", btn: "Open Studio", to: "/studio/projects" };
   }
   for (const p of ps) if (p.caps.review) for (const c of p.cuts) {
     const v = newest(c);
     if (!v.decision) return {
       title: `${c.total > 1 ? `Version ${v.n}` : "The first version"} of ${c.title} is ready for you.`,
-      text: (p.caps.approve ? "Watch it, leave a note on anything you’d change, then approve it or ask for changes." : p.caps.notes ? "Watch it and leave a note on anything you’d change. Your company’s decision maker approves it." : "Watch it here.") + (p.caps.approve ? dueText(p) : ""),
+      text: (p.caps.approve ? "Watch it, leave notes, then approve it." : p.caps.notes ? "Watch it and leave notes. Your decision maker approves it." : "Watch it here.") + (p.caps.approve ? dueText(p) : ""),
       btn: `Watch Version ${v.n}`, to: `/review/${p.id}/${encodeURIComponent(c.key)}/${v.n}`,
     };
   }
   // Something to pay: the oldest open request on a project where this person pays.
   for (const p of ps) if (p.caps.pay && data.payReady) {
     const x = openOf(p).filter((y) => y.status === "open").pop();
-    if (x) return { title: `Please pay: ${x.title}, ${x.label}.`, text: `For ${p.title}${x.due ? `, due ${fmtDay(x.due)}` : ""}. You pay on Stripe’s secure checkout, by card or bank.`, btn: `Pay ${x.label}`, to: `/payments/${p.id}` };
+    if (x) return { title: `Please pay: ${x.title}, ${x.label}.`, text: `For ${p.title}${x.due ? `, due ${fmtDay(x.due)}` : ""}. By card or bank, on Stripe.`, btn: `Pay ${x.label}`, to: `/payments/${p.id}` };
   }
   const confirm = ps.find((p) => p.next.confirm && !p.next.confirmedAt && p.caps.approve);
   if (confirm) return { title: `Please confirm: ${confirm.next.label || "next step"}${confirm.next.date ? ", " + confirm.next.date : ""}.`, text: confirm.next.what || confirm.title, confirm: confirm.id };
@@ -69,7 +69,7 @@ function ConfirmButton({ projectId, label = "Confirm" }) {
 }
 
 function NextCard({ step }) {
-  return html`<section class="next" aria-label="Your next step">
+  return html`<section class="next" aria-label="Your next step" data-tour="next">
     <div>
       <span class="eyebrow"><span>Your next step</span>${step.calm ? null : html`<span class="dot" aria-hidden="true"></span>`}</span>
       <div class="title">${step.title}</div>
@@ -94,39 +94,17 @@ function GettingStarted({ s }) {
     { done: s.owners > 1, t: "Make a second owner (recommended)", d: "So the studio is never locked out.", to: "/studio/people", optional: true },
   ];
   const need = steps.filter((x) => !x.optional);
-  return html`<section class="card pad stack setup" aria-label="Getting started" style=${{ gap: "14px" }}>
+  return html`<section class="card pad stack setup" aria-label="Getting started" data-tour="next" style=${{ gap: "14px" }}>
     <div class="stack" style=${{ gap: "4px" }}>
       <span class="eyebrow"><span>Getting started</span><span class="dot" aria-hidden="true"></span></span>
       <div class="h2">Set up the portal: ${need.filter((x) => x.done).length} of ${need.length} done.</div>
-      <span class="muted small">This list goes away once the essentials are done. Everything here is also in Studio.</span>
+      <span class="muted small">This goes away once the essentials are done.</span>
     </div>
     <div class="list">${steps.map((x) => html`<${Link} key=${x.t} to=${x.to} cls=${"li step" + (x.done ? " done" : "")}>
       <i class="tick" aria-hidden="true">${x.done ? "✓" : ""}</i>
       <div class="grow"><div class="name">${x.t}</div><div class="meta">${x.d}</div></div>
       <span class="sr">${x.done ? "Done" : "Not done yet"}</span>${x.done ? null : html`<span aria-hidden="true">→</span>`}
     <//>`)}</div>
-  </section>`;
-}
-
-/** Shown once, the first time a client opens the portal. */
-function Welcome({ w }) {
-  const { setData, demo } = useApp();
-  const close = () => {
-    setData((d) => ({ ...d, welcome: null }));
-    if (!demo) api("/api/session", { method: "POST", body: { action: "profile", welcomed: true } }).catch(() => {});
-  };
-  return html`<section class="welcome">
-    <div class="stack" style=${{ gap: "8px" }}>
-      <span class="eyebrow">Welcome</span>
-      <div class="title">${w.title}</div>
-      <p>${w.text}</p>
-    </div>
-    <ol class="how">
-      <li><b>Watch</b><span>The newest version is always the one on screen.</span></li>
-      <li><b>Note</b><span>Pause anywhere and write what you’d change. It’s pinned to that moment.</span></li>
-      <li><b>Approve</b><span>When it’s right, approve it. Or ask for changes in one go.</span></li>
-    </ol>
-    <button class="btn ghost sm" onClick=${close}>Got it</button>
   </section>`;
 }
 
@@ -176,7 +154,7 @@ function describe(a) {
 }
 
 export function Activity({ items, limit = 8 }) {
-  if (!items.length) return html`<p class="muted">Nothing yet. Notes, approvals, messages, and files will show up here as they happen.</p>`;
+  if (!items.length) return html`<p class="muted">Nothing yet.</p>`;
   return html`<div class="list">${items.slice(0, limit).map((a, i) => {
     const d = describe(a);
     return html`<${Link} key=${i} to=${d.to} cls="li" label=${d.line}>
@@ -234,7 +212,6 @@ export function Home() {
     <${Head} eyebrow=${admin ? `Studio · ${brand.studio || "Nobleman Productions"}` : html`${user.clientLogo ? html`<img class="client-logo" src=${user.clientLogo} alt="" />` : null}${user.clientName || "Client portal"}`} title=${`${greeting()}, ${firstName(user.name)}.`}>
       <span class="hide-phone">${admin ? "Here’s what’s happening across your clients." : demo ? "Here’s where your production stands. (A sample project: click anything.)" : "Here’s where your production stands."}</span>
     <//>
-    ${!admin && data.welcome ? html`<${Welcome} w=${data.welcome} />` : null}
     ${admin && data.setup && !setupDone(data.setup) ? html`<${GettingStarted} s=${data.setup} />` : html`<${NextCard} step=${step} />`}
     ${admin ? html`<${StaffBoard} projects=${data.projects} />` : null}
     ${data.projects.length ? html`<section class="section">
@@ -243,7 +220,7 @@ export function Home() {
       <div class=${data.projects.length > 1 ? "grid c2" : "solo"}>${data.projects.map((p) => html`<div key=${p.id}><${ProjectCard} p=${p} admin=${admin} /></div>`)}</div>
     </section>` : null}
     <section class="section latest">
-      <div class="sh"><span class="eyebrow"><span>${admin ? "What clients and the team did lately" : "Latest"}</span></span>
+      <div class="sh"><span class="eyebrow"><span>Latest</span></span>
         ${admin && user.perms && user.perms["audit.view"] ? html`<${Link} to="/studio/activity" cls="btn ghost sm">Full activity log<//>` : null}</div>
       <${Activity} items=${data.activity} limit=${5} />
     </section>

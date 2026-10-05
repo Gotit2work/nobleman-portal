@@ -9,7 +9,6 @@ const SECTIONS = [
   { key: "check", title: "System check" },
   { key: "brand", title: "Studio details" },
   { key: "signin", title: "Login screen" },
-  { key: "welcome", title: "Welcome message" },
   { key: "announcement", title: "Notice for everyone" },
   { key: "stages", title: "Project stages" },
   { key: "caps", title: "New projects start with" },
@@ -38,7 +37,6 @@ function summary(key, s, d, health) {
     }
     case "brand": return [s.brand.studio, s.brand.support].filter(Boolean).join(" · ");
     case "signin": return photoLabel(s.signin.image) + (s.signin.quote ? " · Murphy’s Law" : "");
-    case "welcome": return s.welcome.title || "None";
     case "announcement": return s.announcement.text || "None showing";
     case "stages": return `${plural(s.stages.length, "stage")}: ${s.stages[0].name} to ${s.stages[s.stages.length - 1].name}`;
     case "caps": { const on = d.capabilities.filter((c) => s.caps[c.key] && !(c.needs && !s.caps[c.needs])).length; return `${on} of ${d.capabilities.length} switched on`; }
@@ -68,9 +66,6 @@ export function Settings({ admin, section }) {
       </div>
       <${Field} label="Above Messages, for clients" hint="Promise only what’s always true."><input class="input" value=${v.replies || ""} onInput=${(e) => set({ replies: e.target.value })} /><//>`} />`,
     signin: () => html`<${Section} admin=${admin} section="signin" title=${title} value=${s.signin} render=${(v, set) => html`<${LoginScreen} v=${v} set=${set} />`} />`,
-    welcome: () => html`<${Section} admin=${admin} section="welcome" title=${title} hint="Shown once, the first time a client logs in." value=${s.welcome} render=${(v, set) => html`
-      <${Field} label="Heading"><input class="input" value=${v.title} onInput=${(e) => set({ title: e.target.value })} /><//>
-      <${Field} label="Text"><textarea class="textarea" rows="3" value=${v.text} onInput=${(e) => set({ text: e.target.value })}></textarea><//>`} />`,
     announcement: () => html`<${Section} admin=${admin} section="announcement" title=${title} hint="One line at the top of every page. Empty shows nothing." value=${s.announcement} render=${(v, set) => html`
       <${Field} label="Notice"><input class="input" value=${v.text} onInput=${(e) => set({ text: e.target.value })} placeholder="We’re filming offshore until Friday; replies may be slower." /><//>
       <div class="seg s3" role="group" aria-label="Tone">${[["info", "Information"], ["warning", "Important"]].map(([k, l]) => html`<button type="button" key=${k} aria-pressed=${v.tone === k} onClick=${() => set({ tone: k })}>${l}</button>`)}</div>`} />`,

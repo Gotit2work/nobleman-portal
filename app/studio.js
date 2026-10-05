@@ -136,13 +136,12 @@ function SourcePicker({ d, value, onChange, projects, selfId, disabled }) {
 }
 
 // ---------- projects ----------
-const capCount = (caps) => Object.values(caps).filter(Boolean).length;
 
 function sourceLabel(d, p) {
   if (!p.source) return null;
   if (p.source.conn === "links") return "Video links";
   const prov = providerOf(d, p.source.provider);
-  return `${prov ? prov.name : p.source.connName}${p.source.ref ? " · " + p.source.ref : ""}`;
+  return prov ? prov.name : p.source.connName;
 }
 
 function Projects({ admin }) {
@@ -153,28 +152,26 @@ function Projects({ admin }) {
   const find = q.trim().toLowerCase();
   const list = d.projects.filter((p) => (showArchived || !p.archived) && (!find || (p.title + " " + p.clientName + " " + p.type).toLowerCase().includes(find)));
   return html`
-    <${Head} eyebrow="Studio" title="Projects" actions=${html`<div class="row">
-      ${admin.can("data.export") && d.projects.length && !d.demo ? html`<a class="btn ghost" href="/api/admin?export=projects" download>Export to a spreadsheet</a>` : null}
-      ${admin.can("projects.create") ? html`<button class="btn primary" onClick=${() => setCreating(true)}>New project</button>` : null}</div>`}>
-      Each project belongs to a client, plays from one video source, and has its own switches for what the client can do.
-    <//>
+    <${Head} eyebrow="Studio" title="Projects" actions=${admin.can("projects.create") ? html`<button class="btn primary" data-tour="new-project" onClick=${() => setCreating(true)}>New project</button>` : null} />
     ${!d.projects.length ? html`<${Empty} icon="camera" title="No projects yet." action=${admin.can("projects.create") ? html`<button class="btn primary" onClick=${() => setCreating(true)}>Create the first project</button>` : null}>
-      Create one, choose where its videos come from, and add the client’s people. They see it the moment they log in.<//>`
+      Create one, then send the client its link.<//>`
     : html`
     ${d.projects.length > 6 ? html`<div class="row" style=${{ marginBottom: "14px" }}><input class="input" style=${{ maxWidth: "340px" }} type="search" placeholder="Find a project or client" aria-label="Find a project or client" value=${q} onInput=${(e) => setQ(e.target.value)} /></div>` : null}
     <table class="table">
-      <thead><tr><th>Project</th><th>Stage</th><th>Videos from</th><th>Review by</th><th>Client can</th><th></th></tr></thead>
+      <thead><tr><th>Project</th><th>Stage</th><th>Videos from</th><th>Review by</th><th></th></tr></thead>
       <tbody>${list.map((p) => html`<tr key=${p.id}>
         <td><${Link} to=${"/studio/projects/" + p.id} cls="name" label=${"Edit " + p.title}><b>${p.title}</b><//><div class="muted small">${p.clientName}${p.type ? " · " + p.type : ""}${p.notion ? " · in Notion" : ""}</div></td>
         <td data-label="Stage">${d.stages[p.stage]}${p.archived ? html` <span class="pill">Archived</span>` : null}</td>
         <td class="small" data-label="Videos from">${p.source ? sourceLabel(d, p) : html`<span class="pill amber">Not set</span>`}</td>
         <td class="small" data-label="Review by">${p.reviewDue ? fmtDay(p.reviewDue) : html`<span class="faint">—</span>`}</td>
-        <td class="small muted" data-label="Client can">${capCount(p.caps)} of ${d.capabilities.length}</td>
         <td style=${{ textAlign: "right" }}><${Link} to=${"/studio/projects/" + p.id} cls="btn ghost sm">Open<//></td>
       </tr>`)}</tbody>
     </table>
     ${!list.length ? html`<p class="muted">Nothing matches “${q}”.</p>` : null}
-    ${d.projects.some((p) => p.archived) ? html`<p><button class="link small" onClick=${() => setShowArchived(!showArchived)}>${showArchived ? "Hide archived projects" : `Show ${plural(d.projects.filter((p) => p.archived).length, "archived project")}`}</button></p>` : null}`}
+    <div class="row small" style=${{ gap: "18px", marginTop: "14px" }}>
+      ${d.projects.some((p) => p.archived) ? html`<button class="link small" onClick=${() => setShowArchived(!showArchived)}>${showArchived ? "Hide archived projects" : `Show ${plural(d.projects.filter((p) => p.archived).length, "archived project")}`}</button>` : null}
+      ${admin.can("data.export") && !d.demo ? html`<a class="link small" href="/api/admin?export=projects" download>Export to a spreadsheet</a>` : null}
+    </div>`}
     ${creating ? html`<${NewProject} admin=${admin} onClose=${() => setCreating(false)} />` : null}
   `;
 }
@@ -183,7 +180,7 @@ function Projects({ admin }) {
 /** The email the "Email it" button starts, in the studio's voice. Only what's always true. */
 function mailto(title, client, link, studio) {
   const subject = `${title}: your link to the ${studio} portal`;
-  const body = `Hi,\n\nHere’s your link to ${title} in our client portal:\n${link}\n\nOpen it and create your login (your name, email, and a password you choose). You go straight to the project, with nothing to wait for. Next time, log in with the same email and password.\n\nAnyone on your team who should see ${title} can use the same link.\n\n${studio}`;
+  const body = `Hi,\n\nHere’s your link to ${title} in our client portal:\n${link}\n\nOpen it and create your login (your name, email, and a password you choose). You’re in straight away. Next time, log in with the same email and password.\n\nAnyone on your team who should see ${title} can use the same link.\n\n${studio}`;
   return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
@@ -303,16 +300,16 @@ function ProjectEdit({ id, admin }) {
 
   return html`
     <p style=${{ margin: "0 0 14px" }}><${Link} to="/studio/projects" cls="link">← All projects<//></p>
-    <${Head} eyebrow=${src.clientName} title=${src.title} actions=${html`<${Link} to=${"/projects/" + id} cls="btn ghost sm">See it as the client does<//>`}>
+    <${Head} eyebrow=${src.clientName} title=${src.title} actions=${html`<span data-tour="as-client"><${Link} to=${"/projects/" + id} cls="btn ghost sm">See it as the client does<//></span>`}>
       ${src.archived ? "Archived: the client can’t see this project." : "Changes reach the client as soon as you save."}${src.notion ? " Kept up to date in Notion." : ""}
     <//>
 
-    ${!src.archived && src.join && src.join.link ? html`<section class="card pad linkbar">
-      <div class="stack" style=${{ gap: "2px" }}><b>Client link</b><span class="muted small">Send it to ${src.clientName}. Whoever opens it creates a login and sees this project, already let in.</span></div>
+    ${!src.archived && src.join && src.join.link ? html`<section class="card pad linkbar" data-tour="link">
+      <div class="stack" style=${{ gap: "2px" }}><b>Client link</b><span class="muted small">Send it to ${src.clientName}. Whoever opens it is in.</span></div>
       <${LinkBox} link=${src.join.link} title=${src.title} client=${src.clientName} />
     </section>` : null}
 
-    <div class="tabs parts" role="group" aria-label="Parts of the project" style=${{ marginBottom: "18px" }}>${PARTS.map(([k, l]) => html`<button type="button" key=${k} class="tab-btn" aria-pressed=${part === k} onClick=${() => setPart(k)}>${l}</button>`)}</div>
+    <div class="tabs parts" role="group" aria-label="Parts of the project" style=${{ marginBottom: "18px" }}>${PARTS.map(([k, l]) => html`<button type="button" key=${k} class="tab-btn" data-tour=${k === "videos" ? "videos" : undefined} aria-pressed=${part === k} onClick=${() => setPart(k)}>${l}</button>`)}</div>
 
     ${part === "details" ? html`<section class="card pad stack" style=${{ gap: "18px" }}>
       <div class="formgrid">
@@ -328,7 +325,7 @@ function ProjectEdit({ id, admin }) {
         <button class="btn ghost sm" disabled=${busy || dirty} onClick=${() => save({ archived: !src.archived })}>${src.archived ? "Bring it back for the client" : "Archive (hide from the client)"}</button>
         <button class="btn danger sm" onClick=${() => setDel(true)}>Delete project…</button>
       </div>
-      <span class="faint small">Archiving can be undone. Deleting removes its notes, decisions, messages, share links, and files for good.</span>
+      <span class="faint small">Archive can be undone. Delete can’t.</span>
     </section>` : null}` : null}
 
     ${part === "link" ? html`<${ClientLink} p=${src} admin=${admin} />` : null}
@@ -390,18 +387,18 @@ function ClientLink({ p, admin }) {
   };
   return html`<section class="card pad stack" style=${{ gap: "18px" }}>
     <div class="stack" style=${{ gap: "4px" }}><div class="h3">Client link</div>
-      <span class="muted small" style=${{ lineHeight: 1.6 }}>Send it to ${p.clientName}. Whoever opens it creates a login and goes straight to this project, already let in. They see only this project, and can pass the link to their team.</span></div>
+      <span class="muted small">Whoever opens the link at the top joins this project only.</span></div>
     ${p.archived ? html`<div class="alert info small">This project is archived, so its link doesn’t work. Bring the project back to use it again.</div>`
       : j.off ? html`<div class="row" style=${{ justifyContent: "space-between" }}><span class="muted">The link is off: nobody can join with it.</span>
           ${may ? html`<button class="btn primary sm" disabled=${busy} onClick=${() => run({ action: "joinLink", projectId: p.id, op: "on" }, "The link works again.")}>Switch it back on</button>` : null}</div>`
-      : html`<${LinkBox} link=${j.link} title=${p.title} client=${p.clientName} />`}
+      : null}
     ${may && !p.archived ? html`<div class="stack" style=${{ gap: "8px" }}>
       <span class="small" style=${{ fontWeight: 600 }}>People who join with the link are</span>
       <div class="roles" role="radiogroup" aria-label="Role for people who join">${roles.map((r) => html`<label key=${r.key} class=${"rolecard" + (j.access === r.key ? " on" : "")}>
         <input type="radio" name="joinrole" value=${r.key} checked=${j.access === r.key} disabled=${busy}
           onChange=${() => run({ action: "joinLink", projectId: p.id, op: "role", access: r.key }, `People who join are now ${r.label.toLowerCase()}s.`)} />
         <b>${r.label}</b><span>${r.key === "approver" ? "Watches, leaves notes, and approves versions." : r.detail}</span></label>`)}</div>
-      <span class="faint small">Changing it affects people who join from now on. Change someone who already joined in Studio → People.</span>
+      <span class="faint small">For people who join from now on.</span>
     </div>` : null}
     <div class="stack" style=${{ gap: "8px" }}>
       <span class="small" style=${{ fontWeight: 600 }}>Joined with the link</span>
