@@ -4,7 +4,7 @@
 //
 // To read it as one SQL file: node -e "import('./api/_schema.js').then(m => console.log(m.STATEMENTS.join(';\n\n') + ';'))"
 
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 export const STATEMENTS = [
   `create table if not exists settings (
@@ -364,4 +364,21 @@ export const STATEMENTS = [
     at          timestamptz not null default now(),
     primary key (project_id, video_id)
   )`,
+  // More than one address to log in with, for one person (the first owner: OWNER_EMAILS in _settings.js). No other
+  // person may use an address that is someone's extra one: the trigger refuses it like a duplicate email (23505).
+  `create table if not exists user_emails (
+    email       text primary key,
+    user_id     uuid not null references users(id) on delete cascade,
+    created_at  timestamptz not null default now()
+  )`,
+  `create index if not exists user_emails_user_idx on user_emails(user_id)`,
+  `create or replace function users_email_free() returns trigger language plpgsql as $$
+   begin
+     if exists (select 1 from user_emails a where a.email = new.email and a.user_id <> new.id) then
+       raise exception 'That email already has a login' using errcode = '23505';
+     end if;
+     return new;
+   end $$`,
+  `drop trigger if exists users_email_free on users`,
+  `create trigger users_email_free before insert or update of email on users for each row execute function users_email_free()`,
 ];

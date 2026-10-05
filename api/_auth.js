@@ -10,12 +10,6 @@ const DEFAULT_DAYS = 7;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const isUuid = (v) => typeof v === "string" && UUID_RE.test(v);
 
-/**
- * PORTAL_MODE=demo shows the public sample portal at / to anyone who isn't logged in (the sample is always at
- * /demo as well). It is an explicit server setting, never a fallback: with it unset, / asks everyone to log in.
- */
-export const DEMO_MODE = process.env.PORTAL_MODE === "demo";
-
 export const TROUBLE = "The portal is having trouble. Try again in a moment, or email alexis@gotit2work.com.";
 
 function secret() {

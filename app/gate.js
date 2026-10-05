@@ -73,39 +73,31 @@ function Steps({ at, labels }) {
 }
 const SIGNUP_STEPS = ["Your details", "Confirm your email", "You’re in"];
 
-/** Creating an account: name, work email, company. Nothing exists until they confirm the email. */
-function SignUp({ session, preview }) {
+/** Creating an account: name, work email, company. Nothing exists until they confirm the email. The very first
+ *  account (no owner yet, `first`) is the studio's owner: just a name and email, and only their address works. */
+function SignUp({ session, first }) {
   const [f, setF] = useState({ name: "", email: "", company: "", note: "" });
   const [noteOpen, setNoteOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [sent, setSent] = useState(false);
   const [again, setAgain] = useState(0);
-  const [next, setNext] = useState(false);
   useEffect(() => { if (!again) return; const t = setTimeout(() => setAgain(again - 1), 1000); return () => clearTimeout(t); }, [again]);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const submit = async (e) => {
     if (e) e.preventDefault();
     setBusy(true); setErr("");
-    // Before go-live there's nothing to create: show the steps, and say plainly that nothing was sent.
-    try { if (!preview) await post({ action: "signup", ...f }); setSent(true); setAgain(preview ? 0 : 30); }
+    try { await post({ action: "signup", ...f }); setSent(true); setAgain(30); }
     catch (x) { setErr(x.message); }
     setBusy(false);
   };
-  if (sent && next) return html`<div class="stack" style=${{ gap: "18px" }}>
-    <div class="alert info small">Preview only: the portal isn’t live yet, so this is what ${f.name.split(" ")[0] || "they"} would see after confirming.</div>
-    <h3 class="h3" style=${{ margin: 0 }}>You’re on the list, ${f.name.split(" ")[0] || "there"}.</h3>
-    <${Waiting} name=${f.name} studio=${(session.brand && session.brand.studio) || "the studio"} />
-  </div>`;
   if (sent) return html`<div class="stack signup" style=${{ gap: "18px" }}>
-    ${preview ? html`<div class="alert info small">Preview only: the portal isn’t live yet, so no email was sent and nothing was saved.</div>` : null}
     <${Steps} at=${1} labels=${SIGNUP_STEPS} />
     <div class="bottle" aria-hidden="true"><${Icon} name="bottle" size=${44} /></div>
     <p style=${{ margin: 0, lineHeight: 1.6 }}>We sent a link to <b>${f.email}</b>. Open it on any device to confirm it’s you. It works for an hour.</p>
     <p class="muted small" style=${{ margin: 0, lineHeight: 1.6 }}>Not there? It can take a minute; check spam too.</p>
     <div class="row">
-      ${preview ? html`<button type="button" class="btn primary sm" onClick=${() => setNext(true)}>See the next step</button>`
-        : html`<button type="button" class="btn ghost sm" disabled=${busy || again > 0} onClick=${() => submit()}>${again > 0 ? `Send it again (${again})` : "Send it again"}</button>`}
+      <button type="button" class="btn ghost sm" disabled=${busy || again > 0} onClick=${() => submit()}>${again > 0 ? `Send it again (${again})` : "Send it again"}</button>
       <button type="button" class="link small" onClick=${() => { setSent(false); setErr(""); }}>Use a different email</button>
     </div>
     ${err ? html`<div class="alert" role="alert">${err}</div>` : null}
@@ -113,14 +105,15 @@ function SignUp({ session, preview }) {
   return html`<form class="signup" onSubmit=${submit} noValidate>
     <${Steps} at=${0} labels=${SIGNUP_STEPS} />
     <${Field} label="Your name"><input class="input" name="name" autoComplete="name" required value=${f.name} onInput=${set("name")} /><//>
-    <${Field} label="Work email" hint="Use your company address: if your company already works with the studio, you’re in as soon as you confirm it.">
+    ${first ? html`<${Field} label="Email"><input class="input" type="email" name="email" autoComplete="email" required value=${f.email} onInput=${set("email")} /><//>`
+      : html`<${Field} label="Work email" hint="Use your company address: if your company already works with the studio, you’re in as soon as you confirm it.">
       <input class="input" type="email" name="email" autoComplete="email" required value=${f.email} onInput=${set("email")} />
     <//>
     <${Field} label="Company"><input class="input" name="company" autoComplete="organization" required value=${f.company} onInput=${set("company")} /><//>
     ${noteOpen ? html`<${Field} label="What are you working on? (optional)"><textarea class="textarea" rows="2" value=${f.note} onInput=${set("note")} placeholder="A launch film for March, for example."></textarea><//>`
-      : html`<button type="button" class="link small" style=${{ alignSelf: "flex-start" }} onClick=${() => setNoteOpen(true)}>Add a note for the studio</button>`}
+      : html`<button type="button" class="link small" style=${{ alignSelf: "flex-start" }} onClick=${() => setNoteOpen(true)}>Add a note for the studio</button>`}`}
     ${err ? html`<div class="alert" role="alert">${err}</div>` : null}
-    <button class="btn primary lg" type="submit" disabled=${busy || !f.name.trim() || !f.email.includes("@") || !f.company.trim()}>${busy ? "One moment…" : "Create my account"}</button>
+    <button class="btn primary lg" type="submit" disabled=${busy || !f.name.trim() || !f.email.includes("@") || (!first && !f.company.trim())}>${busy ? "One moment…" : "Create my account"}</button>
   </form>`;
 }
 
@@ -129,10 +122,6 @@ function Waiting({ name, studio }) {
   return html`<div class="stack signup" style=${{ gap: "18px" }}>
     <${Steps} at=${2} labels=${["Your details", "Email confirmed", "The studio lets you in"]} />
     <p style=${{ margin: 0, lineHeight: 1.6 }}>We’ve told ${studio || "the studio"}. When they set up your access, we’ll email you a link to choose your password, and you’re in.</p>
-    <a class="demo-entry" href="/demo">
-      <span><b>While you wait</b><br /><span class="muted small">See a sample project. Nothing you do there is saved.</span></span>
-      <span aria-hidden="true">→</span>
-    </a>
     <a class="link small" href="/" style=${{ alignSelf: "flex-start" }}>Back to login</a>
   </div>`;
 }
@@ -189,15 +178,14 @@ function CodeForm({ ticket, next, onSignedIn, onRestart }) {
 
 function Login({ session, onSignedIn, problem, start }) {
   const s = session || {};
-  // Before go-live (no database), sign-up still shows its steps as a preview, so the studio can try it.
-  const preview = s.db === false;
-  const signupOn = !!s.signup || preview;
+  // An empty portal (no owner yet) opens on Create an account: the first account is the studio's owner.
+  const signupOn = !!s.signup || !!s.firstRun;
   const next = new URLSearchParams(location.search).get("next") || (location.pathname !== "/" && location.pathname !== "/signin" ? location.pathname : "");
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(problem || "");
-  const [mode, setMode] = useState(start === "signup" && signupOn ? "signup" : "password"); // password | signup | signin-link | reset | code
+  const [mode, setMode] = useState((start === "signup" || s.firstRun) && signupOn ? "signup" : "password"); // password | signup | signin-link | reset | code
   const [ticket, setTicket] = useState(null);
   const [forgot, setForgot] = useState(false);
   const linksOn = !!(s.email && s.signinLinks);
@@ -223,7 +211,7 @@ function Login({ session, onSignedIn, problem, start }) {
       <button type="button" role="tab" aria-selected=${mode === "signup"} onClick=${() => tab("signup")}>Create an account</button>
     </div>` : null}
     <h2 class=${"h2 door-title" + (tabs ? " sr-only" : "")}>${tabs && mode === "signup" ? "Create an account" : title}</h2>
-    ${mode === "signup" ? html`<${SignUp} session=${s} preview=${preview} />`
+    ${mode === "signup" ? html`<${SignUp} session=${s} first=${!!s.firstRun} />`
       : mode === "code" ? html`<${CodeForm} ticket=${ticket} next=${next} onSignedIn=${onSignedIn} onRestart=${back} />`
       : mode === "signin-link" || mode === "reset" ? html`<${LinkForm} purpose=${mode === "reset" ? "reset" : "signin"} email=${email} setEmail=${setEmail} next=${next} onBack=${back} />`
       : html`<form class="login" onSubmit=${submit} noValidate>
@@ -238,7 +226,6 @@ function Login({ session, onSignedIn, problem, start }) {
       ${forgot ? html`<div class="alert info small">Email <a href=${"mailto:" + support + "?subject=Portal%20password"}>${support}</a> from the address you log in with, and the studio will send you a link to choose a new one.</div>` : null}
     </form>`}
     <div class="foot">
-      ${mode === "password" ? html`<a class="demo-line" href="/demo">Just looking? <u>See a sample project</u> <span aria-hidden="true">→</span></a>` : null}
       ${!signupOn ? html`<span>No account yet? Ask the studio to invite you.</span>` : null}
       <span class="faint"><a href=${(s.brand && s.brand.privacy) || "https://noblemanproductions.gotit2work.com/privacy#portal"}>Privacy</a> · <a href=${(s.brand && s.brand.website) || "https://noblemanproductions.gotit2work.com"}>${String((s.brand && s.brand.website) || "noblemanproductions.gotit2work.com").replace(/^https:\/\//, "")}</a></span>
     </div>
@@ -343,7 +330,7 @@ function Join({ session, demo, onJoined }) {
       <h2 class="h2 door-title">${p.title}</h2>
       <span class="muted small">${p.client}${p.type ? " · " + p.type : ""}</span>
     </div>
-    ${demo ? html`<div class="alert info small">This is the demo: here’s what a client sees when they open a project’s link. Nothing you type is saved.</div>` : null}
+    ${demo ? html`<div class="alert info small">A sample: here’s what a client sees when they open a project’s link. Nothing you type is saved.</div>` : null}
 
     ${mode === "demo-done" ? html`<div class="stack" style=${{ gap: "14px" }}>
       <div class="alert info" role="status"><b>Demo only:</b> in the real portal this creates ${f.name.trim() ? `a login for ${f.name.trim().split(" ")[0]}` : "their login"}, and they’re in ${p.title} straight away.</div>
@@ -395,38 +382,6 @@ function Join({ session, demo, onJoined }) {
   <//>`;
 }
 
-function Setup({ ready, onDone, session }) {
-  const [f, setF] = useState({ code: "", name: "", email: "", password: "", again: "" });
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
-  const set = (k) => (e) => setF({ ...f, [k]: e.target ? e.target.value : e });
-  const submit = async (e) => {
-    e.preventDefault();
-    if (f.password !== f.again) return setErr("The two passwords don’t match.");
-    setBusy(true); setErr("");
-    try {
-      const d = await api("/api/session", { method: "POST", body: { action: "setup", code: f.code, name: f.name, email: f.email, password: f.password } });
-      onDone(d.user);
-    } catch (x) { setErr(x.message); setBusy(false); }
-  };
-  return html`<${Door} brand=${session && session.brand}>
-    <div class="stack" style=${{ gap: "10px" }}>
-      <span class="eyebrow">First-time setup</span>
-      <h2 class="h2">Set up the portal</h2>
-      <p class="muted" style=${{ margin: 0, lineHeight: 1.6 }}>This creates the first owner account. You add the rest of the team and your clients from Studio afterwards.</p>
-    </div>
-    ${ready ? html`<form onSubmit=${submit}>
-      <${Field} label="Setup code" hint="The BOOTSTRAP_SECRET value in Vercel → nobleman-portal → Settings → Environment Variables."><input class="input" name="code" autoComplete="off" required value=${f.code} onInput=${set("code")} /><//>
-      <${Field} label="Your name"><input class="input" name="name" autoComplete="name" required value=${f.name} onInput=${set("name")} /><//>
-      <${Field} label="Email"><input class="input" type="email" name="email" autoComplete="username" required value=${f.email} onInput=${set("email")} /><//>
-      <${Password} label="Password (at least 10 characters)" name="new-password" auto="new-password" value=${f.password} onInput=${set("password")} />
-      <${Password} label="Password again" name="again" auto="new-password" value=${f.again} onInput=${set("again")} />
-      ${err ? html`<div class="alert" role="alert">${err}</div>` : null}
-      <button class="btn primary lg" disabled=${busy}>${busy ? "Setting up…" : "Create the owner account"}</button>
-    </form>` : html`<div class="alert info">Setup is switched off. Add <b>BOOTSTRAP_SECRET</b> (any long random text) in Vercel → nobleman-portal → Settings → Environment Variables, redeploy, then reload this page.</div>`}
-  <//>`;
-}
-
 function NewPassword({ user, onDone, onSignOut, session }) {
   const [pass, setPass] = useState("");
   const [again, setAgain] = useState("");
@@ -470,12 +425,11 @@ function TwoStepRequired({ session, onDone, onSignOut, toast }) {
   <//>`;
 }
 
-export function Gate({ mode, session, problem, start, demo, onSignedIn, onSetupDone, onPasswordDone, onPasswordNeeded, onTwoStepDone, onSignOut, toast }) {
+export function Gate({ mode, session, problem, start, demo, onSignedIn, onPasswordDone, onPasswordNeeded, onTwoStepDone, onSignOut, toast }) {
   const s = session || {};
   return html`<div class="gate">
     <${Screen} law=${s.signin} />
-    ${mode === "setup" ? html`<${Setup} ready=${s.setupReady} onDone=${onSetupDone} session=${s} />`
-      : mode === "password" ? html`<${NewPassword} user=${s.user} onDone=${onPasswordDone} onSignOut=${onSignOut} session=${s} />`
+    ${mode === "password" ? html`<${NewPassword} user=${s.user} onDone=${onPasswordDone} onSignOut=${onSignOut} session=${s} />`
       : mode === "link" ? html`<${Redeem} session=${s} onSignedIn=${onSignedIn} onPassword=${onPasswordNeeded} />`
       : mode === "join" ? html`<${Join} session=${s} demo=${demo} onJoined=${onSignedIn} />`
       : mode === "twostep" ? html`<${TwoStepRequired} session=${s} onDone=${onTwoStepDone} onSignOut=${onSignOut} toast=${toast} />`

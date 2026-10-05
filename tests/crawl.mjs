@@ -2,7 +2,7 @@
 // without reloading (state left over from the last screen shows up on transitions). Reports page errors and a
 // portal that went blank or shows "stopped working". Skips anything that deletes, sends, saves, or logs out.
 //   ./run.sh, then: node crawl.mjs <base> <who> [phone 0|1] [walks] [steps]
-//   node crawl.mjs http://localhost:4401 demo-studio        the demo, studio's view (or demo-client)
+//   node crawl.mjs http://localhost:4401 demo-studio        the sample portal (as staff), studio's view (or demo-client)
 //   node crawl.mjs http://localhost:4400 dana@harbor.test 1  a seeded person (test password), phone size
 // Run it as staff and as each client role after changing a screen. It exits 1 if anything broke.
 import { chromium } from "playwright-core";
@@ -23,16 +23,17 @@ async function fresh() {
   const page = await ctx.newPage();
   page.setDefaultTimeout(4000);
   page.on("pageerror", (e) => report(e.message, page.url(), page.__path ? page.__path.slice(-6).join(" → ") : "", (e.stack || "").split("\n").slice(1, 3).join(" | ")));
-  if (who.includes("@")) {
+  // The sample portal is for studio staff: log in as the seeded owner first.
+  if (who.includes("@") || who.startsWith("demo")) {
     await page.goto(base + "/signin");
-    await page.locator('input[name="email"]').fill(who);
+    await page.locator('input[name="email"]').fill(who.includes("@") ? who : "alexis@gotit2work.com");
     await page.locator('input[name="password"]').fill("portal-test-pass");
     await page.getByRole("button", { name: "Log in", exact: true }).click();
     await page.waitForTimeout(1500);
   }
   return page;
 }
-const start = who === "demo-studio" ? "/?view=studio" : "/";
+const start = who === "demo-studio" ? "/demo?view=studio" : who === "demo-client" ? "/demo" : "/";
 async function load(page, url) {
   await page.goto(base + url, { waitUntil: "domcontentloaded" }).catch(() => {});
   await page.waitForFunction(() => { const r = document.getElementById("root"); return r && r.childElementCount && !document.querySelector(".boot-line"); }, null, { timeout: 8000 }).catch(() => {});
@@ -43,7 +44,16 @@ async function crashed(page) {
   await page.waitForFunction(() => document.readyState === "complete" && document.getElementById("root")?.childElementCount, null, { timeout: 5000 }).catch(() => {});
   return page.evaluate(() => { const r = document.getElementById("root"); return !r || r.childElementCount === 0 || /didn’t finish loading|stopped working\./.test(document.body.innerText); }).catch(() => false);
 }
+// A click that loads a whole page (Back to my portal, Client's view) can land mid-read: wait for the page, read again.
 async function clickables(page) {
+  for (let i = 0; ; i++) {
+    try { return await readClickables(page); } catch (e) {
+      if (i || !/context was destroyed|navigat/i.test(e.message)) throw e;
+      await page.waitForLoadState("domcontentloaded").catch(() => {});
+    }
+  }
+}
+async function readClickables(page) {
   return page.evaluate((skip) => {
     const re = new RegExp(skip, "i");
     const vis = (el) => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el); return r.width > 2 && r.height > 2 && s.visibility !== "hidden" && s.display !== "none" && !el.disabled; };

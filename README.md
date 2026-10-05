@@ -18,7 +18,7 @@ The runbook for both Nobleman sites (Vercel, DNS at GoDaddy, validation, rollbac
 | Email | Resend (optional), set up in Studio or by environment variables | `api/_notify.js`, `api/_links.js` |
 | Vendored | React 18.3.1, htm 3.1.1, `@vercel/blob` 2.8.0 browser client, qrcode-generator 1.4.4 (MIT) | `vendor/` (immutable cache) |
 
-Pages are client-side routes served by one `index.html` (rewrite in `vercel.json`): `/` Home, `/review`, `/films`, `/files`, `/messages`, `/account`, `/studio/…` (staff), `/watch/<token>` (share pages, no login), `/link/<token>` (emailed invitations, login links, and sign-up confirmations), `/signin` or `/login` (the login), `/signup` (create an account), `/demo/…` (the public sample), `/signin`.
+Pages are client-side routes served by one `index.html` (rewrite in `vercel.json`): `/` Home, `/review`, `/films`, `/files`, `/messages`, `/account`, `/studio/…` (staff), `/watch/<token>` (share pages, no login), `/link/<token>` (emailed invitations, login links, and sign-up confirmations), `/signin` or `/login` (the login), `/signup` (create an account), `/demo/…` (the sample project, for logged-in staff: **Client's view**).
 
 **Navigation.** On desktop (960 px and wider) a floating capsule on the left: Home, Review, Films, Files, Messages, Studio (staff), then Help and Account. On phones it's an app: a plain bar on top (logo, Help, Account) and a flat tab bar at the bottom (a **More** tab holds the rest when there are more than five), with underlined tabs, squarer corners, and shorter pages (Home's long lists show the newest few; Studio's page intros are left out). Every tab and button appears only when the project and the person's role allow it.
 
@@ -84,7 +84,9 @@ Three short steps, from the **Create an account** tab (or `/signup`):
 2. **Confirm your email:** the portal emails a link that works once, for an hour. Nothing is created until it's used, so a typo or someone else's address goes nowhere.
 3. **You're in:** if the email's domain is listed on a client (Studio → Clients → their email domain, for example `harborlabs.com`), they join that client straight away with the role set in Settings (Reviewer unless you change it), choose a password, and land in their company's projects; the studio and the client's decision makers are told. Otherwise they see "You're on the list", and the studio gets an email and a **Someone is asking to join** step on Home. In Studio → People → **Asking to join**, choose their company (a new one is suggested from what they typed) and role and press **Let them in**: they're emailed a link to choose a password. Or **Decline**, with an optional polite email.
 
-Someone who already has an account and tries to sign up gets a way in by email instead; the screen gives the same answer either way, so nobody can learn which addresses have accounts. Free email services (Gmail, Outlook, iCloud…) can't be listed as a client's domain. Studio → Settings → Security chooses **who can create an account** (anyone, with the studio letting them in; or only people the studio invites), turns joining by domain on or off, and sets the role they join with. Sign-up needs email: without it the tab doesn't appear. Before go-live (no database yet) the tab shows the steps as a labelled preview, and nothing is sent or saved. Unconfirmed requests are deleted after a day, handled ones after 30 days.
+**The first account is the studio's owner.** While the portal has no staff account, the door opens on **Create an account** asking only for a name and email, and only the addresses in `OWNER_EMAILS` (`api/_settings.js`: Jean's `jeancgotay@gmail.com` and `jean@noblemanproductions.com`) are accepted; anyone else sees "The portal isn't open for new accounts yet." Confirming the emailed link makes that person the owner (only while there is none, in one statement, so two can't race), and they choose a password. Both addresses log into the same account: the other one is stored in `user_emails`, and a database rule refuses it as anyone else's email. There's no setup code.
+
+Someone who already has an account and tries to sign up gets a way in by email instead; the screen gives the same answer either way, so nobody can learn which addresses have accounts. Free email services (Gmail, Outlook, iCloud…) can't be listed as a client's domain. Studio → Settings → Security chooses **who can create an account** (anyone, with the studio letting them in; or only people the studio invites), turns joining by domain on or off, and sets the role they join with. Sign-up needs email: without it the tab doesn't appear (except for the first owner, who is told email needs setting up). Before go-live (no database yet) the login says the portal is still being set up, and nothing else. Unconfirmed requests are deleted after a day, handled ones after 30 days.
 
 ## Roles
 
@@ -132,7 +134,7 @@ Each project has its own switches (Studio → Projects → a project → "What <
 | **Settings** | owners | A short list of sections, each with a one-line summary; one opens at a time. Studio name, help email, addresses, the line above Messages; the login screen's photo (one of the studio's, or an upload, resized in the browser to 2400 px and served by `GET /api/session?loginImage=<id>`; a replaced upload is deleted) and its Murphy's Law; a notice for everyone; project stages (names, progress, order); defaults for new projects; security (require two-step verification for staff, emailed login links, how long logins last, client teams, who can create an account, joining by email domain); review reminders; **System check** |
 | **Activity** | owners, producers | Who did what and when (logins, sign-ups, views, downloads, approvals, Studio changes), filtered by kind of person, client, project, or word; export to a spreadsheet. Kept about 13 months |
 
-**System check** (first in Settings) lists anything that needs attention: missing secrets, the setup code still set, the demo still on, file storage, email, the daily job, each connection, payments, Notion, fewer than two owners, staff without two-step verification.
+**System check** (first in Settings) lists anything that needs attention: missing secrets, file storage, email, the daily job, each connection, payments, Notion, fewer than two owners, staff without two-step verification.
 
 **Getting started.** While a new portal is missing the essentials (file storage, email, a video source, a client, a project, an invited client), owners see a checklist on Home instead of the next step, with a link to where each one is done. It goes away by itself.
 
@@ -240,9 +242,9 @@ Documents and client files live in a **private** Vercel Blob store: nothing in i
 
 `vercel.json` → `crons` calls `/api/cron` once a day (14:17 UTC, early morning in San Diego and Las Vegas; on Hobby it runs within that hour). Vercel sends `Authorization: Bearer <CRON_SECRET>`; without `CRON_SECRET` set the job refuses to run. It sends due review reminders, refreshes Frame.io's Adobe sign-in, catches Notion up, asks Stripe about payments still open, and prunes old records (activity after about 13 months, used or expired links after a week).
 
-## Demo mode
+## The sample project (Client's view)
 
-`PORTAL_MODE=demo` opens the portal at `/` to anyone as a sample client ("Jonathan Reyes, Meridian"), with nothing saved: every action says "Demo only: …". **Tutorial** at the top plays the client's or the studio's tutorial. A **Client's view / Studio's view** switch (top right on desktop; in Help on phones) shows the same sample as the studio sees it, on the same page (both views load together, so the switch is instant): the staff board, every version, someone asking to join, and all of Studio with sample clients, people, connections, settings, and activity. Studio's changes are refused with "Demo only". Link to it with `?view=studio`. It's a server setting, never a fallback: if the API fails, the login screen shows the problem. The sample is always at `/demo` too, so the website can link to it after go-live. In demo mode, `/signin` still reaches the real sign-in.
+The portal's front door is only the login: no demo. Logged-in **studio staff** open a sample project from **Client's view** at the top (desktop; in Help on phones), at `/demo`: a sample client ("Jonathan Reyes, Meridian"), with nothing saved (every action says "Demo only: …"). **Tutorial** plays the client's or the studio's tutorial there, a **Client's view / Studio's view** switch shows the same sample from the studio's side (both views load together, so the switch is instant; `?view=studio` links to it), and **Back to my portal** returns. Its data (`GET /api/portal?demo=…`, `GET /api/admin?demo=1`) answers only to staff; anyone else who opens `/demo` gets the login, or their own portal.
 
 ## Environment variables
 
@@ -251,13 +253,11 @@ Documents and client files live in a **private** Vercel Blob store: nothing in i
 | `DATABASE_URL` | yes | Set by Vercel when you create Neon under Storage. `POSTGRES_URL` also works |
 | `SESSION_SECRET` | yes | 32+ random characters (`openssl rand -base64 48`). Changing it signs everyone out. Mark **Sensitive** |
 | `PORTAL_ENCRYPTION_KEY` | recommended | 32+ random characters. Encrypts stored connection keys. If unset, a key is derived from `SESSION_SECRET`, so changing that would mean re-entering every connection. Mark **Sensitive**, and don't change it once set |
-| `BOOTSTRAP_SECRET` | first run | Any long random text. The setup code for the first owner. Remove after setup |
 | `CRON_SECRET` | for the daily job | 16+ random characters. Vercel sends it to `/api/cron` automatically. Mark **Sensitive** |
 | `BLOB_READ_WRITE_TOKEN` | for files | Set by Vercel when you connect a Blob store |
 | `VIMEO_ACCESS_TOKEN` | optional | Or connect Vimeo in Studio instead. Scopes above. Mark **Sensitive** |
 | `VIMEO_USER_ID` | rarely | Only if the token belongs to a different Vimeo user than the folders' owner |
-| `RESEND_API_KEY` + `PORTAL_EMAIL_FROM` | optional | Or connect email in Studio instead. The sender must be on a domain verified in Resend |
-| `PORTAL_MODE` | no | `demo` = public sample at `/`. Remove it to go live |
+| `RESEND_API_KEY` + `PORTAL_EMAIL_FROM` | yes, to start | The first owner confirms their account by email, before anyone can open Studio to connect it there. The sender must be on a domain verified in Resend. `RESEND_API_KEY` is **Sensitive** |
 
 Environment variables only apply to new deployments: **redeploy after every change**.
 
@@ -266,13 +266,12 @@ Environment variables only apply to new deployments: **redeploy after every chan
 The full runbook, with exact Vercel, Resend, Vimeo, Notion, and Stripe steps, checks, troubleshooting, and rollback, is **`docs/GO-LIVE.md`**. In short:
 
 1. Vercel → Storage: a **Neon** database (`iad1`) and a **private Blob** store, both connected to the project.
-2. Environment variables: `SESSION_SECRET`, `PORTAL_ENCRYPTION_KEY`, `CRON_SECRET`, `BOOTSTRAP_SECRET` (Sensitive; generated on your own computer with `openssl rand -base64 48`).
-3. Delete `PORTAL_MODE`, redeploy. The address shows **Set up the portal**; the sample stays at `/demo`.
-4. Create the first owner with the setup code, then delete `BOOTSTRAP_SECRET` and redeploy. Turn on two-step verification.
-5. Studio → Connections: email (Resend), Vimeo, Notion, Stripe (test mode first, then live). **Test it** on each.
-6. Studio: staff, clients, projects, invitations. Home's **Getting started** checklist tracks it; Settings → **System check** confirms it.
+2. Environment variables: `SESSION_SECRET`, `PORTAL_ENCRYPTION_KEY`, `CRON_SECRET` (Sensitive; generated on your own computer with `openssl rand -base64 48`), plus `RESEND_API_KEY` and `PORTAL_EMAIL_FROM` for email. Redeploy. The address shows **Log in** and **Create an account**.
+3. Jean creates the first account with `jeancgotay@gmail.com` (or `jean@noblemanproductions.com`), confirms it from his inbox, and chooses a password: he's the owner. Turn on two-step verification.
+4. Studio → Connections: Vimeo, Frame.io, Notion, Stripe (test mode first, then live). **Test it** on each.
+5. Studio: staff (Justin), clients, projects, project links. Home's **Getting started** checklist tracks it; Settings → **System check** confirms it.
 
-**Roll back:** set `PORTAL_MODE=demo` and redeploy (nothing in the database is touched), or promote an earlier deployment. Schema changes only ever add, so an earlier deployment runs against the newer database.
+**Roll back:** promote an earlier deployment. Schema changes only ever add, so an earlier deployment runs against the newer database.
 
 ## Moving to noblemanproductions.com
 
@@ -326,7 +325,7 @@ The data layer is plain Postgres. To move: create the Supabase project; copy the
 | `GET /api/session` | anyone | Who's logged in; the login screen's settings (including whether sign-up is on); whether setup or two-step setup is needed |
 | `GET /api/session?join=<token>` | anyone with a project link | Which project it opens and what joining gives |
 | `POST /api/session` | anyone / logged in | `login`, `twoStep`, `requestLink`, `signup`, `join` (a project link), `redeem` (also confirms sign-ups), `logout`, `setup`, `password`, `profile`, `twoStepBegin`, `twoStepEnable`, `twoStepDisable`, `recoveryCodes` |
-| `GET /api/portal` | logged in | Everything this person can see; `?demo=1` or `?demo=studio` (anyone), `?thread=`, `?notes=&video=`, `?shares=`, `?team=1` |
+| `GET /api/portal` | logged in | Everything this person can see; `?demo=1` or `?demo=studio` (the sample, staff only), `?thread=`, `?notes=&video=`, `?shares=`, `?team=1` |
 | `POST /api/portal` | logged in | `note`, `resolve`, `deleteNote`, `decide`, `message`, `deleteMessage`, `seen`, `downloaded`, `confirmNext`, `shareCreate`, `shareRevoke`, `teamAdd`, `teamUpdate`, `teamRemove`, `pay` (a Stripe checkout address), `payCheck` (back from checkout) |
 | `GET /api/media` | logged in | Downloads, captions, chapters for one video; `&play=1` for a fresh playback address |
 | `POST /api/media` | logged in | `uploadStart`, `uploadDone`, `uploadCancel` (Vimeo) |
@@ -336,7 +335,7 @@ The data layer is plain Postgres. To move: create the Supabase project; copy the
 | `POST /api/connect?webhook=stripe` | Stripe | Payment events, signed with the webhook secret |
 | `POST /api/connect?webhook=frameio&c=…` | Frame.io | New comments and versions (live updates), signed per workspace |
 | `GET /api/cron` | Vercel | The daily job (needs `CRON_SECRET`) |
-| `GET/POST /api/admin` | staff, by role | Overview, `?demo=1` (sample data, anyone), `?sources=`, `?videos=`, `?audit=`, `?export=`, `?notion=`, `?health=1`; client, person (including which projects a client sees), account request (`signupApprove`, `signupDecline`), project, project link (`joinLink`, `projectPersonRemove`), video, payment (`paymentCreate`, `paymentCancel`, `paymentMarkPaid`), connection, Notion, settings, and roles actions (`api/admin.js`, `api/_admin_more.js`) |
+| `GET/POST /api/admin` | staff, by role | Overview, `?demo=1` (sample data), `?sources=`, `?videos=`, `?audit=`, `?export=`, `?notion=`, `?health=1`; client, person (including which projects a client sees), account request (`signupApprove`, `signupDecline`), project, project link (`joinLink`, `projectPersonRemove`), video, payment (`paymentCreate`, `paymentCancel`, `paymentMarkPaid`), connection, Notion, settings, and roles actions (`api/admin.js`, `api/_admin_more.js`) |
 
 ## Testing
 
@@ -344,7 +343,7 @@ The data layer is plain Postgres. To move: create the Supabase project; copy the
 
 ```bash
 npm ci && (cd tests && npm ci)
-cd tests && npm test        # 363 API checks, then 181 browser checks (desktop and phone)
+cd tests && npm test        # 377 API checks, then 187 browser checks (desktop and phone)
 npm run shots               # screenshots of every screen in tests/.work/shots
 ./run.sh && node crawl.mjs http://localhost:4401 demo-studio   # clicks every link and button, looking for screens that break
 ```

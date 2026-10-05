@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { sql, ready, dbConfigured } from "./_db.js";
-import { TROUBLE, readBody, requireUser, projectFor, isUuid, longText, text } from "./_auth.js";
+import { TROUBLE, readBody, requireUser, requireStaff, projectFor, isUuid, longText, text } from "./_auth.js";
 import { buildPortal } from "./_build.js";
 import { demoPortal, demoStudioPortal } from "./_demo.js";
 import { findVideo } from "./_sources.js";
@@ -17,7 +17,7 @@ import { pullNotes, pushNote, pushDecision, pushDone, pushDelete } from "./_fio_
 
 /**
  * GET  /api/portal                        everything the signed-in person can see (see _build.js)
- * GET  /api/portal?demo=1                 the public sample portal (no login, nothing saved)
+ * GET  /api/portal?demo=1                 the sample portal, for studio staff (nothing saved)
  * GET  /api/portal?thread=<project>       a project's messages; marks them read
  * GET  /api/portal?notes=<project>&video=<id>   review notes on one version
  * GET  /api/portal?shares=<project>       share links on a project
@@ -32,9 +32,10 @@ import { pullNotes, pushNote, pushDecision, pushDone, pushDelete } from "./_fio_
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "private, no-store");
   const q = req.query || {};
-  if (req.method === "GET" && q.demo) return res.status(200).json(q.demo === "studio" ? demoStudioPortal() : demoPortal());
   if (!dbConfigured()) return res.status(503).json({ error: "The portal isn’t connected to its database yet." });
   try { await ready(); } catch (err) { console.error("db not ready", err); return res.status(500).json({ error: TROUBLE }); }
+  // The sample portal, for studio staff (Client's view at the top): sample data only, nothing saved.
+  if (req.method === "GET" && q.demo) { const s = await requireStaff(req, res); return s ? res.status(200).json(q.demo === "studio" ? demoStudioPortal() : demoPortal()) : undefined; }
 
   const u = await requireUser(req, res);
   if (!u) return;
@@ -360,7 +361,7 @@ const ACTIONS = {
     const email = String(b.email || "").trim().toLowerCase().slice(0, 320);
     const access = CLIENT_ROLES.some((r) => r.key === b.access) ? b.access : "reviewer";
     if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: "Enter their name and email." });
-    const exists = (await sql`select 1 from users where email = ${email}`)[0];
+    const exists = (await sql`select 1 from users where email = ${email} union all select 1 from user_emails where email = ${email}`)[0];
     if (exists) return res.status(409).json({ error: "That email already has an account. Ask the studio if they should be on your team." });
     const [nu] = await sql`
       insert into users (email, name, role, access, client_id, password_hash, must_change_password)
