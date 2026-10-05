@@ -345,7 +345,7 @@ function Join({ session, demo, onJoined }) {
     ${demo ? html`<div class="alert info small">This is the demo: here’s what a client sees when they open a project’s link. Nothing you type is saved.</div>` : null}
 
     ${mode === "demo-done" ? html`<div class="stack" style=${{ gap: "14px" }}>
-      <div class="alert info" role="status"><b>Demo only:</b> in the real portal this creates ${f.name.split(" ")[0] || "their"} login, and they land on ${p.title}, already let in.</div>
+      <div class="alert info" role="status"><b>Demo only:</b> in the real portal this creates ${f.name.trim() ? `a login for ${f.name.trim().split(" ")[0]}` : "their login"}, and they land on ${p.title}, already let in.</div>
       <a class="btn primary lg" href="/demo/projects/demo-meridian">See what they see</a>
     </div>`
 
